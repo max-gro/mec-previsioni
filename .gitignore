@@ -1,1 +1,9 @@
+instance/
+INPUT/
+OUTPUT/
+venv/
+__pycache__/
+*.pyc
+*.db
+*.log
 .env

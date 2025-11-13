@@ -1,9 +1,160 @@
+# =============================================================================
+# MEC PREVISIONI - .gitignore
+# =============================================================================
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# =============================================================================
+# Flask
+# =============================================================================
 instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Flask session files
+flask_session/
+
+# =============================================================================
+# Environment & Secrets
+# =============================================================================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+
+# =============================================================================
+# Logs
+# =============================================================================
+*.log
+logs/
+*.log.*
+
+# =============================================================================
+# Data & Uploads (Configurabili in base alle necessità)
+# =============================================================================
 INPUT/
 OUTPUT/
-venv/
-__pycache__/
-*.pyc
-*.db
-*.log
-.env
+
+# Precomputed data (large files)
+precomputed_*.json
+output_*.json
+output_*.xlsx
+
+# =============================================================================
+# Excel Temporary Files
+# =============================================================================
+~$*.xlsx
+~$*.xls
+*.tmp
+xlsx_tmp_*.xlsx
+
+# =============================================================================
+# IDE & Editors
+# =============================================================================
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# =============================================================================
+# OS Files
+# =============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+
+# =============================================================================
+# Project Specific
+# =============================================================================
+
+# Static generated files (grafici previsioni)
+static/pred_charts/*.png
+static/pred_charts_stat/*.png
+
+# Backup files
+*.bak
+*_backup.*
+*- Copy.*
+*- Copy (*).*
+orig - *
+
+# Test/Debug files
+test*.txt
+tree.txt
+sql*
+
+# Markdown duplicati
+@ *.md
+
+# Migration scripts output (keep scripts, ignore generated data)
+migrate_*.log
+
+# Preprocessing output
+preprocessing_PO/*.xlsx
+!preprocessing_PO/orders_model_quantity_FINAL.xlsx
+preprocessing_PO/xlsx_tmp_*.xlsx
+
+# =============================================================================
+# Distribution / Packaging
+# =============================================================================
+build/
+dist/
+*.egg-info/
+.eggs/

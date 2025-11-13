@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Accesso Negato - 403{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-page">
+                <h1 class="display-1 text-danger">403</h1>
+                <h2 class="mb-4">Accesso Negato</h2>
+                <p class="lead text-muted mb-4">
+                    Non hai i permessi necessari per accedere a questa risorsa.
+                </p>
+                <p class="text-muted">
+                    Se ritieni che questo sia un errore, contatta l'amministratore di sistema.
+                </p>
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Torna alla Dashboard
+                    </a>
+                    <a href="javascript:history.back()" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Indietro
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page h1 {
+    font-size: 8rem;
+    font-weight: bold;
+}
+</style>
+{% endblock %}

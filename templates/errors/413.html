@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}File Troppo Grande - 413{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-page">
+                <h1 class="display-1 text-info">413</h1>
+                <h2 class="mb-4">File Troppo Grande</h2>
+                <p class="lead text-muted mb-4">
+                    Il file che stai tentando di caricare supera la dimensione massima consentita.
+                </p>
+                <p class="text-muted">
+                    Dimensione massima consentita: <strong>{{ config.MAX_CONTENT_LENGTH // (1024*1024) }} MB</strong>
+                </p>
+                <div class="mt-4">
+                    <a href="javascript:history.back()" class="btn btn-primary">
+                        <i class="fas fa-arrow-left"></i> Indietro
+                    </a>
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page h1 {
+    font-size: 8rem;
+    font-weight: bold;
+}
+</style>
+{% endblock %}

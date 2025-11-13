@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Pagina Non Trovata - 404{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-page">
+                <h1 class="display-1 text-muted">404</h1>
+                <h2 class="mb-4">Pagina Non Trovata</h2>
+                <p class="lead text-muted mb-4">
+                    La pagina che stai cercando non esiste o è stata spostata.
+                </p>
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Torna alla Dashboard
+                    </a>
+                    <a href="javascript:history.back()" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Indietro
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page h1 {
+    font-size: 8rem;
+    font-weight: bold;
+}
+</style>
+{% endblock %}

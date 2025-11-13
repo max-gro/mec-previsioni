@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Errore Interno - 500{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-page">
+                <h1 class="display-1 text-warning">500</h1>
+                <h2 class="mb-4">Errore Interno del Server</h2>
+                <p class="lead text-muted mb-4">
+                    Si è verificato un errore imprevisto durante l'elaborazione della tua richiesta.
+                </p>
+                <p class="text-muted">
+                    Il nostro team tecnico è stato notificato e sta lavorando per risolvere il problema.
+                </p>
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Torna alla Dashboard
+                    </a>
+                    <a href="javascript:location.reload()" class="btn btn-secondary">
+                        <i class="fas fa-sync-alt"></i> Riprova
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page h1 {
+    font-size: 8rem;
+    font-weight: bold;
+}
+</style>
+{% endblock %}

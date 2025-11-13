@@ -1,9 +1,37 @@
-instance/
-INPUT/
-OUTPUT/
+# Python
 venv/
 __pycache__/
 *.pyc
-*.db
+
+# Flask instance (db, config)
+instance/
+
+# Cartelle di input/output dati
+INPUT/
+OUTPUT/anagrafiche/
+OUTPUT/po/
+OUTPUT/rotture/
+#preprocessing_PO/
+
+# File generati
 *.log
+*.txt~
+*.bak
+*.tmp
+*.swp
+*.db
+
+# Generated or large files
+*.json
+
+# Env file
 .env
+
+# Altri file temporanei
+.DS_Store
+Thumbs.db
+
+# Documentation / local notes (not part of the project)
+#orders_model_quantity_FINAL.xlsx
+#orders_model_quantity_FINAL_shadow.xlsx
+tree.txt

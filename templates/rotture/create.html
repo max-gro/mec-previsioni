@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Carica File Rottura{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>📤 Carica Nuovo File Rottura</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('rotture.list') }}">Rotture</a></li>
+                    <li class="breadcrumb-item active">Carica Nuovo</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('rotture.create') }}" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.file.label }} <span class="text-danger">*</span></label>
+                            {{ form.file(class="form-control" + (" is-invalid" if form.file.errors else "")) }}
+                            {% if form.file.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.file.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% else %}
+                                <small class="form-text text-muted">Formati supportati: .xls, .xlsx</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.anno.label }} <span class="text-danger">*</span></label>
+                                {{ form.anno(class="form-control" + (" is-invalid" if form.anno.errors else ""), type="number", min="2000", max="2100") }}
+                                {% if form.anno.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.anno.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.data_acquisizione.label }} <span class="text-danger">*</span></label>
+                                <input type="text" 
+                                       name="data_acquisizione" 
+                                       id="data_acquisizione"
+                                       class="form-control{% if form.data_acquisizione.errors %} is-invalid{% endif %}" 
+                                       placeholder="gg/mm/aaaa"
+                                       value="{% if form.data_acquisizione.data %}{{ form.data_acquisizione.data.strftime('%d/%m/%Y') }}{% endif %}">
+                                {% if form.data_acquisizione.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% else %}
+                                    <small class="form-text text-muted">Formato: gg/mm/aaaa (es. 26/10/2025)</small>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.note.label }}</label>
+                            {{ form.note(class="form-control", rows="3", placeholder="Inserisci eventuali note sul file...") }}
+                        </div>
+
+                        <div class="alert alert-info" role="alert">
+                            <strong>ℹ️ Informazioni:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Il file verrà salvato nella cartella <code>INPUT/rotture</code></li>
+                                <li>Lo stato iniziale sarà <strong>Da processare</strong></li>
+                                <li>Usa il bottone "Elabora" per processare il file</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">📤 Carica File</button>
+                            <a href="{{ url_for('rotture.list') }}" class="btn btn-secondary">Annulla</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">📖 Guida Upload</h5>
+                    <p class="card-text small">
+                        <strong>Anno:</strong> Anno di riferimento del file rotture<br><br>
+                        <strong>Data Acquisizione:</strong> Data di caricamento del file<br><br>
+                        <strong>File Excel:</strong> Seleziona il file .xls o .xlsx contenente i dati delle rotture<br><br>
+                        <strong>Note:</strong> Eventuali annotazioni sul file (opzionale)
+                    </p>
+                    
+                    <hr>
+                    
+                    <h6>🔄 Workflow:</h6>
+                    <ol class="small mb-0">
+                        <li>Carica il file (stato: <span class="badge bg-warning text-dark">Da processare</span>)</li>
+                        <li>Clicca "Elabora" per processare</li>
+                        <li>Se OK: file va in OUTPUT (stato: <span class="badge bg-success">Processato</span>)</li>
+                        <li>Se errore: file resta in INPUT (stato: <span class="badge bg-danger">Errore</span>)</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

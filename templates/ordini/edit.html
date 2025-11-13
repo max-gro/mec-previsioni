@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Modifica Ordine di Acquisto{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>✏️ Modifica Ordine di Acquisto</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('ordini.list') }}">Ordini Acquisto</a></li>
+                    <li class="breadcrumb-item active">Modifica {{ ordine.filename }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('ordini.edit', id=ordine.id) }}">
+                        {{ form.hidden_tag() }}
+
+                        <div class="alert alert-secondary">
+                            <strong>📄 File:</strong> {{ ordine.filename }}<br>
+                            <strong>📁 Anno:</strong> {{ ordine.anno }}<br>
+                            <strong>📍 Percorso:</strong> <code>INPUT/po/{{ ordine.anno }}/{{ ordine.filename }}</code>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.data_acquisizione.label }} <span class="text-danger">*</span></label>
+                                <input type="text" 
+                                       name="data_acquisizione" 
+                                       id="data_acquisizione"
+                                       class="form-control{% if form.data_acquisizione.errors %} is-invalid{% endif %}" 
+                                       placeholder="gg/mm/aaaa"
+                                       value="{% if form.data_acquisizione.data %}{{ form.data_acquisizione.data.strftime('%d/%m/%Y') }}{% endif %}"
+									   {% if ordine.esito == 'Processato' %}disabled{% endif %}>
+                                {% if form.data_acquisizione.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">Formato: gg/mm/aaaa</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Stato</label>
+                                {{ form.esito(class="form-select") }}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.note.label }}</label>
+                            {{ form.note(class="form-control", rows="3") }}
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>
+                            <a href="{{ url_for('ordini.list') }}" class="btn btn-secondary">Annulla</a>
+                            <a href="{{ url_for('ordini.view', id=ordine.id) }}" target="_blank" class="btn btn-info">
+                                👁️ Visualizza PDF
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm bg-light mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">📊 Informazioni</h5>
+                    <dl class="row mb-0 small">
+                        <dt class="col-sm-5">ID Ordine:</dt>
+                        <dd class="col-sm-7">#{{ ordine.id }}</dd>
+
+                        <dt class="col-sm-5">Creato il:</dt>
+                        <dd class="col-sm-7">{{ ordine.created_at.strftime('%d/%m/%Y %H:%M') if ordine.created_at else 'N/D' }}</dd>
+                        
+                        <dt class="col-sm-5">Modificato il:</dt>
+                        <dd class="col-sm-7">{{ ordine.updated_at.strftime('%d/%m/%Y %H:%M') if ordine.updated_at else 'N/D' }}</dd>
+
+                        <dt class="col-sm-5">File esiste:</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge bg-success">✓ Sì</span>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-info mb-3">
+                <div class="card-body">
+                    <h5 class="card-title text-info">📥 Azioni File</h5>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('ordini.view', id=ordine.id) }}" target="_blank" class="btn btn-outline-info btn-sm">
+                            👁️ Visualizza nel Browser
+                        </a>
+                        <a href="{{ url_for('ordini.download', id=ordine.id) }}" class="btn btn-outline-success btn-sm">
+                            💾 Download PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-danger">
+                <div class="card-body">
+                    <h5 class="card-title text-danger">⚠️ Zona Pericolosa</h5>
+                    <p class="card-text small">L'eliminazione rimuoverà anche il file PDF dal server.</p>
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        🗑️ Elimina Ordine e File
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Eliminazione -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Conferma Eliminazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Sei sicuro di voler eliminare l'ordine <strong>{{ ordine.filename }}</strong>?
+                <br><br>
+                <div class="alert alert-danger">
+                    <strong>⚠️ Attenzione:</strong> Questa azione eliminerà:
+                    <ul class="mb-0 mt-2">
+                        <li>Il record dal database</li>
+                        <li>Il file PDF dal server</li>
+                    </ul>
+                </div>
+                Questa azione è <strong>irreversibile</strong>.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <form method="POST" action="{{ url_for('ordini.delete', id=ordine.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Elimina Definitivamente</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

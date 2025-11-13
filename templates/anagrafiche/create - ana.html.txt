@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Anagrafica{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>📤 Upload Anagrafica</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('anagrafiche.list') }}">Anagrafiche</a></li>
+                    <li class="breadcrumb-item active">Upload</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('anagrafiche.create') }}" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.marca.label }}</label>
+                            {{ form.marca(class="form-select" + (" is-invalid" if form.marca.errors else "")) }}
+                            {% if form.marca.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.marca.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Seleziona la marca o <a href="{{ url_for('anagrafiche.nuova_marca') }}">crea una nuova marca</a>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.file.label }}</label>
+                            {{ form.file(class="form-control" + (" is-invalid" if form.file.errors else "")) }}
+                            {% if form.file.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.file.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Formati supportati: .xls, .xlsx (Microsoft Excel)
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+						
+						
+                            <!-- <label class="form-label">{{ form.data_acquisizione.label }}</label> -->
+                            <!-- {{ form.data_acquisizione(class="form-control" + (" is-invalid" if form.data_acquisizione.errors else "")) }} -->
+                            <!-- {% if form.data_acquisizione.errors %} -->
+                                <!-- <div class="invalid-feedback"> -->
+                                    <!-- {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %} -->
+                                <!-- </div> -->
+                            <!-- {% endif %} -->
+
+                                <label class="form-label">{{ form.data_acquisizione.label }} <span class="text-danger">*</span></label>
+                                <input type="text" 
+                                       name="data_acquisizione" 
+                                       id="data_acquisizione"
+                                       class="form-control{% if form.data_acquisizione.errors %} is-invalid{% endif %}" 
+                                       placeholder="gg/mm/aaaa"
+                                       value="{% if form.data_acquisizione.data %}{{ form.data_acquisizione.data.strftime('%d/%m/%Y') }}{% endif %}">
+                                {% if form.data_acquisizione.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% else %}
+                                    <small class="form-text text-muted">Formato: gg/mm/aaaa (es. 26/10/2025)</small>
+                                {% endif %}							
+							
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.note.label }}</label>
+                            {{ form.note(class="form-control", rows="3") }}
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">💾 Carica File</button>
+                            <a href="{{ url_for('anagrafiche.list') }}" class="btn btn-secondary">Annulla</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">ℹ️ Guida Upload</h5>
+                    <p class="card-text small">
+                        <strong>1. Scegli la marca</strong><br>
+                        Seleziona dall'elenco o crea una nuova marca.<br><br>
+                        
+                        <strong>2. Seleziona il file</strong><br>
+                        Solo file Excel (.xls, .xlsx) sono accettati.<br><br>
+                        
+                        <strong>3. Carica</strong><br>
+                        Il file sarà salvato nella cartella INPUT/anagrafiche/{marca}/ con stato "Da processare".<br><br>
+                        
+                        <strong>⚙️ Elaborazione</strong><br>
+                        Dopo il caricamento, puoi elaborare il file dalla lista principale.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,100 @@
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: sqlite:////srv/apps/previsioni/instance/mec.db
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: postgresql+psycopg2://mec:cem@localhost:5432/mec_previsioni
+[DB] Dialect: postgresql  Driver: psycopg2
+[DB] URL effettivo: postgresql+psycopg2://mec:***@localhost:5432/mec_previsioni
+[DB] Versione: PostgreSQL 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+🔄 [PREVISIONI] Caricamento dati in corso...
+✓ [PREVISIONI] Dati grezzi caricati
+✓ [PREVISIONI] Modelli selezionati: ['WMEH149VA', 'ME187S']
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: postgresql+psycopg2://mec:cem@localhost:5432/mec_previsioni
+[DB] Dialect: postgresql  Driver: psycopg2
+[DB] URL effettivo: postgresql+psycopg2://mec:***@localhost:5432/mec_previsioni
+[DB] Versione: PostgreSQL 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: postgresql+psycopg2://mec:cem@localhost:5432/mec_previsioni
+[DB] Dialect: postgresql  Driver: psycopg2
+[DB] URL effettivo: postgresql+psycopg2://mec:***@localhost:5432/mec_previsioni
+[DB] Versione: PostgreSQL 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: postgresql+psycopg2://mec:cem@localhost:5432/mec_previsioni
+[DB] Dialect: postgresql  Driver: psycopg2
+[DB] URL effettivo: postgresql+psycopg2://mec:***@localhost:5432/mec_previsioni
+[DB] Versione: PostgreSQL 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: postgresql+psycopg2://mec:cem@localhost:5432/mec_previsioni
+[DB] Dialect: postgresql  Driver: psycopg2
+[DB] URL effettivo: postgresql+psycopg2://mec:***@localhost:5432/mec_previsioni
+[DB] Versione: PostgreSQL 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: postgresql+psycopg2://mec:cem@localhost:5432/mec_previsioni
+[DB] Dialect: postgresql  Driver: psycopg2
+[DB] URL effettivo: postgresql+psycopg2://mec:***@localhost:5432/mec_previsioni
+[DB] Versione: PostgreSQL 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: postgresql+psycopg2://mec:cem@localhost:5432/mec_previsioni
+[DB] Dialect: postgresql  Driver: psycopg2
+[DB] URL effettivo: postgresql+psycopg2://mec:***@localhost:5432/mec_previsioni
+[DB] Versione: PostgreSQL 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: postgresql+psycopg2://mec:cem@localhost:5432/mec_previsioni
+[DB] Dialect: postgresql  Driver: psycopg2
+[DB] URL effettivo: postgresql+psycopg2://mec:***@localhost:5432/mec_previsioni
+[DB] Versione: PostgreSQL 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+🔄 [PREVISIONI] Caricamento dati in corso...
+✓ [PREVISIONI] Dati grezzi caricati
+✓ [PREVISIONI] Modelli selezionati: ['WMEH149VA', 'ME187S']
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: postgresql+psycopg2://mec:cem@localhost:5432/mec_previsioni
+[DB] Dialect: postgresql  Driver: psycopg2
+[DB] URL effettivo: postgresql+psycopg2://mec:***@localhost:5432/mec_previsioni
+[DB] Versione: PostgreSQL 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+🔄 [PREVISIONI] Caricamento dati in corso...
+✓ [PREVISIONI] Dati grezzi caricati
+✓ [PREVISIONI] Modelli selezionati: ['WMEH149VA', 'ME187S']
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: postgresql+psycopg2://mec:cem@localhost:5432/mec_previsioni
+[DB] Dialect: postgresql  Driver: psycopg2
+[DB] URL effettivo: postgresql+psycopg2://mec:***@localhost:5432/mec_previsioni
+[DB] Versione: PostgreSQL 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: postgresql+psycopg2://mec:cem@localhost:5432/mec_previsioni
+[DB] Dialect: postgresql  Driver: psycopg2
+[DB] URL effettivo: postgresql+psycopg2://mec:***@localhost:5432/mec_previsioni
+[DB] Versione: PostgreSQL 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+[Config] Database path: /srv/apps/previsioni/instance/mec.db
+[Config] Database URI: postgresql+psycopg2://mec:cem@localhost:5432/mec_previsioni
+[DB] Dialect: postgresql  Driver: psycopg2
+[DB] URL effettivo: postgresql+psycopg2://mec:***@localhost:5432/mec_previsioni
+[DB] Versione: PostgreSQL 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+🔄 [PREVISIONI] Caricamento dati in corso...
+✓ [PREVISIONI] Dati grezzi caricati
+✓ [PREVISIONI] Modelli selezionati: ['WMEH149VA', 'ME187S']

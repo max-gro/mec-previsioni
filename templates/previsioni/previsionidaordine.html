@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Previsioni da Ordine{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<style>
+    .center-card { max-width: 540px; margin: 0 auto; background: #fff; border-radius: 18px; box-shadow: 0 4px 24px 0 rgba(80,80,120,0.10), 0 1.5px 4px 0 rgba(60,60,70,0.08); padding: 38px; text-align: center; }
+    form { display: flex; flex-direction: column; gap: 14px; }
+    .input-row { margin-bottom: 19px; width: 100%; text-align: left; }
+    label { font-weight: 600; margin-bottom: 5px; font-size: 1.05rem; }
+    button { background: #232f42; color: #fff; font-size: 1.14rem; padding: 10px 36px; border: none; border-radius: 7px; font-weight: 600; letter-spacing: .5px; margin-top: 23px; cursor: pointer; box-shadow: 0 1px 6px 0 rgba(40,40,80,0.10); transition: background .16s; display: inline-block; }
+    button:hover { background: #2d4064; }
+    .risultato { margin-top: 32px; text-align: left; font-size: 1.13rem; }
+    .risultato strong { color: #2a3650; }
+    .tabella-affid { border-collapse: collapse; margin: 38px auto 25px auto; font-size: 0.85em; width: 98%; box-shadow: 0 2px 12px #e3e3ec; background: #fff;}
+    .tabella-affid th, .tabella-affid td { border: 1px solid #dde1e6; padding: 7px 10px; }
+    .tabella-affid th { background: #f4f7fa; font-weight: 600; text-align: center; vertical-align: middle; }
+    .tabella-affid .sub-header { background: #e9eef5; }
+    .tabella-affid tr:nth-child(even) { background: #f8fafc; }
+    .tabella-affid td { text-align: right; vertical-align: middle;}
+    .tabella-affid td.c { text-align: center;}
+    .tabella-affid .pezzi { color: #232a38; font-weight: 600;}
+    .tabella-affid .costo { color: #007bff; font-weight: 600; }
+    .tabella-affid .ci { font-size: 0.9em; color: #555; }
+    .tabella-affid .model-title {font-size: 1.25em; font-weight:700; background: #d3dce6;}
+    .input-uniforme { font-size: 1.09rem; background: #f9fbfe; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #d4e0ed; width: 100%; outline: none; transition: border 0.2s ease; }
+    .spinner { width: 48px; height: 48px; border: 5px solid #f3f3f3; border-top: 5px solid #232f42; border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .grafici-container { margin: 40px auto; max-width: 98%; }
+    .grafici-container h2 { margin-left: 1%; color: #2a3650; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; }
+    .box-comp { margin-bottom: 40px; padding: 20px; border: 1px solid #e6e9f0; border-radius: 10px; background: #fff; }
+    .box-comp h3, .box-comp h4, .box-comp h5 { margin-top: 0; color: #333; }
+    .img-comp { max-width: 700px; border: 1.5px solid #d4e0ed; border-radius: 10px; margin: 14px auto 6px auto; display: block; }
+    .statistiche-pre { background:#f8fafd; color:#2a2c33; border:1.5px solid #d4e0ed; border-radius:8px; margin-top:9px; padding:14px 18px; font-family: 'Courier New', Courier, monospace; font-size:1.1em; white-space:pre-wrap;}
+    .ts-dropdown { background-color: white !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>📈 Previsioni da Ordine</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('ordini.list') }}">Ordini</a></li>
+                    <li class="breadcrumb-item active">Previsioni</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="center-card">
+        <form method="POST" id="modello-form" autocomplete="off">
+            <div class="input-row" style="display:flex; align-items: center; gap: 10px;">
+                <label for="po" style="white-space: nowrap;">PO:</label>
+                <input type="text" name="po" id="po" value="{{ po_val or '' }}" readonly class="input-uniforme" title="Derivato dal Nome File">
+            </div>
+
+            <!-- TABELLA MODELLI INTERATTIVA -->
+            <div class="input-row">
+                <label>Modelli dell'ordine:</label>
+                <div style="max-height: 300px; overflow-y: auto; border: 1px solid #d4e0ed; border-radius: 8px; background: #f9fbfe;">
+                    <table class="table table-sm mb-0" style="font-size: 0.95rem;">
+                        <thead style="position: sticky; top: 0; background: #e9eef5; z-index: 10;">
+                            <tr>
+                                <th style="width: 50px; text-align: center;">
+                                    <input type="checkbox" id="check-all" checked class="form-check-input" 
+                                           style="cursor: pointer;" title="Seleziona/Deseleziona tutti">
+                                </th>
+                                <th>Modello</th>
+                                <th style="width: 120px;">Quantità</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for modello in modelli_prepopolati %}
+                            <tr>
+                                <td style="text-align: center;">
+                                    <input type="checkbox" name="modelli_attivi" value="{{ modello }}" 
+                                           checked class="form-check-input modello-checkbox" style="cursor: pointer;">
+                                </td>
+                                <td><strong>{{ modello }}</strong></td>
+                                <td>
+                                    <input type="number" name="qty_{{ modello }}" 
+                                           value="{{ modelli_qty.get(modello, 1) or 1}}" 
+                                           min="0" max="100000" 
+                                           class="form-control form-control-sm" 
+                                           style="font-size: 0.9rem;">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                <button type="reset" onclick="window.location.href=window.location.href;">Resetta</button>
+                <button type="submit">Calcola</button>
+            </div>
+        </form>
+
+        <div id="loading-spinner" style="display: none; margin-top: 30px; text-align: center;">
+            <div class="spinner"></div>
+            <div style="margin-top: 12px; font-size: 1.13rem; color: #2a2a2a; font-weight: 500;">Elaborazione in corso...</div>
+        </div>
+
+		{% if selected_models_distinct %}
+		<div class="risultato">
+			<strong>PO:</strong> {{ po_val or '-' }}<br>
+			<strong>Modelli elaborati:</strong> {{ selected_models_distinct | join(', ') }}
+		</div>
+		
+        <!-- BOTTONE ESPORTA EXCEL -->
+        <div style="margin-top: 20px; text-align: center;">
+            <form method="POST" action="{{ url_for('previsioni.esporta_excel') }}" id="export-form">
+                <input type="hidden" name="po" value="{{ po_val }}">
+                {% for modello in selected_models_distinct %}
+                <input type="hidden" name="modelli_export" value="{{ modello }}">
+                <input type="hidden" name="qty_{{ modello }}" value="{{ quantities_used.get(modello, 1) }}">
+                {% endfor %}
+                <button type="submit" class="btn btn-success">
+                    📥 Esporta Excel
+                </button>
+            </form>
+            <div id="export-feedback" style="margin-top: 10px; font-weight: 600;"></div>
+        </div>
+		{% endif %}
+    </div>
+
+
+    {# === SEZIONI RISULTATI: UGUALI ALLA PAGINA previsioni.html === #}
+    {% if tabelle_previsioni %}
+        {% for modello, tabella in tabelle_previsioni.items() %}
+            <table class="tabella-affid">
+                <thead>
+                    <tr>
+                        <th class="model-title" colspan="26">Previsioni per modello: {{ modello }}</th>
+                    </tr>
+                    <tr>
+                        <th rowspan="2">Codice</th>
+                        <th rowspan="2">Descrizione</th>
+                        <th rowspan="2">Descrizione Inglese</th>
+                        <th rowspan="2">Prezzo (USD)</th>
+                        <th rowspan="2">Stat</th>
+                        <th rowspan="2">Q.tà  <br>x modello</th>
+                        <th rowspan="2">Q.tà  <br>totale</th>
+                        <th colspan="2">Dati Storici Comp.<br><span style="font-weight:normal; font-size:0.9em;">(da {{ periodi_osservazione.get(modello, 'N/D') }})</span></th>
+                        <th colspan="2">Dati Storici STAT<br><span style="font-weight:normal; font-size:0.9em;">(da {{ periodi_osservazione.get(modello, 'N/D') }})</span></th>
+                        <th colspan="4">Previsione a 12 mesi</th>
+                        <th colspan="4">Previsione a 24 mesi</th>
+                        <th colspan="4">Previsione a 36 mesi</th>
+                        <th rowspan="2">Magazzino</th>
+                        <th rowspan="2">Ordini</th>
+                    </tr>
+                    <tr class="sub-header">
+                        <th>Totali</th><th>Rotti</th>
+                        <th>Totali</th><th>Rotti</th>
+                        <th>Pezzi (Comp)</th><th>Costo (Comp)</th>
+                        <th>Pezzi (STAT)</th><th>Costo (STAT)</th>
+                        <th>Pezzi (Comp)</th><th>Costo (Comp)</th>
+                        <th>Pezzi (STAT)</th><th>Costo (STAT)</th>
+                        <th>Pezzi (Comp)</th><th>Costo (Comp)</th>
+                        <th>Pezzi (STAT)</th><th>Costo (STAT)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in tabella %}
+                    <tr>
+                        <td class="c">{{ row["Codice componente"] }}</td>
+                        <td class="c" style="max-width: 200px; white-space: normal; text-align: left;">{{ row["Descrizione Componente"] or '-' }}</td>
+                        <td class="c" style="max-width: 200px; white-space: normal; text-align: left;">{{ row["Descrizione Inglese"] or '-' }}</td>
+                        <td class="c">{{ "${:.2f}".format(row["Prezzo"]|float) if row["Prezzo"] else '-' }}</td>
+                        <td class="c">{{ row["stat"] or '-' }}</td>
+                        <td class="c">{{ row["QuantitÃ  per modello"] }}</td>
+                        <td class="c">{{ row["QuantitÃ  totale"] }}</td>
+                        <td class="c">{{ row.total_comp }}</td>
+                        <td class="c">{{ row.broken_comp }}</td>
+                        <td class="c">{{ row.total_stat }}</td>
+                        <td class="c">{{ row.broken_stat }}</td>
+
+                        {% for mesi in [12, 24, 36] %}
+                            {% set q_tot = row["Quantità  totale"] or 0 %}
+                            {% set prob_comp = row["rottura_comp_" ~ mesi ~ "_mesi"] %}
+                            {% set ci_min_comp = row["ci_min_comp_" ~ mesi ~ "_mesi"] %}
+                            {% set ci_max_comp = row["ci_max_comp_" ~ mesi ~ "_mesi"] %}
+                            {% set costo_comp = row["costo_comp_" ~ mesi ~ "_mesi"] %}
+                            {% set prob_stat = row["rottura_stat_" ~ mesi ~ "_mesi"] %}
+                            {% set ci_min_stat = row["ci_min_stat_" ~ mesi ~ "_mesi"] %}
+                            {% set ci_max_stat = row["ci_max_stat_" ~ mesi ~ "_mesi"] %}
+                            {% set costo_stat = row["costo_stat_" ~ mesi ~ "_mesi"] %}
+
+                            <td class="pezzi">
+                                {% if prob_comp is not none %}
+                                    {{ (prob_comp * q_tot)|round(0) }}
+                                    <div class="ci">({{ (ci_min_comp * q_tot)|round(0) }} - {{ (ci_max_comp * q_tot)|round(0) }})</div>
+                                {% else %}-{% endif %}
+                            </td>
+                            <td class="costo">{% if costo_comp is not none %}$ {{ "{:,.0f}".format(costo_comp)|replace(",", ".") }}{% else %}-{% endif %}</td>
+                            <td class="pezzi">
+                                {% if prob_stat is not none %}
+                                    {{ (prob_stat * q_tot)|round(0) }}
+                                    <div class="ci">({{ (ci_min_stat * q_tot)|round(0) }} - {{ (ci_max_stat * q_tot)|round(0) }})</div>
+                                {% else %}-{% endif %}
+                            </td>
+                            <td class="costo">{% if costo_stat is not none %}$ {{ "{:,.0f}".format(costo_stat)|replace(",", ".") }}{% else %}-{% endif %}</td>
+                        {% endfor %}
+
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+
+        <div class="grafici-container">
+            <h2>Grafici e Statistiche di Affidabilità </h2>
+            {% for modello in selected_models %}
+                <div class="box-comp">
+                    <h3>Modello: {{ modello }}</h3>
+                    <h4 style="margin-top:20px; border-bottom: 1px solid #eee; padding-bottom: 8px;">Analisi per Singolo Componente</h4>
+                    {% if precomputed_predictions.get(modello) %}
+                        {% for comp_code, pred_data in precomputed_predictions[modello].items() %}
+                            <div style="margin-bottom: 30px;">
+                                <h5>Componente: {{ comp_code }}</h5>
+                                {% if pred_data.img_path %}
+                                    <img class="img-comp" src="{{ url_for('static', filename=pred_data.img_path.replace('/static/', '', 1)) }}">
+                                {% endif %}
+                                {% if pred_data.summary_text %}
+                                    <pre class="statistiche-pre">{{ pred_data.summary_text }}</pre>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    <hr style="margin: 40px 0; border: 1px solid #ccc;">
+                    <h4 style="margin-top:20px; border-bottom: 1px solid #eee; padding-bottom: 8px;">Analisi per Gruppo STAT</h4>
+                    {% if precomputed_predictions_stat.get(modello) %}
+                        {% for stat_code, pred_stat_data in precomputed_predictions_stat[modello].items() %}
+                            <div style="margin-bottom: 30px;">
+                                <h5>Gruppo STAT: {{ stat_code }}</h5>
+                                {% if pred_stat_data.img_path %}
+                                    <img class="img-comp" src="{{ url_for('static', filename=pred_stat_data.img_path.replace('/static/', '', 1)) }}">
+                                {% endif %}
+                                {% if pred_stat_data.summary_text %}
+                                    <pre class="statistiche-pre">{{ pred_stat_data.summary_text }}</pre>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const form = document.getElementById("modello-form");
+    const spinner = document.getElementById("loading-spinner");
+    const checkAll = document.getElementById("check-all");
+    const modelCheckboxes = document.querySelectorAll(".modello-checkbox");
+
+    // Gestione "Seleziona tutti"
+    if (checkAll) {
+        checkAll.addEventListener("change", function() {
+            modelCheckboxes.forEach(cb => cb.checked = this.checked);
+        });
+    }
+
+    // Mostra spinner al submit
+    form.addEventListener("submit", () => {
+        spinner.style.display = "block";
+    });
+
+    // Inizializza DataTables per tabelle risultati
+    document.querySelectorAll("table.tabella-affid").forEach(table => {
+        if ($.fn.dataTable.isDataTable(table)) $(table).DataTable().destroy();
+        $(table).DataTable({
+            language: { search: "Cerca:", paginate: { next: "Successivo", previous: "Precedente" } },
+            ordering: true, 
+            paging: false, 
+            info: false, 
+            destroy: true
+        });
+    });
+});
+</script>
+{% endblock %}

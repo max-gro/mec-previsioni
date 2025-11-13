@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Gestione Anagrafiche (File Excel){% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>📄 Anagrafiche — File Excel</h2>
+    <div class="d-flex gap-2">
+      {% if current_user.is_admin() %}
+      <a href="{{ url_for('anagrafiche.sync') }}" class="btn btn-secondary" title="Sincronizza con filesystem">
+        🔄 Sincronizza
+      </a>
+      {% endif %}
+      <a href="{{ url_for('anagrafiche.create') }}" class="btn btn-primary">📤 Carica nuovo Excel</a>
+      <a href="{{ url_for('anagrafiche.nuova_marca') }}" class="btn btn-outline-secondary">➕ Nuova Marca</a>
+    </div>
+  </div>
+
+  {# eventuali filtri/alert #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="mb-3">
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ 'warning' if cat=='error' else cat }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 140px;">Marca</th>
+              <th>File</th>
+              <th style="width: 130px;">Stato</th>
+              <th style="width: 140px;">Acquisizione</th>
+              <th style="width: 140px;">Elaborazione</th>
+              <th>Note</th>
+              <th style="width: 220px;">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ana in anagrafiche %}
+            <tr>
+              <td><span class="badge text-bg-light border">{{ ana.marca }}</span></td>
+
+              <!-- Nome file → Anteprima -->
+              <td>
+                <a href="{{ url_for('anagrafiche.preview', id=ana.id) }}" class="text-decoration-none">
+                  {{ ana.filename }}
+                </a>
+              </td>
+
+              <td>
+                {% set badge = 'secondary' %}
+                {% if ana.esito == 'Da processare' %}{% set badge='warning' %}{% endif %}
+                {% if ana.esito == 'Processato' %}{% set badge='success' %}{% endif %}
+                {% if ana.esito == 'Errore' %}{% set badge='danger' %}{% endif %}
+                <span class="badge text-bg-{{ badge }}">{{ ana.esito }}</span>
+              </td>
+
+              <td>{{ ana.data_acquisizione.strftime('%d/%m/%Y') if ana.data_acquisizione else '-' }}</td>
+              <td>{{ ana.data_elaborazione.strftime('%d/%m/%Y') if ana.data_elaborazione else '-' }}</td>
+              <td class="text-truncate" style="max-width: 24rem;" title="{{ ana.note }}">{{ ana.note }}</td>
+
+              <td>
+                <div class="btn-group btn-group-sm" role="group">
+                  <a href="{{ url_for('anagrafiche.preview', id=ana.id) }}" class="btn btn-outline-info" title="Anteprima">👁️</a>
+                  <a href="{{ url_for('anagrafiche.download', id=ana.id) }}" class="btn btn-outline-secondary" title="Scarica">⬇️</a>
+                  <a href="{{ url_for('anagrafiche.edit', id=ana.id) }}" class="btn btn-outline-primary" title="Modifica note">✏️</a>
+
+                  {% if ana.esito != 'Processato' %}
+                  <form method="POST" action="{{ url_for('anagrafiche.elabora', id=ana.id) }}" class="d-inline" onsubmit="return confirm('Elaborare questo file?');">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <button type="submit" class="btn btn-outline-success" title="Elabora">⚙️</button>
+                  </form>
+                  {% endif %}
+
+                  <!-- Elimina (apre modale globale) -->
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger"
+                    data-bs-toggle="modal"
+                    data-bs-target="#confirmDeleteModal"
+                    data-delete-url="{{ url_for('anagrafiche.delete', id=ana.id) }}"
+                    data-item-name="{{ ana.marca }} / {{ ana.filename }}"
+                    title="Elimina"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="7" class="text-center p-4 text-muted">Nessun file presente.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modale globale di conferma eliminazione -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Conferma eliminazione</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+      </div>
+      <div class="modal-body">
+        <p>Vuoi eliminare <strong id="itemName"></strong>?</p>
+        <div class="alert alert-warning mb-0"><small>L'operazione non è reversibile.</small></div>
+      </div>
+      <div class="modal-footer">
+        <form id="deleteForm" method="POST" action="">
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-danger">Elimina</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Script che collega i pulsanti alla modale -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const modalEl = document.getElementById('confirmDeleteModal');
+  if (!modalEl) return;
+  modalEl.addEventListener('show.bs.modal', function (event) {
+    const btn = event.relatedTarget;
+    const deleteUrl = btn?.getAttribute('data-delete-url') || '';
+    const itemName  = btn?.getAttribute('data-item-name') || '';
+    const form = modalEl.querySelector('#deleteForm');
+    const nameSpan = modalEl.querySelector('#itemName');
+    if (form) form.action = deleteUrl;
+    if (nameSpan) nameSpan.textContent = itemName;
+  });
+});
+</script>
+{% endblock %}

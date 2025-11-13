@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione File Rotture{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>🔧 Gestione File Rotture</h2>
+            <p class="text-muted">Upload ed elaborazione file Excel rotture componenti</p>
+        </div>
+        <div class="col-md-6 text-end">
+            {% if current_user.is_admin() %}
+            <a href="{{ url_for('rotture.sync') }}" class="btn btn-secondary me-2" title="Sincronizza con filesystem">
+                🔄 Sincronizza
+            </a>
+            <a href="{{ url_for('rotture.create') }}" class="btn btn-primary">
+                ➕ Carica Nuove Rotture
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Filtri -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <!-- <div class="card shadow-sm"> -->
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('rotture.list') }}" class="row g-3">
+                        <div class="col-md-2">
+                            <label class="form-label">Anno</label>
+                            <select name="anno" class="form-select">
+                                <option value="">Tutti</option>
+                                {% for anno in anni_disponibili %}
+                                <option value="{{ anno }}" {% if anno_filter == anno %}selected{% endif %}>{{ anno }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Stato</label>
+                            <select name="esito" class="form-select">
+                                <option value="">Tutti</option>
+                                <option value="Da processare" {% if esito_filter == 'Da processare' %}selected{% endif %}>Da processare</option>
+                                <option value="Processato" {% if esito_filter == 'Processato' %}selected{% endif %}>Processato</option>
+                                <option value="Errore" {% if esito_filter == 'Errore' %}selected{% endif %}>Errore</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end gap-2">
+                            <button type="submit" class="btn btn-outline-primary">🔍 Filtra</button>
+                            <a href="{{ url_for('rotture.list') }}" class="btn btn-outline-secondary">✕ Reset</a>
+                        </div>
+                    </form>
+                </div>
+            <!-- </div> -->
+        </div>
+    </div>
+
+    <!-- Tabella -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if rotture.items %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Anno</th>
+                            <th>File</th>
+                            <th>Acquisizione</th>
+                            <th>Elaborazione</th>
+                            <th>Stato</th>
+                            <th>Percorso</th>
+                            <th>Note</th>
+                            {% if current_user.is_admin() %}
+                            <th class="text-end">Azioni</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rottura in rotture.items %}
+                        <tr>
+                            <td><strong>{{ rottura.anno }}</strong></td>
+                            <td>
+                                <a href="{{ url_for('rotture.download', id=rottura.id) }}" class="text-decoration-none" title="Download">
+                                    📄 {{ rottura.filename }}
+                                </a>
+                            </td>
+                            <td>{{ rottura.data_acquisizione.strftime('%d/%m/%Y') if rottura.data_acquisizione else '-' }}</td>
+                            <td>
+                                {% if rottura.data_elaborazione %}
+                                {{ rottura.data_elaborazione.strftime('%d/%m/%Y %H:%M') }}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if rottura.esito == 'Processato' %}
+                                <span class="badge bg-success">✅ {{ rottura.esito }}</span>
+                                {% elif rottura.esito == 'Errore' %}
+                                <span class="badge bg-danger">❌ {{ rottura.esito }}</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">⏳ {{ rottura.esito }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {% if rottura.esito == 'Processato' %}
+                                    📁 OUTPUT/rotture
+                                    {% else %}
+                                    📂 INPUT/rotture
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                {% if rottura.note %}
+                                <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ rottura.note }}">
+                                    {{ rottura.note }}
+                                </span>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            {% if current_user.is_admin() %}
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <!-- Bottone Elabora (solo se Da processare o Errore) -->
+                                    {% if rottura.esito != 'Processato' %}
+                                    <form method="POST" action="{{ url_for('rotture.elabora', id=rottura.id) }}" style="display: inline;" 
+                                          onsubmit="return confirm('Sei sicuro di voler elaborare questo file?');">
+                                        <button type="submit" class="btn btn-outline-success" title="Elabora file">
+                                            ⚙️
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    
+                                    <!-- Bottone Download -->
+                                    <a href="{{ url_for('rotture.download', id=rottura.id) }}" class="btn btn-outline-info" title="Download">
+                                        ⬇
+                                    </a>
+                                    
+                                    <!-- Bottone Modifica -->
+                                    <a href="{{ url_for('rotture.edit', id=rottura.id) }}" class="btn btn-outline-primary" title="Modifica">
+                                        ✏️
+                                    </a>
+                                    
+                                    <!-- Bottone Elimina -->
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ rottura.id }}" title="Elimina">
+                                        🗑️
+                                    </button>
+                                </div>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginazione -->
+            {% if rotture.pages > 1 %}
+            <nav aria-label="Navigazione pagine">
+                <ul class="pagination justify-content-center mt-4">
+                    <li class="page-item {% if not rotture.has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('rotture.list', page=rotture.prev_num, anno=anno_filter, esito=esito_filter) }}">Precedente</a>
+                    </li>
+                    
+                    {% for page_num in rotture.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == rotture.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('rotture.list', page=page_num, anno=anno_filter, esito=esito_filter) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <li class="page-item {% if not rotture.has_next %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('rotture.list', page=rotture.next_num, anno=anno_filter, esito=esito_filter) }}">Successiva</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <p class="text-muted">Nessun file rottura trovato.</p>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('rotture.create') }}" class="btn btn-primary">Carica il primo file</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Legenda -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm bg-light">
+                <div class="card-body">
+                    <h56class="card-title">📖 Legenda Stati</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <span class="badge bg-warning text-dark">⏳ Da processare</span>
+                            <p class="small mt-2">File caricato in INPUT/rotture, in attesa di elaborazione</p>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="badge bg-success">✅ Processato</span>
+                            <p class="small mt-2">File elaborato con successo e spostato in OUTPUT/rotture</p>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="badge bg-danger">❌ Errore</span>
+                            <p class="small mt-2">Errore durante elaborazione, file rimasto in INPUT/rotture</p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- <h6>🔧 Azioni disponibili:</h6> -->
+                    <!-- <ul class="small mb-0"> -->
+                        <!-- <li><strong>🔄 Sincronizza:</strong> Scansiona le cartelle INPUT/rotture e OUTPUT/rotture e aggiunge file non presenti nel database</li> -->
+                        <!-- <li><strong>⚙️ Elabora:</strong> Elabora il file Excel (solo per stati "Da processare" ed "Errore")</li> -->
+                        <!-- <li><strong>📥 Download:</strong> Scarica il file Excel</li> -->
+                        <!-- <li><strong>✏️ Modifica:</strong> Modifica metadati e note</li> -->
+                        <!-- <li><strong>🗑️ Elimina:</strong> Elimina file e record database</li> -->
+                    <!-- </ul> -->
+					
+					<!-- Info Box -->
+					<div class="row mt-4">
+						<div class="col-md-12">
+							<div class="alert alert-info">
+								<h6 class="alert-heading">🔧 Azioni disponibili</h6>
+								<ul class="small mb-0">
+									<li><strong>🔄 Sincronizza:</strong> Scansiona le cartelle INPUT/rotture e OUTPUT/rotture e aggiunge file non presenti nel database</li>
+									<li><strong>➕ Carica:</strong> Aggiunge un nuovo file Excel</li>									
+									<li><strong>⚙️ Elabora:</strong> Elabora il file Excel (solo per stati "Da processare" ed "Errore")</li>
+									<li><strong>⬇ Download:</strong> Scarica il file Excel</li>
+									<li><strong>✏️ Modifica:</strong> Modifica metadati e note</li>
+									<li><strong>🗑️ Elimina:</strong> Elimina file e record database</li>								
+									<li><strong>Struttura cartelle:</strong> INPUT/po/anno/ (Da processare, Errore) → OUTPUT/po/anno/ (Processato)</li>
+								</ul>
+							</div>
+						</div>
+					</div>					
+					
+                </div>
+            </div>
+        </div>
+    </div>
+	
+</div>
+
+<!-- ✅ MODAL FUORI DAL LOOP - NIENTE PIÙ FLICKERING! -->
+{% if rotture.items and current_user.is_admin() %}
+{% for rottura in rotture.items %}
+<div class="modal fade" id="deleteModal{{ rottura.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ rottura.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel{{ rottura.id }}">Conferma Eliminazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Sei sicuro di voler eliminare il file <strong>{{ rottura.filename }}</strong> (Anno {{ rottura.anno }})?
+                <br><br>
+                Verrà eliminato sia il record dal database che il file fisico.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <form method="POST" action="{{ url_for('rotture.delete', id=rottura.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Elimina</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}

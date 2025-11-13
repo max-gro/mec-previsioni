@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Anteprima {{ ana.filename }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>👁️ Anteprima: {{ ana.marca }} / {{ ana.filename }}</h2>
+    <div>
+      <a href="{{ url_for('anagrafiche.download', id=ana.id) }}" class="btn btn-outline-secondary">⬇️ Scarica</a>
+      {% if ana.esito != 'Processato' %}
+      <form method="POST" action="{{ url_for('anagrafiche.elabora', id=ana.id) }}" style="display:inline" onsubmit="return confirm('Elaborare questo file?');">
+        <button type="submit" class="btn btn-outline-success">⚙️ Elabora</button>
+      </form>
+      {% endif %}
+      <a href="{{ url_for('anagrafiche.list') }}" class="btn btn-outline-dark">↩️ Indietro</a>
+    </div>
+  </div>
+
+  <div class="mb-2">
+    <span class="badge bg-light text-dark">Stato: {{ ana.esito }}</span>
+    <span class="badge bg-light text-dark">Acquisito: {{ ana.data_acquisizione.strftime('%d/%m/%Y') if ana.data_acquisizione else '-' }}</span>
+    <span class="badge bg-light text-dark">Elaborato: {{ ana.data_elaborazione.strftime('%d/%m/%Y') if ana.data_elaborazione else '-' }}</span>
+  </div>
+
+  {% if error %}
+    <div class="alert alert-warning">{{ error }}</div>
+  {% else %}
+    <div class="card">
+      <div class="card-body">
+        {{ table_html if table_html else "Nessuna anteprima disponibile." }}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Modifica File Rottura{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>✏️ Modifica File Rottura</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('rotture.list') }}">Rotture</a></li>
+                    <li class="breadcrumb-item active">Modifica {{ rottura.filename }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('rotture.edit', id=rottura.id) }}">
+                        {{ form.hidden_tag() }}
+
+                        <div class="mb-3">
+                            <label class="form-label">File</label>
+                            <input type="text" class="form-control" value="{{ rottura.filename }}" disabled>
+                            <small class="form-text text-muted">Il nome del file non può essere modificato</small>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Anno</label>
+                                <input type="number" class="form-control" value="{{ rottura.anno }}" disabled>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.data_acquisizione.label }}</label>
+                                <input type="text" 
+                                       name="data_acquisizione" 
+                                       id="data_acquisizione"
+                                       class="form-control" 
+                                       placeholder="gg/mm/aaaa"
+                                       value="{% if rottura.data_acquisizione %}{{ rottura.data_acquisizione.strftime('%d/%m/%Y') }}{% endif %}"
+                                       {% if rottura.esito == 'Processato' %}disabled{% endif %}>
+                            </div>
+                        </div>
+
+                        {% if rottura.esito != 'Processato' %}
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.data_elaborazione.label }}</label>
+                                <input type="text" 
+                                       name="data_elaborazione" 
+                                       id="data_elaborazione"
+                                       class="form-control" 
+                                       placeholder="gg/mm/aaaa"
+                                       value="{% if rottura.data_elaborazione %}{{ rottura.data_elaborazione.strftime('%d/%m/%Y') }}{% endif %}"
+									   >
+                                <small class="form-text text-muted">Opzionale - lascia vuoto se non elaborato</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.esito.label }}</label>
+                                {{ form.esito(class="form-select") }}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="mb-3">
+                            <label class="form-label">Stato</label>
+                            <input type="text" class="form-control" value="{{ rottura.esito }}" disabled>
+                            <small class="form-text text-muted">I file processati non possono cambiare stato</small>
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.note.label }}</label>
+                            {{ form.note(class="form-control", rows="4") }}
+                            <small class="form-text text-muted">Le note sono sempre modificabili</small>
+                        </div>
+
+                        {% if rottura.esito == 'Processato' %}
+                        <div class="alert alert-success" role="alert">
+                            <strong>✅ File Processato</strong><br>
+                            Questo file è stato elaborato con successo. È possibile modificare solo le note.
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>
+                            <a href="{{ url_for('rotture.list') }}" class="btn btn-secondary">Annulla</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm bg-light mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">📊 Informazioni File</h5>
+                    <dl class="row mb-0 small">
+                        <dt class="col-sm-5">ID:</dt>
+                        <dd class="col-sm-7">#{{ rottura.id }}</dd>
+
+                        <dt class="col-sm-5">Anno:</dt>
+                        <dd class="col-sm-7">{{ rottura.anno }}</dd>
+
+                        <dt class="col-sm-5">Stato:</dt>
+                        <dd class="col-sm-7">
+                            {% if rottura.esito == 'Processato' %}
+                            <span class="badge bg-success">{{ rottura.esito }}</span>
+                            {% elif rottura.esito == 'Errore' %}
+                            <span class="badge bg-danger">{{ rottura.esito }}</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">{{ rottura.esito }}</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-5">Percorso:</dt>
+                        <dd class="col-sm-7"><small>
+                            {% if rottura.esito == 'Processato' %}
+                            OUTPUT/rotture
+                            {% else %}
+                            INPUT/rotture
+                            {% endif %}
+                        </small></dd>
+
+                        <dt class="col-sm-5">Caricato il:</dt>
+                        <dd class="col-sm-7">{{ rottura.created_at.strftime('%d/%m/%Y %H:%M') if rottura.created_at else 'N/D' }}</dd>
+                        
+                        {% if rottura.data_elaborazione %}
+                        <dt class="col-sm-5">Elaborato il:</dt>
+                        <dd class="col-sm-7">{{ rottura.data_elaborazione.strftime('%d/%m/%Y %H:%M') if rottura.data_elaborazione else 'N/D' }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card shadow-sm bg-info bg-opacity-10 mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">📥 Download</h5>
+                    <a href="{{ url_for('rotture.download', id=rottura.id) }}" class="btn btn-info btn-sm w-100">
+                        <i class="bi bi-download"></i> Scarica File
+                    </a>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-danger">
+                <div class="card-body">
+                    <h5 class="card-title text-danger">⚠️ Zona Pericolosa</h5>
+                    <p class="card-text small">L'eliminazione del file è permanente e cancellerà anche il file fisico.</p>
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        🗑️ Elimina File
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Eliminazione -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Conferma Eliminazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Sei sicuro di voler eliminare il file <strong>{{ rottura.filename }}</strong>?
+                <br><br>
+                <strong>Anno:</strong> {{ rottura.anno }}<br>
+                <strong>Stato:</strong> {{ rottura.esito }}<br>
+                <br>
+                Questa azione è <strong>irreversibile</strong> ed eliminerà sia il record dal database che il file fisico.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <form method="POST" action="{{ url_for('rotture.delete', id=rottura.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Elimina Definitivamente</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

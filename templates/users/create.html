@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Nuovo Utente{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>➕ Nuovo Utente</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('users.list') }}">Utenti</a></li>
+                    <li class="breadcrumb-item active">Nuovo</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('users.create') }}">
+                        {{ form.hidden_tag() }}
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.username.label }} <span class="text-danger">*</span></label>
+                                {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else "")) }}
+                                {% if form.username.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.username.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.email.label }} <span class="text-danger">*</span></label>
+                                {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+                                {% if form.email.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.email.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.password.label }} <span class="text-danger">*</span></label>
+                                {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+                                {% if form.password.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.password.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">Minimo 6 caratteri</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.confirm_password.label }} <span class="text-danger">*</span></label>
+                                {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else "")) }}
+                                {% if form.confirm_password.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.confirm_password.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.role.label }}</label>
+                                {{ form.role(class="form-select") }}
+                                <small class="form-text text-muted">Admin: accesso completo, User: accesso limitato</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label d-block">{{ form.active.label }}</label>
+                                <div class="form-check form-switch">
+                                    {{ form.active(class="form-check-input", role="switch") }}
+                                    <label class="form-check-label" for="active">
+                                        Utente attivo e abilitato al login
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-info">💾 Crea Utente</button>
+                            <a href="{{ url_for('users.list') }}" class="btn btn-secondary">Annulla</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">ℹ️ Guida</h5>
+                    <p class="card-text small">
+                        <strong>Username:</strong> Nome utente per il login (univoco)<br><br>
+                        <strong>Email:</strong> Indirizzo email dell'utente (univoco)<br><br>
+                        <strong>Password:</strong> Password di accesso (minimo 6 caratteri)<br><br>
+                        <strong>Ruolo:</strong>
+                        <ul class="mb-2 mt-2">
+                            <li><strong>Amministratore:</strong> Accesso completo a tutte le funzioni</li>
+                            <li><strong>Utente:</strong> Accesso in sola lettura</li>
+                        </ul>
+                        <strong>Stato:</strong> Se disattivato, l'utente non potrà effettuare il login
+                    </p>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-warning mt-3">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">⚠️ Sicurezza</h5>
+                    <p class="card-text small mb-0">
+                        Assicurati di creare password sicure e di comunicarle in modo sicuro agli utenti. Consiglia di cambiarle al primo accesso.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

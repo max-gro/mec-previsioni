@@ -1,0 +1,54 @@
+Folder PATH listing for volume New Volume
+Volume serial number is 8695-3942
+E:.
++---INPUT
+¦   +---anagrafiche
+¦   ¦   +---BOSCH
+¦   ¦   +---HISENSE
+¦   ¦   +---HOMA
+¦   ¦   +---MIDEA
+¦   +---po
+¦       +---2024
+¦       +---2025
++---instance
++---OUTPUT
+¦   +---anagrafiche
+¦   ¦   +---BOSCH
+¦   ¦   +---HISENSE
+¦   ¦   +---HOMA
+¦   ¦   +---MIDEA
+¦   +---po
++---routes
+¦   +---__pycache__
++---static
+¦   +---css
+¦   +---js
+¦   +---pred_charts
+¦   +---pred_charts_stat
++---templates
+¦   +---anagrafica
+¦   +---anagrafiche
+¦   +---ordini
+¦   +---previsioni
+¦   +---rotture
+¦   +---users
++---utils
+¦   +---__pycache__
++---venv
+¦   +---Include
+¦   ¦   +---site
+¦   ¦       +---python3.13
+¦   ¦           +---greenlet
+¦   +---Lib
+¦   ¦   +---site-packages
+¦   ¦       +---alembic
+¦   ¦       +---wtforms-3.1.1.dist-info
+¦   ¦       ¦   +---licenses
+¦   ¦       +---_distutils_hack
+¦   ¦       ¦   +---__pycache__
+¦   ¦       +---__pycache__
+¦   +---Scripts
+¦   +---share
+¦       +---man
+¦           +---man1
++---__pycache__

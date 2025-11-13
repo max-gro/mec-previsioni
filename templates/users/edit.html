@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Modifica Utente{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>✏️ Modifica Utente</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('users.list') }}">Utenti</a></li>
+                    <li class="breadcrumb-item active">Modifica {{ user.username }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('users.edit', id=user.id) }}">
+                        {{ form.hidden_tag() }}
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.username.label }} <span class="text-danger">*</span></label>
+                                {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else "")) }}
+                                {% if form.username.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.username.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.email.label }} <span class="text-danger">*</span></label>
+                                {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+                                {% if form.email.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.email.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <strong>💡 Cambia password (opzionale):</strong> Lascia vuoto per mantenere la password attuale
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.password.label }}</label>
+                                {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Lascia vuoto per non modificare") }}
+                                {% if form.password.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.password.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.confirm_password.label }}</label>
+                                {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else ""), placeholder="Conferma nuova password") }}
+                                {% if form.confirm_password.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.confirm_password.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.role.label }}</label>
+                                {{ form.role(class="form-select") }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label d-block">{{ form.active.label }}</label>
+                                <div class="form-check form-switch">
+                                    {{ form.active(class="form-check-input", role="switch") }}
+                                    <label class="form-check-label" for="active">
+                                        Utente attivo e abilitato al login
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-info">💾 Salva Modifiche</button>
+                            <a href="{{ url_for('users.list') }}" class="btn btn-secondary">Annulla</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm bg-light mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">📊 Informazioni</h5>
+                    <dl class="row mb-0 small">
+                        <dt class="col-sm-5">ID Utente:</dt>
+                        <dd class="col-sm-7">#{{ user.id }}</dd>
+
+                        <dt class="col-sm-5">Creato il:</dt>
+                        <dd class="col-sm-7">{{ user.created_at.strftime('%d/%m/%Y %H:%M') if user.created_at else 'N/D' }}</dd>
+                        
+                        <dt class="col-sm-5">Ruolo attuale:</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge bg-{{ 'danger' if user.is_admin() else 'primary' }}">
+                                {{ user.role|title }}
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-5">Stato:</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge bg-{{ 'success' if user.active else 'secondary' }}">
+                                {{ 'Attivo' if user.active else 'Disattivato' }}
+                            </span>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            {% if user.id != current_user.id %}
+            <div class="card shadow-sm border-danger">
+                <div class="card-body">
+                    <h5 class="card-title text-danger">⚠️ Zona Pericolosa</h5>
+                    <p class="card-text small">L'eliminazione dell'utente è permanente.</p>
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        🗑️ Elimina Utente
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="card shadow-sm border-warning">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">ℹ️ Nota</h5>
+                    <p class="card-text small mb-0">Non puoi eliminare il tuo account mentre sei connesso.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Eliminazione -->
+{% if user.id != current_user.id %}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Conferma Eliminazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Sei sicuro di voler eliminare l'utente <strong>{{ user.username }}</strong>?
+                <br><br>
+                {% if user.is_admin() %}
+                <div class="alert alert-warning">
+                    <strong>Attenzione:</strong> Stai eliminando un amministratore!
+                </div>
+                {% endif %}
+                Questa azione è <strong>irreversibile</strong>.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <form method="POST" action="{{ url_for('users.delete', id=user.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Elimina Definitivamente</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

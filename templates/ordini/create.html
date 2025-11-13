@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Carica Ordine di Acquisto{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>➕ Carica Ordine di Acquisto</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('ordini.list') }}">Ordini Acquisto</a></li>
+                    <li class="breadcrumb-item active">Carica</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('ordini.create') }}" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.file.label }} <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                {{ form.file(class="form-control" + (" is-invalid" if form.file.errors else ""), accept=".pdf") }}
+                                <span class="input-group-text">📄</span>
+                            </div>
+                            {% if form.file.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.file.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Solo file PDF. L'anno verrà estratto automaticamente dal nome del file.
+                            </small>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.data_acquisizione.label }} <span class="text-danger">*</span></label>
+                                <input type="text" 
+                                       name="data_acquisizione" 
+                                       id="data_acquisizione"
+                                       class="form-control{% if form.data_acquisizione.errors %} is-invalid{% endif %}" 
+                                       placeholder="gg/mm/aaaa"
+                                       value="{% if form.data_acquisizione.data %}{{ form.data_acquisizione.data.strftime('%d/%m/%Y') }}{% endif %}">
+                                {% if form.data_acquisizione.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">Formato: gg/mm/aaaa</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.esito.label }}</label>
+                                {{ form.esito(class="form-select") }}
+                                <small class="form-text text-muted">Stato di elaborazione dell'ordine</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.note.label }}</label>
+                            {{ form.note(class="form-control", rows="3", placeholder="Note opzionali sull'ordine...") }}
+                        </div>
+
+                        <div class="alert alert-info">
+                            <strong>💡 Come funziona l'upload:</strong>
+                            <ol class="mb-0 mt-2">
+                                <li>Seleziona un file PDF</li>
+                                <li>L'anno viene estratto automaticamente dal nome (es: PO_2024_001.pdf → 2024)</li>
+                                <li>Il file viene salvato in: <code>INPUT/po/anno/nomefile.pdf</code></li>
+                                <li>Viene creato un record nel database per tracciare il file</li>
+                            </ol>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                📤 Carica Ordine
+                            </button>
+                            <a href="{{ url_for('ordini.list') }}" class="btn btn-secondary">Annulla</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">ℹ️ Guida</h5>
+                    <p class="card-text small">
+                        <strong>Formato nome file:</strong><br>
+                        Il sistema supporta diversi formati:
+                        <ul class="mt-2">
+                            <li><code>PO_2024_001.pdf</code></li>
+                            <li><code>ordine_2023.pdf</code></li>
+                            <li><code>2022_acquisto.pdf</code></li>
+                        </ul>
+                        
+                        <strong>Anno:</strong><br>
+                        Viene estratto automaticamente dal nome del file. Se non trovato, usa l'anno corrente.
+                        <br><br>
+                        
+                        <strong>Stato:</strong>
+                        <ul class="mt-2">
+                            <li><strong>Da processare:</strong> Ordine caricato ma non ancora elaborato</li>
+                            <li><strong>Processato:</strong> Ordine elaborato con successo</li>
+                            <li><strong>Errore:</strong> Problemi durante l'elaborazione</li>
+                        </ul>
+                    </p>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-warning mt-3">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">⚠️ Attenzione</h5>
+                    <p class="card-text small mb-0">
+                        Non caricare file duplicati. Se esiste già un file con lo stesso nome per lo stesso anno, l'upload verrà rifiutato.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Preview del nome file selezionato
+document.querySelector('input[type="file"]').addEventListener('change', function(e) {
+    const fileName = e.target.files[0]?.name;
+    if (fileName) {
+        // Estrai anno dal nome file (simulazione lato client)
+        const match = fileName.match(/(20\d{2})/);
+        if (match) {
+            const anno = match[1];
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success mt-2';
+            alertDiv.innerHTML = `<strong>✓ Anno rilevato:</strong> ${anno}<br><small>Il file verrà salvato in INPUT/po/${anno}/</small>`;
+            
+            // Rimuovi alert precedenti
+            const oldAlert = e.target.parentElement.parentElement.querySelector('.alert-success');
+            if (oldAlert) oldAlert.remove();
+            
+            e.target.parentElement.parentElement.appendChild(alertDiv);
+        }
+    }
+});
+</script>
+{% endblock %}

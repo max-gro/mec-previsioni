@@ -1,0 +1,5 @@
+ALTER TABLE public.anagrafiche_file RENAME COLUMN id TO id_file_anagrafiche;
+ALTER TABLE public.users RENAME COLUMN id TO id_user;
+ALTER TABLE public.rotture RENAME COLUMN id TO id_file_rotture;
+ALTER TABLE public.ordini_acquisto RENAME COLUMN id TO id_file_ordini_acquisto;
+

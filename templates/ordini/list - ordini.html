@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Ordini di Acquisto{% endblock %}
+
+{% block extra_css %}
+<style>
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+.sortable-header:hover {
+    background-color: #dee2e6 !important;
+}
+.sort-icon {
+    font-size: 0.8em;
+    margin-left: 5px;
+}
+.btn-elabora {
+    white-space: nowrap;
+}
+.elabora-form {
+    display: inline;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>📄 Ordini di Acquisto</h2>
+            <p class="text-muted">Gestione documenti PDF ordini</p>
+        </div>
+        <div class="col-md-6 text-end">
+            {% if current_user.is_admin() %}
+            <a href="{{ url_for('ordini.sync') }}" class="btn btn-secondary me-2" title="Sincronizza con filesystem">
+                🔄 Sincronizza
+            </a>
+            <a href="{{ url_for('ordini.create') }}" class="btn btn-primary">
+                ➕ Carica Nuovo Ordine
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Filtri -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <form method="GET" action="{{ url_for('ordini.list') }}" class="row g-3">
+                <input type="hidden" name="sort" value="{{ sort_by }}">
+                <input type="hidden" name="order" value="{{ order }}">
+                <div class="col-md-2">
+                    <label class="form-label">Anno</label>
+                    <select name="anno" class="form-select">
+                        <option value="">Tutti</option>
+                        {% for anno in anni_disponibili %}
+                        <option value="{{ anno }}" {% if anno_filter == anno %}selected{% endif %}>{{ anno }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Stato</label>
+                    <select name="esito" class="form-select">
+                        <option value="">Tutti</option>
+                        <option value="Da processare" {% if esito_filter == 'Da processare' %}selected{% endif %}>Da processare</option>
+                        <option value="Processato" {% if esito_filter == 'Processato' %}selected{% endif %}>Processato</option>
+                        <option value="Errore" {% if esito_filter == 'Errore' %}selected{% endif %}>Errore</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">File</label>
+                    <input type="text" name="filename" class="form-control" placeholder="es. unieuro" value="{{ filename_filter or '' }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <!-- <button type="submit" class="btn btn-primary w-100">🔍 Filtra</button> -->
+					<button type="submit" class="btn btn-outline-primary w-100">🔍 Filtra</button>
+					<a class="btn btn-outline-secondary w-100" href="{{ url_for('ordini.list') }}">Reset</a>
+                </div>
+                <!-- <div class="col-md-2 d-flex align-items-end"> -->
+                    <!-- <a href="{{ url_for('ordini.list') }}" class="btn btn-outline-secondary w-100">✕ Reset</a> -->
+                <!-- </div> -->
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabella -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if ordini.items %}
+            	
+
+            {# Macro per link ordinamento #}
+            {% macro sort_link(column, label) %}
+                <a href="{{ url_for('ordini.list', 
+                           page=1, 
+                           anno=anno_filter,
+                           esito=esito_filter,
+                           filename=filename_filter,
+                           sort=column, 
+                           order='desc' if sort_by == column and order == 'asc' else 'asc') }}" 
+                   class="text-decoration-none text-dark d-flex align-items-center">
+                    {{ label }}
+                    {% if sort_by == column %}
+                        <span class="sort-icon">
+                            {% if order == 'asc' %}
+                                <strong>▲</strong>
+                            {% else %}
+                                <strong>▼</strong>
+                            {% endif %}
+                        </span>
+                    {% else %}
+                        <span class="sort-icon text-muted">⇅</span>
+                    {% endif %}
+                </a>
+            {% endmacro %}
+            
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="sortable-header">{{ sort_link('anno', 'Anno') }}</th>
+                            <th class="sortable-header">{{ sort_link('filename', 'File') }}</th>
+                            <th class="sortable-header">{{ sort_link('data_acquisizione', 'Acquisizione') }}</th>
+                            <th class="sortable-header">{{ sort_link('data_elaborazione', 'Elaborazione') }}</th>
+                            <th class="sortable-header">{{ sort_link('esito', 'Stato') }}</th>
+                            <th>Note</th>
+                            <th class="text-center">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ordine in ordini.items %}
+                        <tr>
+                            <td><strong>{{ ordine.anno }}</strong></td>
+                            <td>
+                                <a href="{{ url_for('ordini.view', id=ordine.id) }}" target="_blank" class="text-decoration-none" title="Visualizza PDF">
+                                    📄 {{ ordine.filename }}
+                                </a>
+                            </td>
+                            <td>{{ ordine.data_acquisizione.strftime('%d/%m/%Y') if ordine.data_acquisizione else '-' }}</td>
+                            <td>
+                                {% if ordine.data_elaborazione %}
+                                <small class="text-muted">
+                                    {{ ordine.data_elaborazione.strftime('%d/%m/%Y %H:%M') }}
+                                </small>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if ordine.esito == 'Processato' %}
+                                <span class="badge bg-success">{{ ordine.esito }}</span>
+                                {% elif ordine.esito == 'Errore' %}
+                                <span class="badge bg-danger">{{ ordine.esito }}</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">{{ ordine.esito }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if ordine.note %}
+                                <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ ordine.note }}">
+                                    {{ ordine.note }}
+                                </span>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('ordini.view', id=ordine.id) }}" target="_blank" class="btn btn-outline-info" title="Visualizza PDF">
+                                        👁️
+                                    </a>
+                                    <a href="{{ url_for('ordini.download', id=ordine.id) }}" class="btn btn-outline-success" title="Download PDF">
+                                        💾
+                                    </a>
+
+									
+                                    {% if current_user.is_admin() %}
+                                    <a href="{{ url_for('ordini.edit', id=ordine.id) }}" class="btn btn-outline-primary" title="Modifica">
+                                        ✏️
+                                    </a>
+                                    
+                                    {# Pulsante ELABORA - solo per Da processare ed Errore #}
+                                    {% if ordine.esito in ['Da processare', 'Errore'] %}
+                                    <form method="POST" action="{{ url_for('ordini.elabora', id=ordine.id) }}" class="elabora-form" onsubmit="return confirm('Elaborare questo ordine?\n\nL\'operazione potrebbe richiedere alcuni secondi.');">
+                                        <button type="submit" class="btn btn-outline-warning btn-elabora" title="Elabora ordine">
+                                            ⚙️
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ ordine.id }}" title="Elimina">
+                                        🗑️
+                                    </button>
+                                    {% endif %}			
+
+									{% if ordine.esito == 'Processato' %}
+									<a href="{{ url_for('previsioni.da_ordine', file=ordine.filename) }}"
+									   target="_blank"
+									   class="btn btn-outline-dark"
+									   title="Apri previsioni per questo ordine">
+										📈
+									</a>									
+									{% endif %}
+									
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginazione -->
+            {% if ordini.pages > 1 %}
+            <nav aria-label="Navigazione pagine">
+                <ul class="pagination justify-content-center mt-4">
+                    <li class="page-item {% if not ordini.has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('ordini.list', page=ordini.prev_num, anno=anno_filter, esito=esito_filter, filename=filename_filter, sort=sort_by, order=order) }}">Precedente</a>
+                    </li>
+                    
+                    {% for page_num in ordini.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == ordini.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('ordini.list', page=page_num, anno=anno_filter, esito=esito_filter, filename=filename_filter, sort=sort_by, order=order) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <li class="page-item {% if not ordini.has_next %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('ordini.list', page=ordini.next_num, anno=anno_filter, esito=esito_filter, filename=filename_filter, sort=sort_by, order=order) }}">Successiva</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <p class="text-muted">Nessun ordine di acquisto trovato.</p>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('ordini.create') }}" class="btn btn-primary">Carica il primo ordine</a>
+                {% endif %}
+            </div>
+            {% endif %}
+			
+        </div>
+    </div>
+
+    <!-- <!-- Info Box --> -->
+    <!-- <div class="row mt-4"> -->
+        <!-- <div class="col-md-12"> -->
+            <!-- <div class="alert alert-info"> -->
+                <!-- <h6 class="alert-heading">🔧 Azioni disponibili</h6> -->
+                <!-- <ul class="small mb-0"> -->
+                    <!-- <li><strong>🔄 Sincronizza:</strong> Scansiona le cartelle INPUT/po/ e OUTPUT/po/ e aggiunge file non presenti nel database</li> -->
+					<!-- <li><strong>👁 Visualizza:</strong> Apre il PDF in una nuova scheda del browser</li> -->
+                    <!-- <li><strong>💾 Download:</strong> Scarica il PDF sul tuo computer</li> -->
+                    <!-- <li><strong>⚙️ Elabora:</strong> Processa l'ordine (disponibile solo per stati: Da processare, Errore)</li> -->
+					<!-- <li><strong>📈️ Previsioni:</strong> Apre la Previsione (disponibile solo per stato: Processato)</li> -->
+                    <!-- <li><strong>Struttura cartelle:</strong> INPUT/po/anno/ (Da processare, Errore) → OUTPUT/po/anno/ (Processato)</li> -->
+                <!-- </ul> -->
+            <!-- </div> -->
+        <!-- </div> -->
+    <!-- </div> -->
+	
+    <!-- Legenda -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm bg-light">
+                <div class="card-body">
+                    <h6 class="card-title">📖 Legenda Stati</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <span class="badge bg-warning text-dark">⏳ Da processare</span>
+                            <p class="small mt-2">File caricato in INPUT/rotture, in attesa di elaborazione</p>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="badge bg-success">✅ Processato</span>
+                            <p class="small mt-2">File elaborato con successo e spostato in OUTPUT/rotture</p>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="badge bg-danger">❌ Errore</span>
+                            <p class="small mt-2">Errore durante elaborazione, file rimasto in INPUT/rotture</p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+					
+					<!-- Info Box -->
+					<div class="row mt-4">
+						<div class="col-md-12">
+							<div class="alert alert-info">
+								<h6 class="alert-heading">🔧 Azioni disponibili</h6>
+								<ul class="small mb-0">
+									<li><strong>🔄 Sincronizza:</strong> Scansiona le cartelle INPUT/rotture e OUTPUT/rotture e aggiunge file non presenti nel database</li>
+									<li><strong>➕ Carica:</strong> Aggiunge un nuovo file PDF</li>
+									<li><strong>👁 Visualizza:</strong> Apre il PDF in una nuova scheda del browser</li>
+									<li><strong>💾 Download:</strong> Scarica il file PDF</li>
+									<li><strong>✏️ Modifica:</strong> Modifica metadati e note</li>
+									<li><strong>⚙️ Elabora:</strong> Elabora il file PDF (solo per stati "Da processare" ed "Errore")</li>
+									<li><strong>🗑️ Elimina:</strong> Elimina file e record database</li>		
+									<li><strong>📈️ Previsioni:</strong> Apre la Previsione (disponibile solo per stato: Processato)</li>									
+									<li><strong>Struttura cartelle:</strong> INPUT/po/anno/ (Da processare, Errore) → OUTPUT/po/anno/ (Processato)</li>
+								</ul>
+							</div>
+						</div>
+					</div>					
+					
+                </div>
+            </div>
+        </div>
+    </div>
+	
+	
+</div>
+
+<!-- Modali Conferma Eliminazione - FUORI dal loop della tabella -->
+{% if current_user.is_admin() %}
+{% for ordine in ordini.items %}
+<div class="modal fade" id="deleteModal{{ ordine.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ ordine.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel{{ ordine.id }}">Conferma Eliminazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Sei sicuro di voler eliminare l'ordine <strong>{{ ordine.filename }}</strong>?
+                <br><br>
+                <div class="alert alert-warning mb-0">
+                    <strong>⚠️ Attenzione:</strong> Anche il file PDF verrà eliminato dal server!
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <form method="POST" action="{{ url_for('ordini.delete', id=ordine.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Elimina Definitivamente</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Modifica Anagrafica{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>✏️ Modifica Anagrafica</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('anagrafiche.list') }}">Anagrafiche</a></li>
+                    <li class="breadcrumb-item active">Modifica {{ anagrafica.filename }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('anagrafiche.edit', id=anagrafica.id) }}">
+                        {{ form.hidden_tag() }}
+
+                        <div class="mb-3">
+                            <label class="form-label">Marca</label>
+                            <input type="text" class="form-control" value="{{ anagrafica.marca }}" disabled>
+                            <div class="form-text">La marca non può essere modificata</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">File</label>
+                            <input type="text" class="form-control" value="{{ anagrafica.filename }}" disabled>
+                            <div class="form-text">Il file non può essere sostituito</div>
+                        </div>
+
+<!--                         <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.data_acquisizione.label }}</label>
+                                {{ form.data_acquisizione(class="form-control" + (" is-invalid" if form.data_acquisizione.errors else ""), placeholder="gg/mm/aaaa") }}
+                                {% if form.data_acquisizione.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.data_elaborazione.label }}</label>
+                                {{ form.data_elaborazione(class="form-control", placeholder="gg/mm/aaaa") }}
+                                <div class="form-text">Opzionale</div>
+                            </div>
+                        </div> -->
+						
+
+						<div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.data_acquisizione.label }}</label>
+                                <input type="text" 
+                                       name="data_acquisizione" 
+                                       id="data_acquisizione"
+                                       class="form-control{% if form.data_acquisizione.errors %} is-invalid{% endif %}" 
+                                       placeholder="gg/mm/aaaa"
+                                       value="{% if anagrafica.data_acquisizione %}{{ anagrafica.data_acquisizione.strftime('%d/%m/%Y') }}{% endif %}"
+									   {% if anagrafica.esito == 'Processato' %}disabled{% endif %}>
+                                {% if form.data_acquisizione.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.data_elaborazione.label }}</label>
+                                <input type="text" 
+                                       name="data_elaborazione" 
+                                       id="data_elaborazione"
+                                       class="form-control" 
+                                       placeholder="gg/mm/aaaa"
+                                       value="{% if anagrafica.data_elaborazione %}{{ anagrafica.data_elaborazione.strftime('%d/%m/%Y') }}{% endif %}"
+									   {% if anagrafica.esito == 'Processato' %}disabled{% endif %}>
+                                <div class="form-text">Opzionale</div>
+                            </div>
+                        </div>
+						
+
+
+						{% if anagrafica.esito != 'Processato' %}
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.esito.label }}</label>
+                            {{ form.esito(class="form-select") }}
+                        </div>
+                        {% else %}
+                        <div class="mb-3">
+                            <label class="form-label">Esito</label>
+                            <input type="text" class="form-control" value="{{ anagrafica.esito }}" disabled>
+                            <small class="form-text text-muted">I file processati non possono cambiare stato</small>
+                        </div>						
+						{% endif %}
+						
+						
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.note.label }}</label>
+                            {{ form.note(class="form-control", rows="5") }}
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>
+                            <a href="{{ url_for('anagrafiche.list') }}" class="btn btn-secondary">Annulla</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm bg-light mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">📊 Informazioni File</h5>
+                    <dl class="row mb-0 small">
+                        <dt class="col-sm-5">Marca:</dt>
+                        <dd class="col-sm-7"><span class="badge bg-primary">{{ anagrafica.marca }}</span></dd>
+                        
+                        <dt class="col-sm-5">File:</dt>
+                        <dd class="col-sm-7">{{ anagrafica.filename }}</dd>
+                        
+                        <dt class="col-sm-5">Stato:</dt>
+                        <dd class="col-sm-7">
+                            {% if anagrafica.esito == 'Processato' %}
+                            <span class="badge bg-success">✅ Processato</span>
+                            {% elif anagrafica.esito == 'Errore' %}
+                            <span class="badge bg-danger">❌ Errore</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">⏳ Da processare</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-5">Path:</dt>
+                        <dd class="col-sm-7 text-truncate" title="{{ anagrafica.filepath }}">
+                            <small class="text-muted">{{ anagrafica.filepath }}</small>
+                        </dd>
+                        
+                        <dt class="col-sm-5">Creato il:</dt>
+                        <dd class="col-sm-7">{{ anagrafica.created_at.strftime('%d/%m/%Y %H:%M') if anagrafica.created_at else 'N/D' }}</dd>
+                        
+                        <dt class="col-sm-5">Modificato il:</dt>
+                        <dd class="col-sm-7">{{ anagrafica.updated_at.strftime('%d/%m/%Y %H:%M') if anagrafica.updated_at else 'N/D' }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card shadow-sm bg-info-subtle mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">⚙️ Azioni Rapide</h5>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('anagrafiche.view', id=anagrafica.id) }}" class="btn btn-outline-info btn-sm">
+                            👁️ Apri File
+                        </a>
+                        <a href="{{ url_for('anagrafiche.download', id=anagrafica.id) }}" class="btn btn-outline-secondary btn-sm">
+                            ⬇️ Scarica File
+                        </a>
+                        {% if anagrafica.esito != 'Processato' %}
+                        <form method="POST" action="{{ url_for('anagrafiche.elabora', id=anagrafica.id) }}" onsubmit="return confirm('Elaborare questo file?');">
+                            <button type="submit" class="btn btn-outline-success btn-sm w-100">
+                                ⚙️ Elabora File
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-danger">
+                <div class="card-body">
+                    <h5 class="card-title text-danger">⚠️ Zona Pericolosa</h5>
+                    <p class="card-text small">L'eliminazione del file è permanente e non può essere annullata.</p>
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        🗑️ Elimina File
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Eliminazione -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Conferma Eliminazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Sei sicuro di voler eliminare il file <strong>{{ anagrafica.filename }}</strong> ({{ anagrafica.marca }})?
+                <br><br>
+                Questa azione è <strong>irreversibile</strong>.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <form method="POST" action="{{ url_for('anagrafiche.delete', id=anagrafica.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Elimina Definitivamente</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

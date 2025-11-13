@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - M&C Previsioni{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1>📊 Modulo Previsioni</h1>
+            <p class="text-muted">Benvenuto {{ current_user.username }}! Seleziona un'area di lavoro.</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        
+        <!-- Card Anagrafiche File Excel -->
+		<div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-primary">
+                <div class="card-body">
+                    <h5 class="card-title">📄 Anagrafiche File Excel</h5>
+                    <p class="card-text">
+                        Gestione upload e elaborazione file Excel delle anagrafiche componenti per marca.
+                    </p>
+                    <ul class="list-unstyled small text-muted">
+                        <li>✓ Upload file .xls, .xlsx</li>
+                        <li>✓ Gestione marche</li>
+                        <li>✓ Elaborazione automatica</li>
+                        <li>✓ Tracciamento stato</li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ url_for('anagrafiche.list') }}" class="btn btn-primary w-100">
+                        Vai alle Anagrafiche File
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Ordini -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-success">
+                <div class="card-body">
+                    <h5 class="card-title">📋 Ordini di Acquisto</h5>
+                    <p class="card-text">
+                        Gestione ordini di acquisto con upload PDF e tracciamento per anno.
+                    </p>
+                    <ul class="list-unstyled small text-muted">
+                        <li>✓ Upload PDF</li>
+                        <li>✓ Organizzazione per anno</li>
+                        <li>✓ Filtri avanzati</li>
+                        <li>✓ Download documenti</li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ url_for('ordini.list') }}" class="btn btn-success w-100">
+                        Vai agli Ordini
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Rotture -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-warning">
+                <div class="card-body">
+                    <h5 class="card-title">🔧 Gestione Rotture</h5>
+                    <p class="card-text">
+                        Tracciamento rotture componenti con analisi sopravvivenza e previsioni.
+                    </p>
+                    <ul class="list-unstyled small text-muted">
+                        <li>✓ Registrazione rotture</li>
+                        <li>✓ Collegamento componenti</li>
+                        <li>✓ Tempo di vita</li>
+                        <li>✓ Analisi affidabilità</li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ url_for('rotture.list') }}" class="btn btn-warning w-100">
+                        Vai alle Rotture
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Previsioni -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-danger">
+                <div class="card-body">
+                    <h5 class="card-title">📈 Previsioni Affidabilità</h5>
+                    <p class="card-text">
+                        Analisi predittive e curve di affidabilità con modelli Kaplan-Meier e Weibull.
+                    </p>
+                    <ul class="list-unstyled small text-muted">
+                        <li>✓ Curve sopravvivenza</li>
+                        <li>✓ Previsioni 12/24/36 mesi</li>
+                        <li>✓ Intervalli confidenza</li>
+                        <li>✓ Export dati</li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ url_for('previsioni.index') }}" class="btn btn-danger w-100">
+                        Vai alle Previsioni
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Utenti (Solo Admin) -->
+        {% if current_user.is_admin() %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title">👥 Gestione Utenti</h5>
+                    <p class="card-text">
+                        Amministrazione utenti, ruoli e permessi di accesso al sistema.
+                    </p>
+                    <ul class="list-unstyled small text-muted">
+                        <li>✓ Crea/modifica utenti</li>
+                        <li>✓ Gestione ruoli</li>
+                        <li>✓ Attivazione/disattivazione</li>
+                        <li>✓ Reset password</li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ url_for('users.list') }}" class="btn btn-secondary w-100">
+                        Vai agli Utenti
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Quick Actions (Solo Admin) -->
+    {% if current_user.is_admin() %}
+    <div class="row mt-5">
+        <div class="col-12">
+            <h4>⚡ Azioni Rapide</h4>
+        </div>
+    </div>
+    <div class="row g-3 mt-2">
+        <div class="col-md-3">
+            <a href="{{ url_for('anagrafiche.create') }}" class="btn btn-outline-primary w-100">
+                📤 Upload Anagrafica Excel
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ url_for('anagrafiche.nuova_marca') }}" class="btn btn-outline-primary w-100">
+                🏷️ Crea Nuova Marca
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ url_for('ordini.create') }}" class="btn btn-outline-success w-100">
+                📋 Carica Ordine PDF
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Stats Overview -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="alert alert-info" role="alert">
+                <h5 class="alert-heading">ℹ️ Informazioni Sistema</h5>
+                <p class="mb-0">
+                    Sistema di gestione MEC Previsioni - Versione 0.0.8<br>
+                    Utente: <strong>{{ current_user.username }}</strong> 
+                    {% if current_user.is_admin() %}(Amministratore){% else %}(Utente){% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

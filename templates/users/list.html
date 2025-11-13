@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Utenti{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>👥 Gestione Utenti</h2>
+            <p class="text-muted">Amministrazione utenti e permessi</p>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{{ url_for('users.create') }}" class="btn btn-info">
+                ➕ Nuovo Utente
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabella Utenti -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if users %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Ruolo</th>
+                            <th>Stato</th>
+                            <th>Creato il</th>
+                            <th class="text-end">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>
+                                <strong>{{ user.username }}</strong>
+                                {% if user.id == current_user.id %}
+                                <span class="badge bg-secondary">Tu</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                {% if user.role == 'admin' %}
+                                <span class="badge bg-danger">Amministratore</span>
+                                {% else %}
+                                <span class="badge bg-primary">Utente</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.active %}
+                                <span class="badge bg-success">Attivo</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Disattivato</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.created_at.strftime('%d/%m/%Y') if user.created_at else 'N/D' }}</td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('users.edit', id=user.id) }}" class="btn btn-outline-primary" title="Modifica">
+                                        ✏️
+                                    </a>									
+									{% if user.id != current_user.id %}
+									<button
+									  type="button"
+									  class="btn btn-outline-danger"
+									  data-bs-toggle="modal"
+									  data-bs-target="#confirmDeleteUserModal"
+									  data-delete-url="{{ url_for('users.delete', id=user.id) }}"
+									  data-item-name="{{ user.username }}"
+									  title="Elimina">
+									  🗑️
+									</button>
+									{% endif %}
+									
+                                </div>
+
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% else %}
+            <div class="text-center py-5">
+                <p class="text-muted">Nessun utente trovato.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Statistiche -->
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Totale Utenti</h5>
+                    <h2 class="mb-0">{{ users|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Amministratori</h5>
+                    <h2 class="mb-0">{{ users|selectattr('role', 'equalto', 'admin')|list|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Utenti Attivi</h5>
+                    <h2 class="mb-0">{{ users|selectattr('active', 'equalto', True)|list|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Disattivati</h5>
+                    <h2 class="mb-0">{{ users|selectattr('active', 'equalto', False)|list|length }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modale globale di conferma eliminazione (fuori dal loop) -->
+<div class="modal fade" id="confirmDeleteUserModal" tabindex="-1"
+     aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Conferma eliminazione</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+      </div>
+      <div class="modal-body">
+        <p>Vuoi eliminare l'utente <strong id="userToDelete"></strong>?</p>
+        <div class="alert alert-warning mb-0">
+          <small>L'operazione non è reversibile.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <form id="deleteUserForm" method="POST" action="">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-danger">Elimina</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Script che collega i pulsanti alla modale -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const modalEl = document.getElementById('confirmDeleteUserModal');
+  if (!modalEl) return;
+
+  modalEl.addEventListener('show.bs.modal', function (event) {
+    const btn = event.relatedTarget;
+    const deleteUrl = btn?.getAttribute('data-delete-url') || '';
+    const itemName  = btn?.getAttribute('data-item-name') || '';
+
+    const form = modalEl.querySelector('#deleteUserForm');
+    const nameSpan = modalEl.querySelector('#userToDelete');
+    if (form) form.action = deleteUrl;
+    if (nameSpan) nameSpan.textContent = itemName;
+  });
+});
+</script>
+
+{% endblock %}

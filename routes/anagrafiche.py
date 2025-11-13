@@ -5,7 +5,8 @@ Blueprint per la gestione Anagrafiche File Excel (CRUD + Upload)
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, AnagraficaFile
+from extensions import db
+from models import AnagraficaFile
 from forms import AnagraficaFileForm, AnagraficaFileEditForm, NuovaMarcaForm
 from utils.decorators import admin_required
 import os

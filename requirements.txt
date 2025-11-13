@@ -35,6 +35,9 @@ Flask-Migrate==4.0.5
 # Caching
 Flask-Caching>=2.0.0,<3.0.0
 
+# Rate Limiting
+Flask-Limiter>=3.5.0,<4.0.0
+
 # Security
 Werkzeug==3.0.1
 

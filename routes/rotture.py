@@ -4,7 +4,8 @@ Blueprint per la gestione delle rotture (File Excel)
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, current_app
 from flask_login import login_required
-from models import db, Rottura
+from extensions import db
+from models import Rottura
 from werkzeug.utils import secure_filename
 import os
 from datetime import datetime

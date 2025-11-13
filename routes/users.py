@@ -4,7 +4,8 @@ Blueprint per la gestione utenti (CRUD) - Solo Admin
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required
-from models import db, User
+from extensions import db
+from models import User
 from forms import UserForm
 from utils.decorators import admin_required
 

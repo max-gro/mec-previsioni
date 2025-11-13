@@ -4,8 +4,9 @@ Applicazione multi-pagina con autenticazione
 """
 
 from flask import Flask, render_template, redirect, url_for, request
-from flask_login import LoginManager, login_required, current_user
-from models import db, User
+from flask_login import login_required, current_user
+from extensions import db, login_manager, cache, init_extensions
+from models import User
 from config import get_config
 import os
 import logging
@@ -76,14 +77,19 @@ def create_app(config_name=None):
 
     # Setup logging
     setup_logging(app)
-    
+
     # Assicurati che la cartella instance esista
     instance_path = os.path.join(app.root_path, 'instance')
     if not os.path.exists(instance_path):
         os.makedirs(instance_path)
-    
-    # Inizializza estensioni
-    db.init_app(app)
+
+    # Inizializza tutte le estensioni (DB, Login Manager, Cache)
+    init_extensions(app)
+
+    # User loader per Flask-Login
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
 
     # Stampa informazioni sul database
     with app.app_context():
@@ -99,17 +105,6 @@ def create_app(config_name=None):
             app.logger.warning(f"Impossibile verificare versione database: {e}")
 
         db.create_all()
-
-    # Flask-Login
-    login_manager = LoginManager()
-    login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'
-    login_manager.login_message = 'Effettua il login per accedere a questa pagina.'
-    login_manager.login_message_category = 'warning'
-
-    @login_manager.user_loader
-    def load_user(user_id):
-        return User.query.get(int(user_id))
 
     # Crea database se non esiste
     with app.app_context():

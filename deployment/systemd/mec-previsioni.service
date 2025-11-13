@@ -1,0 +1,70 @@
+# =============================================================================
+# Systemd Service - MEC Previsioni Gunicorn
+# =============================================================================
+# File: /etc/systemd/system/mec-previsioni.service
+#
+# Installazione:
+#   sudo cp deployment/systemd/mec-previsioni.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable mec-previsioni
+#   sudo systemctl start mec-previsioni
+#
+# Gestione:
+#   sudo systemctl status mec-previsioni
+#   sudo systemctl restart mec-previsioni
+#   sudo systemctl stop mec-previsioni
+#   sudo journalctl -u mec-previsioni -f  # Logs
+# =============================================================================
+
+[Unit]
+Description=MEC Previsioni - Gunicorn Application Server
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+
+# User e Group (NON usare root!)
+User=www-data
+Group=www-data
+
+# Working Directory
+WorkingDirectory=/var/www/mec-previsioni
+
+# Environment
+Environment="PATH=/var/www/mec-previsioni/venv/bin"
+Environment="FLASK_ENV=production"
+
+# Carica variabili da .env (opzionale, se non usi EnvironmentFile)
+EnvironmentFile=/var/www/mec-previsioni/.env
+
+# Comando di avvio Gunicorn
+ExecStart=/var/www/mec-previsioni/venv/bin/gunicorn \
+    --config /var/www/mec-previsioni/deployment/gunicorn/gunicorn_config.py \
+    'app:create_app()'
+
+# Restart automatico in caso di crash
+Restart=always
+RestartSec=5
+
+# Limits
+LimitNOFILE=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mec-previsioni
+
+# Security Hardening (opzionale ma raccomandato)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/mec-previsioni/logs /var/www/mec-previsioni/instance
+
+# Timeout per startup/shutdown
+TimeoutStartSec=120
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

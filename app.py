@@ -28,7 +28,13 @@ def create_app(config_class=DevelopmentConfig):
         eng = db.engine
         print(f"[DB] Dialect: {eng.dialect.name}  Driver: {eng.dialect.driver}")
         print(f"[DB] URL effettivo: {eng.url}")
-        print("[DB] Versione:", db.session.execute(text("select version()")).scalar())
+
+        # Versione database (solo per PostgreSQL)
+        if eng.dialect.name == 'postgresql':
+            print("[DB] Versione:", db.session.execute(text("select version()")).scalar())
+        else:
+            print("[DB] Versione: SQLite (locale)")
+
         db.create_all()
 
     # Flask-Login

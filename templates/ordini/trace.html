@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Trace Elaborazione - {{ file_ordine.filename }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+.timeline-item {
+    position: relative;
+    padding-left: 50px;
+    margin-bottom: 30px;
+}
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 8px;
+    bottom: -30px;
+    width: 2px;
+    background: #dee2e6;
+}
+.timeline-item:last-child::before {
+    display: none;
+}
+.timeline-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    z-index: 1;
+}
+.timeline-icon.success {
+    background: #28a745;
+    color: white;
+}
+.timeline-icon.error {
+    background: #dc3545;
+    color: white;
+}
+.timeline-icon.warning {
+    background: #ffc107;
+    color: white;
+}
+.timeline-content {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 3px solid #dee2e6;
+}
+.timeline-content.success {
+    border-left-color: #28a745;
+}
+.timeline-content.error {
+    border-left-color: #dc3545;
+}
+.timeline-content.warning {
+    border-left-color: #ffc107;
+}
+.trace-record-table {
+    font-size: 0.9em;
+    margin-top: 15px;
+}
+.badge-step {
+    font-size: 0.75em;
+    padding: 4px 8px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>🔍 Trace Elaborazione</h2>
+            <p class="text-muted">Storico elaborazione file: <strong>{{ file_ordine.filename }}</strong></p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('ordini.list') }}" class="btn btn-secondary">
+                ← Torna alla Lista
+            </a>
+        </div>
+    </div>
+
+    <!-- Info File -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong>Informazioni File</strong>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Filename:</strong><br>
+                    {{ file_ordine.filename }}
+                </div>
+                <div class="col-md-2">
+                    <strong>Anno:</strong><br>
+                    {{ file_ordine.anno }}
+                </div>
+                <div class="col-md-2">
+                    <strong>Stato:</strong><br>
+                    {% if file_ordine.esito == 'Elaborato' %}
+                        <span class="badge bg-success">{{ file_ordine.esito }}</span>
+                    {% elif file_ordine.esito == 'Errore' %}
+                        <span class="badge bg-danger">{{ file_ordine.esito }}</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">{{ file_ordine.esito }}</span>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <strong>Data Elaborazione:</strong><br>
+                    {% if file_ordine.data_elaborazione %}
+                        {{ file_ordine.data_elaborazione.strftime('%d/%m/%Y %H:%M:%S') }}
+                    {% else %}
+                        <em>Non elaborato</em>
+                    {% endif %}
+                </div>
+                <div class="col-md-2">
+                    <a href="{{ url_for('ordini.download', id=file_ordine.id) }}" class="btn btn-sm btn-primary">
+                        📥 Download File
+                    </a>
+                </div>
+            </div>
+            {% if file_ordine.note %}
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <strong>Note:</strong><br>
+                    <div class="alert alert-info mb-0">{{ file_ordine.note }}</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Timeline Elaborazione -->
+    <div class="card">
+        <div class="card-header">
+            <strong>Timeline Elaborazione</strong>
+        </div>
+        <div class="card-body">
+            {% if traces_file %}
+            <div class="timeline">
+                {% for trace in traces_file %}
+                <div class="timeline-item">
+                    <div class="timeline-icon {{ trace.stato }}">
+                        {% if trace.stato == 'success' %}✓{% elif trace.stato == 'error' %}✗{% else %}!{% endif %}
+                    </div>
+                    <div class="timeline-content {{ trace.stato }}">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <span class="badge badge-step bg-secondary">{{ trace.step }}</span>
+                                <strong class="ms-2">
+                                    {% if trace.step == 'lettura' %}📖 Lettura File
+                                    {% elif trace.step == 'parsing' %}🔄 Parsing Dati
+                                    {% elif trace.step == 'inserimento_db' %}💾 Inserimento Database
+                                    {% elif trace.step == 'spostamento' %}📦 Spostamento File
+                                    {% elif trace.step == 'completato' %}✅ Completato
+                                    {% elif trace.step == 'errore' %}❌ Errore
+                                    {% else %}{{ trace.step }}
+                                    {% endif %}
+                                </strong>
+                            </div>
+                            <small class="text-muted">{{ trace.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</small>
+                        </div>
+                        {% if trace.messaggio %}
+                        <div class="mt-2">
+                            {{ trace.messaggio }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                Nessuna trace disponibile per questo file. Il file non è ancora stato elaborato.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Errori Record (se presenti) -->
+    {% if traces_record %}
+    <div class="card mt-4">
+        <div class="card-header bg-danger text-white">
+            <strong>⚠️ Errori Dettaglio Record</strong>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">
+                I seguenti record hanno generato errori durante l'elaborazione.
+                Scarica il file originale, correggi i dati alle righe indicate e ricarica il file.
+            </p>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover trace-record-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 80px;">Riga File</th>
+                            <th style="width: 120px;">Tipo Record</th>
+                            <th style="width: 200px;">Chiave Record</th>
+                            <th>Errore</th>
+                            <th style="width: 150px;">Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in traces_record %}
+                        <tr>
+                            <td class="text-center"><strong>{{ record.riga_file }}</strong></td>
+                            <td>
+                                <span class="badge bg-warning text-dark">{{ record.tipo_record }}</span>
+                            </td>
+                            <td><code>{{ record.record_key }}</code></td>
+                            <td class="text-danger">{{ record.errore }}</td>
+                            <td class="text-muted">{{ record.timestamp.strftime('%H:%M:%S') }}</td>
+                        </tr>
+                        {% if record.record_data %}
+                        <tr class="table-light">
+                            <td colspan="5">
+                                <small><strong>Dati record:</strong></small>
+                                <pre class="mb-0" style="font-size: 0.85em; max-height: 200px; overflow-y: auto;">{{ record.record_data | tojson(indent=2) }}</pre>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Azioni -->
+    <div class="row mt-4">
+        <div class="col-md-12 text-center">
+            {% if file_ordine.esito in ['Da processare', 'Errore'] and current_user.is_admin() %}
+            <form action="{{ url_for('ordini.elabora', id=file_ordine.id) }}" method="POST" class="d-inline">
+                <button type="submit" class="btn btn-warning btn-lg">
+                    🔄 Rielabora File
+                </button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('ordini.list') }}" class="btn btn-secondary btn-lg ms-2">
+                ← Torna alla Lista
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

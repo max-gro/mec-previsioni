@@ -2,12 +2,15 @@
 Blueprint per la gestione Ordini di Acquisto (CRUD + Upload PDF + Elaborazione)
 """
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app, jsonify
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, OrdineAcquisto
+from models import db, OrdineAcquisto, FileOrdini
 from forms import OrdineAcquistoForm, OrdineAcquistoEditForm
 from utils.decorators import admin_required
+from services.ordini_parser import leggi_ordine_excel_to_tsv
+from services.ordini_db_inserter import inserisci_ordine_da_tsv
+from services.file_manager import completa_elaborazione_ordine, gestisci_errore_elaborazione
 import os
 import re
 import shutil
@@ -53,72 +56,72 @@ def get_upload_path(anno, esito='Da processare'):
 
 def elabora_ordine(ordine_id):
     """
-    Elabora un ordine di acquisto (funzione STUB per test)
-    
+    Elabora un ordine di acquisto tramite pipeline completa:
+    1. Leggi Excel → TSV (OUTPUT_ELAB)
+    2. Inserisci DB (transazione atomica)
+    3. Se OK → sposta INPUT→OUTPUT, esito='Elaborato'
+       Se KO → esito='Errore', nota errore
+
     Returns:
-        tuple: (success: bool, message: str)
+        tuple: (success: bool, message: str, stats: dict)
     """
-    ordine = OrdineAcquisto.query.get(ordine_id)
-    if not ordine:
-        return False, "Ordine non trovato"
-    
+    file_ordine = FileOrdini.query.get(ordine_id)
+    if not file_ordine:
+        return False, "Ordine non trovato", {}
+
     # Verifica che il file esista
-    if not os.path.exists(ordine.filepath):
-        ordine.esito = 'Errore'
-        ordine.data_elaborazione = datetime.utcnow()
-        ordine.note = f"File non trovato sul filesystem: {ordine.filepath}"
-        db.session.commit()
-        return False, "File non trovato sul filesystem"
-    
-    # Simula elaborazione (70% successo, 30% errore)
-    success = random.random() > 0.3
-    
-    if success:
-        # SUCCESSO: sposta file in OUTPUT
-        output_dir = get_upload_path(ordine.anno, esito='Processato')
-        new_filepath = os.path.join(output_dir, ordine.filename)
-        
-        try:
-            # Sposta il file
-            shutil.move(ordine.filepath, new_filepath)
-            
-            # Aggiorna record
-            ordine.filepath = new_filepath
-            ordine.esito = 'Processato'
-            ordine.data_elaborazione = datetime.utcnow()
-            ordine.note = f"Elaborazione completata con successo il {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}. " \
-                         f"Trovati {random.randint(5, 25)} componenti, importo totale €{random.randint(1000, 50000):,}."
-            
-            db.session.commit()
-            return True, "Ordine elaborato con successo!"
-            
-        except Exception as e:
-            # Errore nello spostamento file
-            ordine.esito = 'Errore'
-            ordine.data_elaborazione = datetime.utcnow()
-            ordine.note = f"Errore durante lo spostamento del file: {str(e)}"
-            db.session.commit()
-            return False, f"Errore: {str(e)}"
-    
-    else:
-        # ERRORE SIMULATO: file rimane in INPUT
-        errori_possibili = [
-            "PDF corrotto o non leggibile",
-            "Formato ordine non riconosciuto",
-            "Mancano campi obbligatori nel PDF",
-            "Codici componenti non validi",
-            "Data ordine non presente o non valida"
-        ]
-        
-        errore = random.choice(errori_possibili)
-        
-        ordine.esito = 'Errore'
-        ordine.data_elaborazione = datetime.utcnow()
-        ordine.note = f"Elaborazione fallita il {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}: {errore}. " \
-                     f"Verificare il file e riprovare."
-        
-        db.session.commit()
-        return False, f"Elaborazione fallita: {errore}"
+    if not os.path.exists(file_ordine.filepath):
+        gestisci_errore_elaborazione(ordine_id, f"File non trovato: {file_ordine.filepath}", 'verifica_file')
+        return False, "File non trovato sul filesystem", {}
+
+    base_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    output_elab_dir = os.path.join(base_dir, 'OUTPUT_ELAB', 'po')
+
+    try:
+        # Step 1: Parsing Excel → TSV
+        success, tsv_path, error, parse_stats = leggi_ordine_excel_to_tsv(
+            ordine_id,
+            file_ordine.filepath,
+            output_elab_dir
+        )
+
+        if not success:
+            gestisci_errore_elaborazione(ordine_id, error, 'parsing')
+            return False, f"Errore parsing: {error}", {}
+
+        # Step 2: Inserimento DB
+        success, db_stats, error = inserisci_ordine_da_tsv(
+            ordine_id,
+            tsv_path,
+            current_user.id
+        )
+
+        if not success:
+            gestisci_errore_elaborazione(ordine_id, error, 'inserimento_db')
+            return False, f"Errore DB: {error}", {}
+
+        # Step 3: Spostamento file INPUT → OUTPUT
+        output_dir = get_upload_path(file_ordine.anno, esito='Elaborato')
+        new_filepath = os.path.join(output_dir, file_ordine.filename)
+
+        success, error = completa_elaborazione_ordine(ordine_id, file_ordine.filepath, new_filepath)
+
+        if not success:
+            gestisci_errore_elaborazione(ordine_id, error, 'spostamento')
+            return False, f"Errore spostamento: {error}", {}
+
+        # Successo completo
+        combined_stats = {**parse_stats, **db_stats}
+        message = f"Elaborato: {db_stats['n_ordini']} righe ordine, " \
+                  f"{db_stats['n_modelli_inseriti']} nuovi modelli, " \
+                  f"{db_stats['n_modelli_aggiornati']} modelli aggiornati"
+
+        return True, message, combined_stats
+
+    except Exception as e:
+        error_msg = f"Errore imprevisto: {str(e)}"
+        gestisci_errore_elaborazione(ordine_id, error_msg, 'generale')
+        return False, error_msg, {}
 
 def scan_po_folder():
     """
@@ -396,21 +399,51 @@ def sync():
 def elabora(id):
     """
     Elabora un ordine di acquisto (SINCRONO)
+    Pipeline: Excel → TSV → DB → Spostamento file
     Disponibile solo per ordini con stato 'Da processare' o 'Errore'
     """
     ordine = OrdineAcquisto.query.get_or_404(id)
-    
+
     # Verifica che l'ordine possa essere elaborato
     if ordine.esito not in ['Da processare', 'Errore']:
         flash(f'L\'ordine è già stato elaborato con successo e non può essere rielaborato.', 'warning')
         return redirect(url_for('ordini.list'))
-    
+
     # Elabora l'ordine (sincrono - attende il completamento)
-    success, message = elabora_ordine(id)
-    
+    success, message, stats = elabora_ordine(id)
+
     if success:
         flash(message, 'success')
     else:
         flash(message, 'danger')
-    
+
     return redirect(url_for('ordini.list'))
+
+@ordini_bp.route('/<int:id>/trace')
+@login_required
+def view_trace(id):
+    """
+    Visualizza trace elaborazione per un file ordine
+    Mostra timeline degli step con eventuali errori a livello record
+    """
+    from models import TraceElaborazioneFile, TraceElaborazioneRecord
+
+    file_ordine = FileOrdini.query.get_or_404(id)
+
+    # Query trace file (ordinati per timestamp)
+    traces_file = TraceElaborazioneFile.query.filter_by(
+        id_file_ordine=id
+    ).order_by(TraceElaborazioneFile.timestamp.asc()).all()
+
+    # Query trace record (solo errori)
+    traces_record = []
+    for trace_file in traces_file:
+        records = TraceElaborazioneRecord.query.filter_by(
+            id_trace_file=trace_file.id
+        ).order_by(TraceElaborazioneRecord.riga_file.asc()).all()
+        traces_record.extend(records)
+
+    return render_template('ordini/trace.html',
+                         file_ordine=file_ordine,
+                         traces_file=traces_file,
+                         traces_record=traces_record)

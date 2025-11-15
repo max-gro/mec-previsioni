@@ -173,8 +173,11 @@
                                     <a href="{{ url_for('ordini.download', id=ordine.id) }}" class="btn btn-outline-success" title="Download PDF">
                                         ⬇
                                     </a>
+                                    <a href="{{ url_for('ordini.view_trace', id=ordine.id) }}" class="btn btn-outline-secondary" title="Visualizza Trace Elaborazione">
+                                        🔍
+                                    </a>
 
-									
+
                                     {% if current_user.is_admin() %}
                                     <a href="{{ url_for('ordini.edit', id=ordine.id) }}" class="btn btn-outline-primary" title="Modifica">
                                         ✏️

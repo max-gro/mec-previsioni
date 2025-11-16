@@ -71,8 +71,8 @@ class OrdineAcquisto(db.Model):
     id = db.Column('id_file_ordine', db.Integer, primary_key=True)
     anno = db.Column(db.Integer, nullable=False)
     marca = db.Column(db.String(100))
-    filename = db.Column(db.String(255), nullable=False)
-    filepath = db.Column(db.String(500), nullable=False, unique=True)
+    filename = db.Column(db.String(255), nullable=False, unique=True)  # Il filename è unico in assoluto
+    filepath = db.Column(db.String(500), nullable=False)
     data_acquisizione = db.Column(db.Date, nullable=False, default=lambda: datetime.utcnow().date())
     data_elaborazione = db.Column(db.DateTime)
     esito = db.Column(db.String(50), default='Da processare')  # Da processare, Processato, Errore

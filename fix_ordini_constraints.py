@@ -1,8 +1,13 @@
 """
 Script per correggere i constraints sulla tabella file_ordini:
-- Rimuove il constraint UNIQUE su filename (che causa duplicati quando file in INPUT/OUTPUT)
-- Aggiunge constraint UNIQUE su filepath (ogni path completo deve essere unico)
-- Rimuove eventuali duplicati prima di applicare il nuovo constraint
+- Rimuove eventuali duplicati su filename (errore utente: stesso file in anni diversi)
+- Rimuove constraint sbagliati (es. su filepath o filename+anno)
+- Assicura che ci sia il constraint UNIQUE solo su filename
+
+LOGICA CORRETTA:
+- Il filename è unico in assoluto (un file appare una volta sola nel DB)
+- Quando il file viene elaborato, viene SPOSTATO da INPUT a OUTPUT
+- Il record DB viene aggiornato (filepath cambia, esito diventa 'Processato')
 
 Esegui con: python fix_ordini_constraints.py
 """
@@ -51,69 +56,84 @@ def fix_constraints():
 
         print("✓ Tabella 'file_ordini' trovata")
 
-        # 2. Controlla duplicati su filepath prima di procedere
+        # 2. Controlla duplicati su FILENAME (errore utente: stesso file in anni diversi)
         cursor.execute("""
-            SELECT filepath, COUNT(*) as cnt
+            SELECT filename, COUNT(*) as cnt, string_agg(CAST(anno AS TEXT), ', ') as anni
             FROM file_ordini
-            GROUP BY filepath
+            GROUP BY filename
             HAVING COUNT(*) > 1;
         """)
 
         duplicates = cursor.fetchall()
         if duplicates:
-            print(f"\n⚠ ATTENZIONE: Trovati {len(duplicates)} filepath duplicati:")
-            for filepath, count in duplicates[:5]:  # Mostra primi 5
-                print(f"  {filepath}: {count} occorrenze")
+            print(f"\n⚠ ATTENZIONE: Trovati {len(duplicates)} filename duplicati:")
+            print("Questo è probabilmente un errore utente (stesso file in anni diversi)")
+            for filename, count, anni in duplicates[:10]:  # Mostra primi 10
+                print(f"  {filename}: {count} occorrenze (anni: {anni})")
 
-            print("\nRimozione duplicati (mantengo solo il più recente)...")
-            cursor.execute("""
-                DELETE FROM file_ordini a
-                USING file_ordini b
-                WHERE a.id_file_ordine < b.id_file_ordine
-                AND a.filepath = b.filepath;
-            """)
-            removed = cursor.rowcount
-            print(f"✓ Rimossi {removed} record duplicati")
+            risposta = input("\nVuoi rimuovere i duplicati mantenendo solo il più recente? [s/N]: ")
+            if risposta.lower() == 's':
+                print("\nRimozione duplicati (mantengo solo il più recente)...")
+                cursor.execute("""
+                    DELETE FROM file_ordini a
+                    USING file_ordini b
+                    WHERE a.id_file_ordine < b.id_file_ordine
+                    AND a.filename = b.filename;
+                """)
+                removed = cursor.rowcount
+                print(f"✓ Rimossi {removed} record duplicati")
+            else:
+                print("✗ Operazione annullata. Risolvi manualmente i duplicati prima di continuare.")
+                return False
         else:
-            print("✓ Nessun duplicato trovato su filepath")
+            print("✓ Nessun duplicato trovato su filename")
 
-        # 3. Rimuovi constraint UNIQUE su filename (se esiste)
-        print("\nRimozione constraint UNIQUE su filename...")
+        # 3. Rimuovi constraint sbagliati (es. su filepath o filename+anno)
+        print("\nRimozione constraint sbagliati...")
         cursor.execute("""
             SELECT constraint_name
             FROM information_schema.table_constraints
             WHERE table_name = 'file_ordini'
             AND constraint_type = 'UNIQUE'
-            AND constraint_name LIKE '%filename%';
+            AND constraint_name NOT LIKE '%filename%'
+            AND constraint_name NOT LIKE '%pkey%';
         """)
 
-        filename_constraints = cursor.fetchall()
-        for (constraint_name,) in filename_constraints:
+        wrong_constraints = cursor.fetchall()
+        for (constraint_name,) in wrong_constraints:
             cursor.execute(f"ALTER TABLE file_ordini DROP CONSTRAINT IF EXISTS {constraint_name};")
-            print(f"✓ Rimosso constraint: {constraint_name}")
+            print(f"✓ Rimosso constraint sbagliato: {constraint_name}")
 
-        if not filename_constraints:
-            print("✓ Nessun constraint su filename da rimuovere")
+        if not wrong_constraints:
+            print("✓ Nessun constraint sbagliato trovato")
 
-        # 4. Aggiungi constraint UNIQUE su filepath (se non esiste già)
-        print("\nAggiunta constraint UNIQUE su filepath...")
+        # 4. Assicura che ci sia il constraint UNIQUE su filename
+        print("\nVerifica constraint UNIQUE su filename...")
         cursor.execute("""
             SELECT constraint_name
-            FROM information_schema.table_constraints
-            WHERE table_name = 'file_ordini'
-            AND constraint_type = 'UNIQUE'
-            AND constraint_name LIKE '%filepath%';
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+                ON tc.constraint_name = kcu.constraint_name
+            WHERE tc.table_name = 'file_ordini'
+            AND tc.constraint_type = 'UNIQUE'
+            AND kcu.column_name = 'filename'
+            AND NOT EXISTS (
+                SELECT 1 FROM information_schema.key_column_usage kcu2
+                WHERE kcu2.constraint_name = tc.constraint_name
+                AND kcu2.column_name != 'filename'
+            );
         """)
 
-        filepath_constraints = cursor.fetchall()
-        if filepath_constraints:
-            print(f"✓ Constraint su filepath già esistente: {filepath_constraints[0][0]}")
+        filename_constraint = cursor.fetchall()
+        if filename_constraint:
+            print(f"✓ Constraint UNIQUE su filename già esistente: {filename_constraint[0][0]}")
         else:
+            print("Aggiunta constraint UNIQUE su filename...")
             cursor.execute("""
                 ALTER TABLE file_ordini
-                ADD CONSTRAINT file_ordini_filepath_unique UNIQUE (filepath);
+                ADD CONSTRAINT file_ordini_filename_key UNIQUE (filename);
             """)
-            print("✓ Aggiunto constraint UNIQUE su filepath")
+            print("✓ Aggiunto constraint UNIQUE su filename")
 
         # 5. Verifica stato finale
         print("\n" + "="*60)
@@ -155,9 +175,12 @@ if __name__ == '__main__':
     print("SCRIPT DI MIGRAZIONE: Fix Constraints file_ordini")
     print("="*60)
     print("\nQuesta migrazione:")
-    print("  1. Rimuove constraint UNIQUE su 'filename'")
-    print("  2. Aggiunge constraint UNIQUE su 'filepath'")
-    print("  3. Rimuove eventuali duplicati su filepath")
+    print("  1. Controlla e rimuove duplicati su filename")
+    print("  2. Rimuove constraint sbagliati (es. su filepath)")
+    print("  3. Assicura constraint UNIQUE solo su filename")
+    print("\nLOGICA CORRETTA:")
+    print("  - Filename è unico in assoluto")
+    print("  - File spostato INPUT→OUTPUT = aggiornamento record, non duplicato")
     print("\n" + "="*60 + "\n")
 
     try:

@@ -124,35 +124,42 @@ def scan_po_folder():
     """
     Scansiona le cartelle INPUT/po/ e OUTPUT/po/ e sincronizza con il database
     - Aggiunge file nuovi che non sono nel DB
+    - Aggiorna filepath ed esito per file spostati (es. da INPUT a OUTPUT)
     - Rimuove record DB per file che non esistono più
     """
     base_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-    
-    files_trovati = set()  # Set di tutti i filepath trovati nel filesystem
-    
+
+    files_trovati = {}  # Dict: filename -> filepath (per tracciare quali file esistono)
+
     # Scansiona INPUT/po/
     input_base_dir = os.path.join(base_dir, 'INPUT', 'po')
     if os.path.exists(input_base_dir):
         for anno_folder in os.listdir(input_base_dir):
             anno_path = os.path.join(input_base_dir, anno_folder)
-            
+
             if not os.path.isdir(anno_path) or not anno_folder.isdigit():
                 continue
-            
+
             anno = int(anno_folder)
-            
+
             for filename in os.listdir(anno_path):
                 if not filename.lower().endswith('.pdf'):
                     continue
-                
+
                 filepath = os.path.join(anno_path, filename)
-                files_trovati.add(filepath)
-                
-                # Controlla se il file è già nel database
-                existing = OrdineAcquisto.query.filter_by(filepath=filepath).first()
-                
-                if not existing:
-                    # Aggiungi al database con stato Da processare
+                files_trovati[filename] = filepath
+
+                # Cerca il file per FILENAME (non filepath)
+                existing = OrdineAcquisto.query.filter_by(filename=filename).first()
+
+                if existing:
+                    # File già nel DB: aggiorna solo se il path è cambiato
+                    if existing.filepath != filepath:
+                        existing.filepath = filepath
+                        existing.esito = 'Da processare'
+                        print(f"[SYNC INPUT] Aggiornato path: {filename}")
+                else:
+                    # File nuovo: aggiungilo al database
                     nuovo_ordine = OrdineAcquisto(
                         anno=anno,
                         filename=filename,
@@ -162,30 +169,37 @@ def scan_po_folder():
                     )
                     db.session.add(nuovo_ordine)
                     print(f"[SYNC INPUT] Aggiunto: {filepath}")
-    
+
     # Scansiona OUTPUT/po/
     output_base_dir = os.path.join(base_dir, 'OUTPUT', 'po')
     if os.path.exists(output_base_dir):
         for anno_folder in os.listdir(output_base_dir):
             anno_path = os.path.join(output_base_dir, anno_folder)
-            
+
             if not os.path.isdir(anno_path) or not anno_folder.isdigit():
                 continue
-            
+
             anno = int(anno_folder)
-            
+
             for filename in os.listdir(anno_path):
                 if not filename.lower().endswith('.pdf'):
                     continue
-                
+
                 filepath = os.path.join(anno_path, filename)
-                files_trovati.add(filepath)
-                
-                # Controlla se il file è già nel database
-                existing = OrdineAcquisto.query.filter_by(filepath=filepath).first()
-                
-                if not existing:
-                    # Aggiungi al database con stato Processato
+                files_trovati[filename] = filepath
+
+                # Cerca il file per FILENAME (non filepath)
+                existing = OrdineAcquisto.query.filter_by(filename=filename).first()
+
+                if existing:
+                    # File già nel DB: aggiorna filepath ed esito (il file è stato spostato in OUTPUT)
+                    if existing.filepath != filepath or existing.esito != 'Processato':
+                        existing.filepath = filepath
+                        existing.esito = 'Processato'
+                        existing.data_elaborazione = datetime.utcnow()
+                        print(f"[SYNC OUTPUT] Aggiornato path e stato: {filename}")
+                else:
+                    # File nuovo già processato: aggiungilo direttamente come Processato
                     nuovo_ordine = OrdineAcquisto(
                         anno=anno,
                         filename=filename,
@@ -197,14 +211,14 @@ def scan_po_folder():
                     )
                     db.session.add(nuovo_ordine)
                     print(f"[SYNC OUTPUT] Aggiunto: {filepath}")
-    
+
     # Rimuovi record orfani (file nel DB ma non nel filesystem)
     tutti_ordini = OrdineAcquisto.query.all()
     for ordine in tutti_ordini:
-        if ordine.filepath not in files_trovati:
-            print(f"[SYNC] Rimosso record orfano: {ordine.filepath}")
+        if ordine.filename not in files_trovati:
+            print(f"[SYNC] Rimosso record orfano: {ordine.filename} (path: {ordine.filepath})")
             db.session.delete(ordine)
-    
+
     db.session.commit()
 
 @ordini_bp.route('/')

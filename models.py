@@ -70,6 +70,7 @@ class Controparte(db.Model):
 
     id = db.Column('cod_controparte', db.Integer, primary_key=True)
     controparte = db.Column(db.String(200), unique=True, nullable=False)
+    descrizione = db.Column(db.String(500))  # Seller desc / Buyer desc
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

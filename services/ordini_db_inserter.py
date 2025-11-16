@@ -54,12 +54,14 @@ def _get_or_create_controparte(cod_controparte, desc_controparte, user_id):
 
     if controparte:
         # Aggiorna tutti i campi
+        controparte.descrizione = desc_controparte
         controparte.updated_at = datetime.utcnow()
         controparte.updated_by = user_id
     else:
         # Crea nuovo
         controparte = Controparte(
             controparte=cod_controparte,
+            descrizione=desc_controparte,
             created_at=datetime.utcnow(),
             created_by=user_id,
             updated_at=datetime.utcnow(),

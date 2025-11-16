@@ -22,7 +22,11 @@ def init_database():
     
     # 2. ADESSO importa l'app
     from app import create_app
-    from models import db, User, Rottura, OrdineAcquisto, AnagraficaFile   #,Componente, 
+    from models import (
+        db, User, Rottura, OrdineAcquisto, AnagraficaFile,
+        Controparte, Modello, FileOrdini, Ordine,
+        TraceElaborazioneFile, TraceElaborazioneRecord
+    ) 
     
     app = create_app()
     

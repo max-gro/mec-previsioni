@@ -16,6 +16,10 @@ def inspect_database():
         print("ERROR: DATABASE_URL non impostata")
         return
 
+    # Fix: rimuovi '+psycopg2' se presente
+    if db_url.startswith("postgresql+psycopg2://"):
+        db_url = db_url.replace("postgresql+psycopg2://", "postgresql://", 1)
+
     print(f"Connessione a: {db_url.split('@')[1] if '@' in db_url else db_url}\n")
 
     try:

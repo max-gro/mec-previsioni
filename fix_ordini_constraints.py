@@ -23,6 +23,11 @@ def fix_constraints():
         print("Esempio: DATABASE_URL=postgresql://mec:cem@localhost:5432/mec_previsioni")
         return False
 
+    # Fix: rimuovi '+psycopg2' se presente
+    if db_url.startswith("postgresql+psycopg2://"):
+        db_url = db_url.replace("postgresql+psycopg2://", "postgresql://", 1)
+
+
     print(f"Connessione al database...")
     print(f"URL: {db_url.split('@')[1] if '@' in db_url else db_url}\n")
 

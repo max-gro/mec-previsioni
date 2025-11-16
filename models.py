@@ -66,19 +66,26 @@ class Rottura(db.Model):
 
 class OrdineAcquisto(db.Model):
     """Modello Ordini di Acquisto"""
-    __tablename__ = 'ordini_acquisto'
-    
-    id = db.Column('id_file_ordini_acquisto', db.Integer, primary_key=True)
+    __tablename__ = 'file_ordini'
+
+    id = db.Column('id_file_ordine', db.Integer, primary_key=True)
     anno = db.Column(db.Integer, nullable=False)
+    marca = db.Column(db.String(100))
     filename = db.Column(db.String(255), nullable=False)
-    filepath = db.Column(db.String(500), nullable=False)
+    filepath = db.Column(db.String(500), nullable=False, unique=True)
     data_acquisizione = db.Column(db.Date, nullable=False, default=lambda: datetime.utcnow().date())
-    data_elaborazione = db.Column(db.DateTime)  # Popolato dopo elaborazione
+    data_elaborazione = db.Column(db.DateTime)
     esito = db.Column(db.String(50), default='Da processare')  # Da processare, Processato, Errore
     note = db.Column(db.Text)
+    cod_seller = db.Column(db.String(100))
+    cod_buyer = db.Column(db.String(100))
+    data_ordine = db.Column(db.Date)
+    oggetto_ordine = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.String(100))
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    updated_by = db.Column(db.String(100))
+
     def __repr__(self):
         return f'<OrdineAcquisto {self.anno} - {self.filename}>'
 

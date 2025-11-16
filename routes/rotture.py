@@ -77,7 +77,7 @@ def scan_rotture_folder():
                     anno=anno,
                     filename=filename,
                     filepath=filepath,
-                    data_acquisizione=datetime.now().date(),
+                    data_acquisizione=datetime.now(),
                     esito='Da processare'
                 )
                 db.session.add(nuova_rottura)
@@ -107,7 +107,7 @@ def scan_rotture_folder():
                     anno=anno,
                     filename=filename,
                     filepath=filepath,
-                    data_acquisizione=datetime.now().date(),
+                    data_acquisizione=datetime.now(),
                     esito='Processato',
                     data_elaborazione=datetime.now(),
                     note='File già processato, trovato in OUTPUT durante sincronizzazione'
@@ -197,10 +197,10 @@ def create():
     """Carica un nuovo file rottura"""
     form = RotturaForm()
     
-    # Inizializza anno corrente e data corrente al primo caricamento
+    # Inizializza anno corrente e timestamp corrente al primo caricamento
     if request.method == 'GET':
         form.anno.data = datetime.now().year
-        form.data_acquisizione.data = datetime.now().date()
+        form.data_acquisizione.data = datetime.now()
     
     if form.validate_on_submit():
         file = form.file.data

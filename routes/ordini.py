@@ -167,7 +167,7 @@ def scan_po_folder():
                         anno=anno,
                         filename=filename,
                         filepath=filepath,
-                        data_acquisizione=datetime.now().date(),
+                        data_acquisizione=datetime.now(),
                         esito='Da processare'
                     )
                     db.session.add(nuovo_ordine)
@@ -207,7 +207,7 @@ def scan_po_folder():
                         anno=anno,
                         filename=filename,
                         filepath=filepath,
-                        data_acquisizione=datetime.now().date(),
+                        data_acquisizione=datetime.now(),
                         esito='Processato',
                         data_elaborazione=datetime.utcnow(),
                         note='File già processato, trovato in OUTPUT durante sincronizzazione'
@@ -281,9 +281,9 @@ def create():
     """Crea un nuovo ordine di acquisto (upload PDF)"""
     form = OrdineAcquistoForm()
     
-    # Inizializza data acquisizione con data corrente al primo caricamento
+    # Inizializza data acquisizione con timestamp corrente al primo caricamento
     if request.method == 'GET':
-        form.data_acquisizione.data = datetime.now().date()
+        form.data_acquisizione.data = datetime.now()
     
     if form.validate_on_submit():
         file = form.file.data

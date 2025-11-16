@@ -53,7 +53,7 @@ class Rottura(db.Model):
     anno = db.Column(db.Integer, nullable=False)
     filename = db.Column(db.String(255), nullable=False)
     filepath = db.Column(db.String(500), nullable=False)
-    data_acquisizione = db.Column(db.Date, nullable=False, default=lambda: datetime.utcnow().date())
+    data_acquisizione = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     data_elaborazione = db.Column(db.DateTime)
     esito = db.Column(db.String(50), default='Da processare')  # Da processare, Processato, Errore
     note = db.Column(db.Text)
@@ -114,7 +114,7 @@ class FileOrdini(db.Model):
     marca = db.Column(db.String(100))
     filename = db.Column(db.String(255), unique=True, nullable=False)  # Il filename è unico in assoluto
     filepath = db.Column(db.String(500), nullable=False)
-    data_acquisizione = db.Column(db.Date, nullable=False, default=lambda: datetime.utcnow().date())
+    data_acquisizione = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     data_elaborazione = db.Column(db.DateTime)
     esito = db.Column(db.String(50), default='Da processare')  # Da processare, Elaborato, Errore
     note = db.Column(db.Text)
@@ -220,12 +220,12 @@ class AnagraficaFile(db.Model):
     __tablename__ = 'anagrafiche_file'
     
     id = db.Column('id_file_anagrafiche', db.Integer, primary_key=True)
-    anno = db.Column(db.Integer, nullable=False) 
+    anno = db.Column(db.Integer, nullable=False)
     marca = db.Column(db.String(100), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
     filepath = db.Column(db.String(500), nullable=False)
-    data_acquisizione = db.Column(db.Date, nullable=False, default=lambda: datetime.utcnow().date())
-    data_elaborazione = db.Column(db.Date)
+    data_acquisizione = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    data_elaborazione = db.Column(db.DateTime)
     esito = db.Column(db.String(50), default='Da processare')  # Da processare, Processato, Errore
     note = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

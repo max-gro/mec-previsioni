@@ -318,10 +318,10 @@ def create():
     marche = get_marche_disponibili()
     form.marca.choices = [(m, m) for m in marche]
  
-    # Inizializza data corrente al primo caricamento
+    # Inizializza timestamp corrente al primo caricamento
     if request.method == 'GET':
-        form.data_acquisizione.data = datetime.now().date()
-        
+        form.data_acquisizione.data = datetime.now()
+
     if form.validate_on_submit():
         file = form.file.data
         marca = form.marca.data

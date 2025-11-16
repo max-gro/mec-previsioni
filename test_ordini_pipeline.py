@@ -71,13 +71,11 @@ def test_pipeline():
             print("Esegui prima: python create_test_ordini.py")
             return False
 
-        from datetime import date
-
         file_ordine = FileOrdini(
             anno=2024,
             filename='ordine_test_2024.xlsx',
             filepath=input_file,
-            data_acquisizione=date(2024, 1, 15),
+            data_acquisizione=datetime(2024, 1, 15, 10, 0, 0),
             esito='Da processare',
             created_by=admin.id,
             updated_by=admin.id

@@ -110,7 +110,7 @@ def fix_constraints():
         # 4. Assicura che ci sia il constraint UNIQUE su filename
         print("\nVerifica constraint UNIQUE su filename...")
         cursor.execute("""
-            SELECT constraint_name
+            SELECT tc.constraint_name
             FROM information_schema.table_constraints tc
             JOIN information_schema.key_column_usage kcu
                 ON tc.constraint_name = kcu.constraint_name

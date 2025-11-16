@@ -54,11 +54,11 @@ def create_app(config_class=DevelopmentConfig):
         # Crea utente admin di default se non esiste
         if User.query.count() == 0:
             admin = User(username='admin', email='admin@example.com', role='admin', active=True)
-            admin.set_password('admin123')  # CAMBIARE IN PRODUZIONE!
+            admin.set_password('123admin123')  # CAMBIARE IN PRODUZIONE!
             db.session.add(admin)
             
             demo = User(username='demo', email='demo@example.com', role='user', active=True)
-            demo.set_password('demo123')
+            demo.set_password('123demo123')
             db.session.add(demo)
             
             db.session.commit()

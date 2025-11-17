@@ -97,7 +97,7 @@ class OrdineAcquisto(db.Model):
 
 class AnagraficaFile(db.Model):
     """Modello Anagrafiche File (Excel)"""
-    __tablename__ = 'anagrafiche_file'
+    __tablename__ = 'file_anagrafiche'
 
     id = db.Column('id_file_anagrafiche', db.Integer, primary_key=True)
     anno = db.Column(db.Integer, nullable=False)

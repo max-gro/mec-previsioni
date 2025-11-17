@@ -333,25 +333,37 @@ def edit(id):
 @ordini_bp.route('/<int:id>/delete', methods=['POST'])
 @admin_required
 def delete(id):
-    """Elimina un ordine di acquisto"""
+    """Elimina un ordine di acquisto e i suoi record dipendenti (quando implementati)"""
     ordine = OrdineAcquisto.query.get_or_404(id)
     filename = ordine.filename
     filepath = ordine.filepath
-    
-    # Elimina il file dal filesystem
-    if os.path.exists(filepath):
-        try:
-            os.remove(filepath)
-        except Exception as e:
-            flash(f'Errore nell\'eliminazione del file: {str(e)}', 'danger')
-            return redirect(url_for('ordini.list'))
-    
-    # Elimina dal database
-    db.session.delete(ordine)
-    db.session.commit()
-    
-    flash(f'Ordine {filename} eliminato.', 'info')
-    return redirect(url_for('ordini.list'))
+
+    try:
+        # TODO: Quando sarà implementata la tabella 'ordini' (righe ordine),
+        # aggiungere qui la cancellazione CASCADE dei record dipendenti:
+        # deleted_count = Ordine.query.filter_by(id_file_ordini_acquisto=ordine.id).delete()
+        # NON toccare le tabelle master: modelli, componenti
+
+        # Elimina il file dal filesystem
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Errore nell\'eliminazione del file: {str(e)}', 'danger')
+                return redirect(url_for('ordini.list'))
+
+        # Elimina il record ordine dal database
+        db.session.delete(ordine)
+        db.session.commit()
+
+        flash(f'Ordine {filename} eliminato.', 'info')
+        return redirect(url_for('ordini.list'))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Errore durante l\'eliminazione: {str(e)}', 'danger')
+        return redirect(url_for('ordini.list'))
 
 @ordini_bp.route('/download/<int:id>')
 @login_required

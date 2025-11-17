@@ -1,7 +1,12 @@
 # Migrazione: Campi Codice Alfanumerici
 
 **Data**: 2025-11-17
-**Obiettivo**: Aggiungere tabelle business con campi codice alfanumerici (VARCHAR) invece di INTEGER
+**Obiettivo**: Convertire campi codice da INTEGER a VARCHAR (alfanumerici)
+
+⚠️ **IMPORTANTE**: Esistono DUE scenari possibili:
+
+1. **Le tabelle NON esistono** → Usare `add_business_tables_alphanumeric.sql` (crea nuove tabelle)
+2. **Le tabelle ESISTONO già con INTEGER** → Usare `convert_code_fields_to_varchar.sql` (converte campi esistenti)
 
 ## 📋 Sommario
 
@@ -28,7 +33,40 @@ I campi codice sono stati definiti come **VARCHAR** invece di **INTEGER** per su
 
 ## 🚀 Come Eseguire la Migrazione
 
-### Opzione 1: Script Python (Raccomandato)
+### SCENARIO 1: Tabelle Esistenti con INTEGER (CONVERSIONE)
+
+Se le tabelle esistono già con campi INTEGER, usa lo script di **conversione**:
+
+#### Opzione A: Script SQL PostgreSQL (Raccomandato)
+
+```bash
+# 1. BACKUP OBBLIGATORIO!
+pg_dump -U username -d mec_previsioni > backup_pre_conversion_$(date +%Y%m%d).sql
+
+# 2. Esegui conversione
+psql -U username -d mec_previsioni -f migrations_sql/convert_code_fields_to_varchar.sql
+```
+
+#### Opzione B: Script Python
+
+```bash
+# 1. Esegui conversione (crea backup automatico se SQLite)
+python migrate_convert_to_varchar.py
+
+# Senza conferma
+python migrate_convert_to_varchar.py --yes
+
+# Solo verifica (non modifica nulla)
+python migrate_convert_to_varchar.py --verify-only
+```
+
+---
+
+### SCENARIO 2: Tabelle NON Esistenti (CREAZIONE)
+
+Se le tabelle non esistono ancora, usa lo script di **creazione**:
+
+#### Opzione 1: Script Python (Raccomandato)
 
 ```bash
 # Assicurati di avere Flask e le dipendenze installate
@@ -69,21 +107,35 @@ docker-compose -f docker-compose.postgres.yml exec postgres psql -U mecuser -d m
 
 ## 🔍 Verifica Migrazione
 
-Dopo aver eseguito la migrazione, verifica che le tabelle siano state create:
+### Verifica Tipo Colonne
+
+Dopo la conversione, verifica che i campi siano VARCHAR:
 
 ```sql
--- PostgreSQL
-SELECT tablename, schemaname
-FROM pg_tables
-WHERE schemaname = 'public'
-AND tablename IN ('controparti', 'modelli', 'file_ordini', 'ordini',
-                  'trace_elaborazioni_file', 'trace_elaborazioni_record');
+-- PostgreSQL: Verifica tipi colonne
+SELECT
+    table_name,
+    column_name,
+    data_type,
+    character_maximum_length
+FROM information_schema.columns
+WHERE table_name IN ('controparti', 'modelli', 'file_ordini', 'ordini')
+AND column_name IN ('cod_controparte', 'cod_modello', 'cod_seller', 'cod_buyer', 'cod_ordine')
+ORDER BY table_name, column_name;
 
--- Verifica struttura tabella controparti
+-- Risultato atteso:
+-- controparti.cod_controparte → character varying (50)
+-- file_ordini.cod_buyer → character varying (50)
+-- file_ordini.cod_seller → character varying (50)
+-- modelli.cod_modello → character varying (50)
+-- ordini.cod_modello → character varying (50)
+-- ordini.cod_ordine → character varying (100)
+
+-- Verifica struttura completa
 \d controparti
-
--- Verifica struttura tabella modelli
 \d modelli
+\d file_ordini
+\d ordini
 
 -- Verifica foreign keys
 SELECT

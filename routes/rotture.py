@@ -3,11 +3,18 @@ Blueprint per la gestione delle rotture (File Excel)
 """
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, current_app
-from flask_login import login_required
-from models import db, Rottura
+from flask_login import login_required, current_user
+from models import (
+    db, FileRottura, Rottura, RotturaComponente,
+    Modello, Componente, Utente, Rivenditore,
+    TraceElaborazioneFile, TraceElaborazioneRecord
+)
 from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
+
+# Import funzioni elaborazione
+from routes.rotture_funzioni_elaborazione import elabora_file_rottura_completo as _elabora_file_rottura_completo
 
 # Import forms
 try:
@@ -50,30 +57,30 @@ def scan_rotture_folder():
     - Rimuove record DB per file che non esistono più
     """
     base_dir = current_app.config.get('BASE_DIR', os.path.dirname(os.path.dirname(__file__)))
-    
+
     files_trovati = set()  # Set di tutti i filepath trovati nel filesystem
-    
+
     # Scansiona INPUT/rotture/
     input_dir = os.path.join(base_dir, 'INPUT', 'rotture')
     if os.path.exists(input_dir):
         for filename in os.listdir(input_dir):
             if not filename.lower().endswith(('.xls', '.xlsx')):
                 continue
-            
+
             filepath = os.path.join(input_dir, filename)
             files_trovati.add(filepath)
-            
+
             # Controlla se il file è già nel database
-            existing = Rottura.query.filter_by(filepath=filepath).first()
-            
+            existing = FileRottura.query.filter_by(filepath=filepath).first()
+
             if not existing:
                 # Estrai anno dal nome file (se possibile)
                 import re
                 match = re.search(r'(20\d{2})', filename)
                 anno = int(match.group(1)) if match else datetime.now().year
-                
+
                 # Aggiungi al database con stato Da processare
-                nuova_rottura = Rottura(
+                nuova_rottura = FileRottura(
                     anno=anno,
                     filename=filename,
                     filepath=filepath,
@@ -82,28 +89,28 @@ def scan_rotture_folder():
                 )
                 db.session.add(nuova_rottura)
                 print(f"[SYNC INPUT] Aggiunto: {filepath}")
-    
+
     # Scansiona OUTPUT/rotture/
     output_dir = os.path.join(base_dir, 'OUTPUT', 'rotture')
     if os.path.exists(output_dir):
         for filename in os.listdir(output_dir):
             if not filename.lower().endswith(('.xls', '.xlsx')):
                 continue
-            
+
             filepath = os.path.join(output_dir, filename)
             files_trovati.add(filepath)
-            
+
             # Controlla se il file è già nel database
-            existing = Rottura.query.filter_by(filepath=filepath).first()
-            
+            existing = FileRottura.query.filter_by(filepath=filepath).first()
+
             if not existing:
                 # Estrai anno dal nome file (se possibile)
                 import re
                 match = re.search(r'(20\d{2})', filename)
                 anno = int(match.group(1)) if match else datetime.now().year
-                
+
                 # Aggiungi al database con stato Processato
-                nuova_rottura = Rottura(
+                nuova_rottura = FileRottura(
                     anno=anno,
                     filename=filename,
                     filepath=filepath,
@@ -114,48 +121,17 @@ def scan_rotture_folder():
                 )
                 db.session.add(nuova_rottura)
                 print(f"[SYNC OUTPUT] Aggiunto: {filepath}")
-    
+
     # Rimuovi record orfani (file nel DB ma non nel filesystem)
-    tutte_rotture = Rottura.query.all()
+    tutte_rotture = FileRottura.query.all()
     for rottura in tutte_rotture:
         if rottura.filepath not in files_trovati:
             print(f"[SYNC] Rimosso record orfano: {rottura.filepath}")
             db.session.delete(rottura)
-    
+
     db.session.commit()
 
-def elabora_rottura_excel(filepath):
-    """
-    Funzione stub per elaborare file rottura Excel.
-    
-    Args:
-        filepath: percorso completo del file da elaborare
         
-    Returns:
-        tuple: (success: bool, message: str)
-    """
-    try:
-        # Leggi il file Excel
-        df = pd.read_excel(filepath)
-        
-        # ðŸŸ¢ STUB: Simula elaborazione
-        num_righe = len(df)
-        num_colonne = len(df.columns)
-        
-        # ðŸ”´ QUI ANDRÃ€ LA TUA LOGICA DI ELABORAZIONE REALE
-        # Esempio:
-        # - Validazione struttura file
-        # - Parsing dati rotture
-        # - Inserimento/aggiornamento database
-        # - Calcoli statistici
-        
-        # Per ora ritorna sempre successo
-        note_success = f"File elaborato con successo: {num_righe} righe e {num_colonne} colonne processate."
-        return True, note_success
-        
-    except Exception as e:
-        return False, f"Errore durante elaborazione: {str(e)}"
-
 
 @rotture_bp.route('/')
 @login_required
@@ -168,20 +144,20 @@ def list():
     anno_filter = request.args.get('anno', type=int)
     esito_filter = request.args.get('esito', '')
     
-    query = Rottura.query
-    
+    query = FileRottura.query
+
     if anno_filter:
-        query = query.filter(Rottura.anno == anno_filter)
-    
+        query = query.filter(FileRottura.anno == anno_filter)
+
     if esito_filter:
-        query = query.filter(Rottura.esito == esito_filter)
-    
-    rotture = query.order_by(Rottura.anno.desc(), Rottura.data_acquisizione.desc()).paginate(
+        query = query.filter(FileRottura.esito == esito_filter)
+
+    rotture = query.order_by(FileRottura.anno.desc(), FileRottura.data_acquisizione.desc()).paginate(
         page=page, per_page=20, error_out=False
     )
-    
+
     # Lista anni disponibili per filtro
-    anni_disponibili = db.session.query(Rottura.anno.distinct()).order_by(Rottura.anno.desc()).all()
+    anni_disponibili = db.session.query(FileRottura.anno.distinct()).order_by(FileRottura.anno.desc()).all()
     anni_disponibili = [a[0] for a in anni_disponibili]
     
     return render_template('rotture/list.html', 
@@ -220,7 +196,7 @@ def create():
         file.save(filepath)
             
         # Crea record database
-        rottura = Rottura(
+        rottura = FileRottura(
             anno=anno,
             filename=filename,
             filepath=filepath,
@@ -241,7 +217,7 @@ def create():
 @admin_required
 def edit(id):
     """Modifica un file rottura esistente"""
-    rottura = Rottura.query.get_or_404(id)
+    rottura = FileRottura.query.get_or_404(id)
     form = RotturaEditForm(obj=rottura)
         
     if form.validate_on_submit():
@@ -268,22 +244,92 @@ def edit(id):
 @rotture_bp.route('/<int:id>/delete', methods=['POST'])
 @admin_required
 def delete(id):
-    """Elimina un file rottura"""
-    rottura = Rottura.query.get_or_404(id)
-    filename = rottura.filename
-    
-    # Elimina file fisico se esiste
-    if os.path.exists(rottura.filepath):
-        try:
-            os.remove(rottura.filepath)
-        except Exception as e:
-            flash(f'Errore eliminazione file fisico: {e}', 'warning')
-    
-    # Elimina record database
-    db.session.delete(rottura)
-    db.session.commit()
-    
-    flash(f'File rottura {filename} eliminato.', 'info')
+    """Elimina un file rottura con cascade (file + rotture + componenti)"""
+    file_rottura = FileRottura.query.get_or_404(id)
+    filename = file_rottura.filename
+
+    try:
+        # Crea trace per eliminazione
+        trace_file = TraceElaborazioneFile(
+            id_file=id,
+            tipo_file='rotture',
+            step='delete',
+            stato='start',
+            messaggio=f'Inizio eliminazione file {filename}'
+        )
+        db.session.add(trace_file)
+        db.session.flush()  # Per ottenere id_trace
+
+        # Elimina rotture componenti associate
+        rotture_ids = [r.id_rottura for r in Rottura.query.filter_by(id_file_rotture=id).all()]
+        if rotture_ids:
+            num_comp = RotturaComponente.query.filter(RotturaComponente.id_rottura.in_(rotture_ids)).delete(synchronize_session=False)
+            trace_rec = TraceElaborazioneRecord(
+                id_trace_file=trace_file.id_trace,
+                tipo_record='rotture_componenti',
+                record_key=f'{len(rotture_ids)} rotture',
+                messaggio=f'Eliminati {num_comp} record rotture_componenti'
+            )
+            db.session.add(trace_rec)
+
+        # Elimina rotture associate
+        num_rotture = Rottura.query.filter_by(id_file_rotture=id).delete()
+        if num_rotture > 0:
+            trace_rec = TraceElaborazioneRecord(
+                id_trace_file=trace_file.id_trace,
+                tipo_record='rotture',
+                record_key=str(id),
+                messaggio=f'Eliminati {num_rotture} record rotture'
+            )
+            db.session.add(trace_rec)
+
+        # Elimina file fisico se esiste
+        if os.path.exists(file_rottura.filepath):
+            try:
+                os.remove(file_rottura.filepath)
+                trace_rec = TraceElaborazioneRecord(
+                    id_trace_file=trace_file.id_trace,
+                    tipo_record='file',
+                    record_key=filename,
+                    messaggio=f'File fisico eliminato: {file_rottura.filepath}'
+                )
+                db.session.add(trace_rec)
+            except Exception as e:
+                flash(f'Errore eliminazione file fisico: {e}', 'warning')
+                trace_rec = TraceElaborazioneRecord(
+                    id_trace_file=trace_file.id_trace,
+                    tipo_record='file',
+                    record_key=filename,
+                    errore=f'Errore eliminazione file fisico: {str(e)}'
+                )
+                db.session.add(trace_rec)
+
+        # Elimina record file_rotture
+        db.session.delete(file_rottura)
+
+        # Trace completamento
+        trace_file.stato = 'success'
+        trace_file.messaggio = f'Eliminazione completata: {filename}'
+
+        db.session.commit()
+
+        flash(f'File rottura {filename} eliminato (incluse {num_rotture} rotture associate).', 'info')
+
+    except Exception as e:
+        db.session.rollback()
+        # Trace errore
+        trace_err = TraceElaborazioneFile(
+            id_file=id,
+            tipo_file='rotture',
+            step='delete',
+            stato='error',
+            messaggio=f'Errore durante eliminazione: {str(e)}'
+        )
+        db.session.add(trace_err)
+        db.session.commit()
+
+        flash(f'Errore durante eliminazione: {e}', 'error')
+
     return redirect(url_for('rotture.list'))
 
 
@@ -291,24 +337,24 @@ def delete(id):
 @admin_required
 def elabora(id):
     """Elabora un file rottura"""
-    rottura = Rottura.query.get_or_404(id)
+    file_rottura = FileRottura.query.get_or_404(id)
     
     # Controlla stato
-    if rottura.esito == 'Processato':
+    if file_rottura.esito == 'Processato':
         flash('Il file Ã¨ giÃ  stato processato!', 'warning')
         return redirect(url_for('rotture.list'))
     
     # Controlla esistenza file
-    if not os.path.exists(rottura.filepath):
-        flash(f'File non trovato: {rottura.filepath}', 'error')
-        rottura.esito = 'Errore'
-        rottura.note = f"File non trovato al path: {rottura.filepath}"
-        rottura.data_elaborazione = datetime.now()
+    if not os.path.exists(file_rottura.filepath):
+        flash(f'File non trovato: {file_rottura.filepath}', 'error')
+        file_rottura.esito = 'Errore'
+        file_rottura.note = f"File non trovato al path: {file_rottura.filepath}"
+        file_rottura.data_elaborazione = datetime.now()
         db.session.commit()
         return redirect(url_for('rotture.list'))
     
     # Elabora file
-    success, message = elabora_rottura_excel(rottura.filepath)
+    success, message, num_rotture = elabora_file_rottura_completo(file_rottura)
     
     if success:
         # Sposta file in OUTPUT
@@ -316,32 +362,32 @@ def elabora(id):
         output_dir = os.path.join(base_dir, 'OUTPUT', 'rotture')
         os.makedirs(output_dir, exist_ok=True)
         
-        new_filepath = os.path.join(output_dir, rottura.filename)
+        new_filepath = os.path.join(output_dir, file_rottura.filename)
         
         try:
             # Usa shutil.move invece di os.rename per cross-device compatibility
             import shutil
-            shutil.move(rottura.filepath, new_filepath)
+            shutil.move(file_rottura.filepath, new_filepath)
             
             # Aggiorna record
-            rottura.filepath = new_filepath
-            rottura.esito = 'Processato'
-            rottura.data_elaborazione = datetime.now()
-            rottura.note = message
+            file_rottura.filepath = new_filepath
+            file_rottura.esito = 'Processato'
+            file_rottura.data_elaborazione = datetime.now()
+            file_rottura.note = f"Elaborate {num_rotture} rotture. {message}"
             db.session.commit()
             
-            flash(f'File elaborato con successo!', 'success')
+            flash(f'File elaborato con successo! Elaborate {num_rotture} rotture.', 'success')
         except Exception as e:
             flash(f'Errore spostamento file: {e}', 'error')
-            rottura.esito = 'Errore'
-            rottura.note = f"Elaborazione OK ma errore spostamento file: {str(e)}"
-            rottura.data_elaborazione = datetime.now()
+            file_rottura.esito = 'Errore'
+            file_rottura.note = f"Elaborazione OK ma errore spostamento file: {str(e)}"
+            file_rottura.data_elaborazione = datetime.now()
             db.session.commit()
     else:
         # Elaborazione fallita
-        rottura.esito = 'Errore'
-        rottura.note = message
-        rottura.data_elaborazione = datetime.now()
+        file_rottura.esito = 'Errore'
+        file_rottura.note = message
+        file_rottura.data_elaborazione = datetime.now()
         db.session.commit()
         
         flash(f'Errore durante elaborazione: {message}', 'error')
@@ -353,13 +399,13 @@ def elabora(id):
 @login_required
 def download(id):
     """Download file rottura"""
-    rottura = Rottura.query.get_or_404(id)
-    
-    if not os.path.exists(rottura.filepath):
+    file_rottura = FileRottura.query.get_or_404(id)
+
+    if not os.path.exists(file_rottura.filepath):
         flash('File non trovato!', 'error')
         return redirect(url_for('rotture.list'))
-    
-    return send_file(rottura.filepath, as_attachment=True, download_name=rottura.filename)
+
+    return send_file(file_rottura.filepath, as_attachment=True, download_name=file_rottura.filename)
 
 
 @rotture_bp.route('/sync')
@@ -369,3 +415,17 @@ def sync():
     scan_rotture_folder()
     flash('Sincronizzazione completata!', 'success')
     return redirect(url_for('rotture.list'))
+
+def elabora_file_rottura_completo(file_rottura):
+    """Wrapper per chiamare la funzione di elaborazione con i parametri corretti"""
+    models_dict = {
+        'Rottura': Rottura,
+        'RotturaComponente': RotturaComponente,
+        'Modello': Modello,
+        'Componente': Componente,
+        'Utente': Utente,
+        'Rivenditore': Rivenditore,
+        'TraceElaborazioneFile': TraceElaborazioneFile,
+        'TraceElaborazioneRecord': TraceElaborazioneRecord
+    }
+    return _elabora_file_rottura_completo(file_rottura, db, current_user, current_app, models_dict)

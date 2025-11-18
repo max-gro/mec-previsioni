@@ -5,10 +5,14 @@ from datetime import datetime
 
 db = SQLAlchemy()
 
+# ============================================================================
+# TABELLE DI AUTENTICAZIONE E SISTEMA
+# ============================================================================
+
 class User(UserMixin, db.Model):
-    """Modello Utente per autenticazione"""
+    """Modello Utente per autenticazione sistema"""
     __tablename__ = 'users'
-    
+
     id = db.Column('id_user', db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -16,36 +20,22 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), default='user')
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
-    
+
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-    
+
     def is_admin(self):
         return self.role == 'admin'
 
 
-# class Componente(db.Model):
-    # """Modello Anagrafica Componenti"""
-    # __tablename__ = 'componenti'
-    
-    # id = db.Column(db.Integer, primary_key=True)
-    # codice = db.Column(db.String(50), unique=True, nullable=False)
-    # descrizione = db.Column(db.String(200))
-    # descrizione_en = db.Column(db.String(200))
-    # price = db.Column(db.Float, default=0.0)
-    # stat = db.Column(db.String(50))
-    # fornitore = db.Column(db.String(100))
-    # note = db.Column(db.Text)
-    # created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    # updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # # ✅ RIMOSSA la relationship con Rottura perché ora Rottura gestisce file Excel
+# ============================================================================
+# TABELLE FILE (GESTIONE UPLOAD E STATO ELABORAZIONE)
+# ============================================================================
 
-
-class Rottura(db.Model):
+class FileRottura(db.Model):
     """Modello Gestione File Rotture Excel"""
     __tablename__ = 'file_rotture'
 
@@ -67,8 +57,12 @@ class Rottura(db.Model):
     updater = db.relationship('User', foreign_keys=[updated_by], backref='rotture_update')
 
     def __repr__(self):
-        return f'<Rottura {self.anno} - {self.filename}>'
+        return f'<FileRottura {self.anno} - {self.filename}>'
 
+
+class FileOrdine(db.Model):
+    """Modello File Ordini di Acquisto"""
+    __tablename__ = 'file_ordini'
 
 class OrdineAcquisto(db.Model):
     """Modello Ordini di Acquisto"""
@@ -79,7 +73,7 @@ class OrdineAcquisto(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     filepath = db.Column(db.String(500), nullable=False)
     data_acquisizione = db.Column(db.Date, nullable=False, default=lambda: datetime.utcnow().date())
-    data_elaborazione = db.Column(db.DateTime)  # Popolato dopo elaborazione
+    data_elaborazione = db.Column(db.DateTime)
     esito = db.Column(db.String(50), default='Da processare')  # Da processare, Processato, Errore
     note = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -92,8 +86,12 @@ class OrdineAcquisto(db.Model):
     updater = db.relationship('User', foreign_keys=[updated_by], backref='ordini_acquisto_update')
 
     def __repr__(self):
-        return f'<OrdineAcquisto {self.anno} - {self.filename}>'
+        return f'<FileOrdine {self.anno} - {self.filename}>'
 
+
+class FileAnagrafica(db.Model):
+    """Modello File Anagrafiche (Excel)"""
+    __tablename__ = 'file_anagrafiche'
 
 class AnagraficaFile(db.Model):
     """Modello Anagrafiche File (Excel)"""

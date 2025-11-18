@@ -47,8 +47,8 @@ class User(UserMixin, db.Model):
 
 class Rottura(db.Model):
     """Modello Gestione File Rotture Excel"""
-    __tablename__ = 'rotture'
-    
+    __tablename__ = 'file_rotture'
+
     id = db.Column('id_file_rotture', db.Integer, primary_key=True)
     anno = db.Column(db.Integer, nullable=False)
     filename = db.Column(db.String(255), nullable=False)
@@ -58,8 +58,14 @@ class Rottura(db.Model):
     esito = db.Column(db.String(50), default='Da processare')  # Da processare, Processato, Errore
     note = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
+
+    # Relationships
+    creator = db.relationship('User', foreign_keys=[created_by], backref='rotture_create')
+    updater = db.relationship('User', foreign_keys=[updated_by], backref='rotture_update')
+
     def __repr__(self):
         return f'<Rottura {self.anno} - {self.filename}>'
 
@@ -67,7 +73,7 @@ class Rottura(db.Model):
 class OrdineAcquisto(db.Model):
     """Modello Ordini di Acquisto"""
     __tablename__ = 'ordini_acquisto'
-    
+
     id = db.Column('id_file_ordini_acquisto', db.Integer, primary_key=True)
     anno = db.Column(db.Integer, nullable=False)
     filename = db.Column(db.String(255), nullable=False)
@@ -77,8 +83,14 @@ class OrdineAcquisto(db.Model):
     esito = db.Column(db.String(50), default='Da processare')  # Da processare, Processato, Errore
     note = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
+
+    # Relationships
+    creator = db.relationship('User', foreign_keys=[created_by], backref='ordini_acquisto_create')
+    updater = db.relationship('User', foreign_keys=[updated_by], backref='ordini_acquisto_update')
+
     def __repr__(self):
         return f'<OrdineAcquisto {self.anno} - {self.filename}>'
 
@@ -97,6 +109,7 @@ class AnagraficaFile(db.Model):
     esito = db.Column(db.String(50), default='Da processare')  # Da processare, Processato, Errore
     note = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):

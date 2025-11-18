@@ -47,7 +47,7 @@ class User(UserMixin, db.Model):
 
 class Rottura(db.Model):
     """Modello Gestione File Rotture Excel"""
-    __tablename__ = 'rotture'
+    __tablename__ = 'file_rotture'
 
     id = db.Column('id_file_rotture', db.Integer, primary_key=True)
     anno = db.Column(db.Integer, nullable=False)

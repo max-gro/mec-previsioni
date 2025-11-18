@@ -97,7 +97,7 @@ class OrdineAcquisto(db.Model):
 
 class AnagraficaFile(db.Model):
     """Modello Anagrafiche File (Excel)"""
-    __tablename__ = 'file_anagrafiche'
+    __tablename__ = 'anagrafiche_file'
 
     id = db.Column('id_file_anagrafiche', db.Integer, primary_key=True)
     anno = db.Column(db.Integer, nullable=False)
@@ -111,159 +111,86 @@ class AnagraficaFile(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
-
-    # Relationships
-    creator = db.relationship('User', foreign_keys=[created_by], backref='anagrafiche_create')
-    updater = db.relationship('User', foreign_keys=[updated_by], backref='anagrafiche_update')
 
     def __repr__(self):
         return f'<AnagraficaFile {self.marca} - {self.filename}>'
 
 
-class Controparte(db.Model):
-    """Modello Controparti (Clienti/Fornitori)"""
-    __tablename__ = 'controparti'
+class TraceElaborazione(db.Model):
+    """Modello Tracciamento Elaborazioni - un file può avere più elaborazioni"""
+    __tablename__ = 'trace_elaborazioni'
 
-    cod_controparte = db.Column(db.String(50), primary_key=True)
-    controparte = db.Column(db.String(200), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Riferimento al file (polimorfismo)
+    tipo_pipeline = db.Column(db.String(20), nullable=False)  # 'ordini' | 'anagrafiche' | 'rotture'
+    id_file = db.Column(db.Integer, nullable=False)
+
+    # Timing elaborazione
+    ts_inizio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    ts_fine = db.Column(db.DateTime)
+    durata_secondi = db.Column(db.Integer)
+
+    # Esito
+    esito = db.Column(db.String(50), nullable=False)  # 'In corso' | 'Successo' | 'Errore' | 'Warning'
+
+    # Statistiche elaborazione
+    righe_totali = db.Column(db.Integer, default=0)
+    righe_ok = db.Column(db.Integer, default=0)
+    righe_errore = db.Column(db.Integer, default=0)
+    righe_warning = db.Column(db.Integer, default=0)
+
+    # Note generali
+    messaggio_globale = db.Column(db.Text)
+
+    # Metadata
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
 
-    # Relationships
-    creator = db.relationship('User', foreign_keys=[created_by], backref='controparti_create')
-    updater = db.relationship('User', foreign_keys=[updated_by], backref='controparti_update')
+    # Relationship con i dettagli
+    dettagli = db.relationship('TraceElaborazioneDettaglio', backref='elaborazione', lazy='dynamic', cascade='all, delete-orphan')
 
     def __repr__(self):
-        return f'<Controparte {self.cod_controparte} - {self.controparte}>'
+        return f'<TraceElaborazione {self.tipo_pipeline} #{self.id_file} - {self.esito}>'
+
+    def get_file_object(self):
+        """Restituisce l'oggetto file associato (OrdineAcquisto, AnagraficaFile o Rottura)"""
+        if self.tipo_pipeline == 'ordini':
+            return OrdineAcquisto.query.get(self.id_file)
+        elif self.tipo_pipeline == 'anagrafiche':
+            return AnagraficaFile.query.get(self.id_file)
+        elif self.tipo_pipeline == 'rotture':
+            return Rottura.query.get(self.id_file)
+        return None
+
+    def percentuale_successo(self):
+        """Calcola la percentuale di righe processate con successo"""
+        if self.righe_totali == 0:
+            return 0
+        return round((self.righe_ok / self.righe_totali) * 100, 1)
 
 
-class Modello(db.Model):
-    """Modello Modelli/Prodotti"""
-    __tablename__ = 'modelli'
+class TraceElaborazioneDettaglio(db.Model):
+    """Modello Dettaglio Righe Elaborazione - anomalie/errori/warning per singola riga"""
+    __tablename__ = 'trace_elaborazioni_dettaglio'
 
-    cod_modello = db.Column(db.String(50), primary_key=True)
-    cod_modello_norm = db.Column(db.String(100), nullable=False)
-    cod_modello_fabbrica = db.Column(db.String(100))
-    nome_modello = db.Column(db.String(200))
-    nome_modello_it = db.Column(db.String(200))
-    divisione = db.Column(db.String(100))
-    marca = db.Column(db.String(100))
-    desc_modello = db.Column(db.Text)
-    produttore = db.Column(db.String(200))
-    famiglia = db.Column(db.String(100))
-    tipo = db.Column(db.String(100))
+    id = db.Column(db.Integer, primary_key=True)
+
+    # FK all'elaborazione
+    id_elaborazione = db.Column(db.Integer, db.ForeignKey('trace_elaborazioni.id'), nullable=False)
+
+    # Dettaglio riga/anomalia
+    riga_numero = db.Column(db.Integer)
+    tipo_messaggio = db.Column(db.String(20))  # 'ERRORE' | 'WARNING' | 'INFO'
+    codice_errore = db.Column(db.String(50))
+    messaggio = db.Column(db.Text, nullable=False)
+
+    # Contesto aggiuntivo
+    campo = db.Column(db.String(100))
+    valore_originale = db.Column(db.Text)
+    valore_corretto = db.Column(db.Text)
+
+    # Timestamp
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
-    updated_from = db.Column(db.String(10))
-
-    # Relationships
-    creator = db.relationship('User', foreign_keys=[created_by], backref='modelli_create')
-    updater = db.relationship('User', foreign_keys=[updated_by], backref='modelli_update')
 
     def __repr__(self):
-        return f'<Modello {self.cod_modello} - {self.nome_modello}>'
-
-
-class FileOrdine(db.Model):
-    """Modello File Ordini"""
-    __tablename__ = 'file_ordini'
-
-    id_file_ordine = db.Column(db.Integer, primary_key=True)
-    anno = db.Column(db.Integer, nullable=False)
-    marca = db.Column(db.String(100))
-    filename = db.Column(db.String(255), nullable=False)
-    filepath = db.Column(db.String(500), nullable=False)
-    data_acquisizione = db.Column(db.Date, nullable=False, default=lambda: datetime.utcnow().date())
-    data_elaborazione = db.Column(db.DateTime)
-    esito = db.Column(db.String(50), default='Da processare')
-    note = db.Column(db.Text)
-    cod_seller = db.Column(db.String(50), db.ForeignKey('controparti.cod_controparte'))
-    cod_buyer = db.Column(db.String(50), db.ForeignKey('controparti.cod_controparte'))
-    data_ordine = db.Column(db.Date)
-    oggetto_ordine = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
-
-    # Relationships
-    seller = db.relationship('Controparte', foreign_keys=[cod_seller], backref='ordini_vendita')
-    buyer = db.relationship('Controparte', foreign_keys=[cod_buyer], backref='ordini_acquisto')
-    creator = db.relationship('User', foreign_keys=[created_by], backref='fileordini_create')
-    updater = db.relationship('User', foreign_keys=[updated_by], backref='fileordini_update')
-
-    def __repr__(self):
-        return f'<FileOrdine {self.anno} - {self.filename}>'
-
-
-class Ordine(db.Model):
-    """Modello Ordini - Dettaglio righe ordine"""
-    __tablename__ = 'ordini'
-
-    ordine_modello_pk = db.Column(db.String(200), primary_key=True)
-    id_file_ordine = db.Column(db.Integer, db.ForeignKey('file_ordini.id_file_ordine'), nullable=False)
-    cod_ordine = db.Column(db.String(100), nullable=False)
-    cod_modello = db.Column(db.String(50), db.ForeignKey('modelli.cod_modello'), nullable=False)
-    brand = db.Column(db.String(100))
-    item = db.Column(db.String(200))
-    ean = db.Column(db.String(50))
-    prezzo_eur = db.Column(db.Numeric(10, 2))
-    qta = db.Column(db.Integer)
-    importo_eur = db.Column(db.Numeric(12, 2))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'))
-
-    # Relationships
-    file_ordine = db.relationship('FileOrdine', backref='ordini')
-    modello = db.relationship('Modello', backref='ordini')
-    creator = db.relationship('User', foreign_keys=[created_by], backref='ordini_create')
-    updater = db.relationship('User', foreign_keys=[updated_by], backref='ordini_update')
-
-    def __repr__(self):
-        return f'<Ordine {self.cod_ordine} - {self.cod_modello}>'
-
-
-class TraceElaborazioneFile(db.Model):
-    """Modello Trace Elaborazioni File"""
-    __tablename__ = 'trace_elaborazioni_file'
-
-    id_trace = db.Column(db.Integer, primary_key=True)
-    id_file_ordine = db.Column(db.Integer, db.ForeignKey('file_ordini.id_file_ordine'), nullable=False)
-    tipo_file = db.Column(db.String(10), nullable=False)
-    step = db.Column(db.String(50), nullable=False)
-    stato = db.Column(db.String(20), nullable=False)
-    messaggio = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-    # Relationships
-    file_ordine = db.relationship('FileOrdine', backref='trace_elaborazioni')
-
-    def __repr__(self):
-        return f'<TraceElaborazioneFile {self.id_trace} - {self.tipo_file} - {self.step}>'
-
-
-class TraceElaborazioneRecord(db.Model):
-    """Modello Trace Elaborazioni Record"""
-    __tablename__ = 'trace_elaborazioni_record'
-
-    id_trace_record = db.Column(db.Integer, primary_key=True)
-    id_trace_file = db.Column(db.Integer, db.ForeignKey('trace_elaborazioni_file.id_trace'), nullable=False)
-    riga_file = db.Column(db.Integer)
-    tipo_record = db.Column(db.String(20))
-    record_key = db.Column(db.String(200))
-    record_data = db.Column(db.JSON)
-    errore = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-    # Relationships
-    trace_file = db.relationship('TraceElaborazioneFile', backref='trace_records')
-
-    def __repr__(self):
-        return f'<TraceElaborazioneRecord {self.id_trace_record} - {self.tipo_record}>'
+        return f'<TraceDettaglio Riga:{self.riga_numero} {self.tipo_messaggio} - {self.codice_errore}>'

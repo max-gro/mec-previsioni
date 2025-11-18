@@ -28,7 +28,11 @@ def create_app(config_class=DevelopmentConfig):
         eng = db.engine
         print(f"[DB] Dialect: {eng.dialect.name}  Driver: {eng.dialect.driver}")
         print(f"[DB] URL effettivo: {eng.url}")
-        print("[DB] Versione:", db.session.execute(text("select version()")).scalar())
+        # Mostra versione solo per PostgreSQL
+        if eng.dialect.name == 'postgresql':
+            print("[DB] Versione:", db.session.execute(text("select version()")).scalar())
+        elif eng.dialect.name == 'sqlite':
+            print("[DB] Versione SQLite:", db.session.execute(text("select sqlite_version()")).scalar())
         db.create_all()
 
     # Flask-Login
@@ -64,23 +68,25 @@ def create_app(config_class=DevelopmentConfig):
     #from routes.anagrafica import anagrafica_bp
     from routes.rotture import rotture_bp
     from routes.users import users_bp
-    from routes.ordini import ordini_bp  # 👈 NUOVO
+    from routes.ordini import ordini_bp
     from routes.anagrafiche import anagrafiche_bp  # Gestione file anagrafiche Excel
-    
+    from routes.dashboard import dashboard_bp  # Dashboard elaborazioni
+
     app.register_blueprint(auth_bp)
+    app.register_blueprint(dashboard_bp, url_prefix='/dashboard')  # Dashboard elaborazioni
     app.register_blueprint(previsioni_bp, url_prefix='/previsioni')
     #app.register_blueprint(anagrafica_bp, url_prefix='/anagrafica')
     app.register_blueprint(rotture_bp, url_prefix='/rotture')
     app.register_blueprint(users_bp, url_prefix='/users')
-    app.register_blueprint(ordini_bp, url_prefix='/ordini')  # 👈 NUOVO
-    app.register_blueprint(anagrafiche_bp, url_prefix='/anagrafiche')  # Gestione file anagrafiche                                                                                              
-    
-    # Homepage/Dashboard - PROTETTA DA LOGIN
+    app.register_blueprint(ordini_bp, url_prefix='/ordini')
+    app.register_blueprint(anagrafiche_bp, url_prefix='/anagrafiche')  # Gestione file anagrafiche
+
+    # Homepage - Redirect alla dashboard elaborazioni
     @app.route('/')
     @login_required
     def index():
-        """Dashboard principale - richiede login"""
-        return render_template('index.html')
+        """Homepage - reindirizza alla dashboard elaborazioni"""
+        return redirect(url_for('dashboard.index'))
     
     # Context processor per rendere current_user disponibile in tutti i template
     @app.context_processor

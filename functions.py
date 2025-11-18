@@ -1,6 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from lifelines import KaplanMeierFitter
+try:
+    from lifelines import KaplanMeierFitter
+    LIFELINES_AVAILABLE = True
+except ImportError:
+    LIFELINES_AVAILABLE = False
+    print("[WARNING] lifelines non installato - funzionalità previsioni disabilitate")
 from scipy.optimize import minimize
 from scipy.interpolate import interp1d
 import numpy as np

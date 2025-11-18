@@ -124,6 +124,7 @@
                             <th class="sortable-header">{{ sort_link('data_acquisizione', 'Acquisizione') }}</th>
                             <th class="sortable-header">{{ sort_link('data_elaborazione', 'Elaborazione') }}</th>
                             <th class="sortable-header">{{ sort_link('esito', 'Stato') }}</th>
+                            <th>Tentativi</th>
                             <th>Note</th>
                             <th class="text-center">Azioni</th>
                         </tr>
@@ -155,6 +156,11 @@
                                 {% else %}
                                 <span class="badge bg-warning text-dark">{{ ordine.esito }}</span>
                                 {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{{ url_for('ordini.elaborazioni_list', id=ordine.id) }}" class="btn btn-sm btn-outline-info" title="Vedi elaborazioni">
+                                    📊 Dettagli
+                                </a>
                             </td>
                             <td>
                                 {% if ordine.note %}

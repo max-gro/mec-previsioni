@@ -1,0 +1,140 @@
+<!-- Contenuto del modal - caricato via AJAX -->
+<div class="row mb-3">
+    <div class="col-md-6">
+        <h6>Informazioni Elaborazione</h6>
+        <table class="table table-sm">
+            <tr>
+                <th>Inizio:</th>
+                <td>{{ elaborazione.ts_inizio.strftime('%d/%m/%Y %H:%M:%S') if elaborazione.ts_inizio else '-' }}</td>
+            </tr>
+            <tr>
+                <th>Fine:</th>
+                <td>{{ elaborazione.ts_fine.strftime('%d/%m/%Y %H:%M:%S') if elaborazione.ts_fine else '-' }}</td>
+            </tr>
+            <tr>
+                <th>Durata:</th>
+                <td>{{ elaborazione.durata_secondi }} secondi</td>
+            </tr>
+            <tr>
+                <th>Esito:</th>
+                <td>
+                    {% if elaborazione.esito == 'Successo' %}
+                    <span class="badge bg-success">{{ elaborazione.esito }}</span>
+                    {% elif elaborazione.esito == 'Errore' %}
+                    <span class="badge bg-danger">{{ elaborazione.esito }}</span>
+                    {% elif elaborazione.esito == 'Warning' %}
+                    <span class="badge bg-warning text-dark">{{ elaborazione.esito }}</span>
+                    {% else %}
+                    <span class="badge bg-secondary">{{ elaborazione.esito }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div class="col-md-6">
+        <h6>Statistiche</h6>
+        <table class="table table-sm">
+            <tr>
+                <th>Righe Totali:</th>
+                <td>{{ elaborazione.righe_totali or 0 }}</td>
+            </tr>
+            <tr>
+                <th>Righe OK:</th>
+                <td><span class="badge bg-success">{{ elaborazione.righe_ok or 0 }}</span> ({{ elaborazione.percentuale_successo() }}%)</td>
+            </tr>
+            <tr>
+                <th>Righe con Errori:</th>
+                <td><span class="badge bg-danger">{{ elaborazione.righe_errore or 0 }}</span></td>
+            </tr>
+            <tr>
+                <th>Righe con Warning:</th>
+                <td><span class="badge bg-warning text-dark">{{ elaborazione.righe_warning or 0 }}</span></td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <strong>Messaggio:</strong> {{ elaborazione.messaggio_globale or 'Nessun messaggio' }}
+</div>
+
+<hr>
+
+<h6>Dettaglio Anomalie</h6>
+
+<!-- Filtri -->
+<div class="mb-3">
+    <div class="btn-group" role="group">
+        <a href="?tipo=" class="btn btn-sm btn-outline-secondary {% if not tipo_filter %}active{% endif %}">Tutti</a>
+        <a href="?tipo=ERRORE" class="btn btn-sm btn-outline-danger {% if tipo_filter == 'ERRORE' %}active{% endif %}">Solo Errori</a>
+        <a href="?tipo=WARNING" class="btn btn-sm btn-outline-warning {% if tipo_filter == 'WARNING' %}active{% endif %}">Solo Warning</a>
+        <a href="?tipo=INFO" class="btn btn-sm btn-outline-info {% if tipo_filter == 'INFO' %}active{% endif %}">Solo Info</a>
+    </div>
+</div>
+
+{% if dettagli.items %}
+<div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+    <table class="table table-sm table-striped">
+        <thead class="sticky-top bg-white">
+            <tr>
+                <th>Riga</th>
+                <th>Tipo</th>
+                <th>Codice</th>
+                <th>Campo</th>
+                <th>Messaggio</th>
+                <th>Valore Originale</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in dettagli.items %}
+            <tr>
+                <td>{{ d.riga_numero or '-' }}</td>
+                <td>
+                    {% if d.tipo_messaggio == 'ERRORE' %}
+                    <span class="badge bg-danger">{{ d.tipo_messaggio }}</span>
+                    {% elif d.tipo_messaggio == 'WARNING' %}
+                    <span class="badge bg-warning text-dark">{{ d.tipo_messaggio }}</span>
+                    {% else %}
+                    <span class="badge bg-info">{{ d.tipo_messaggio }}</span>
+                    {% endif %}
+                </td>
+                <td><code>{{ d.codice_errore or '-' }}</code></td>
+                <td><small>{{ d.campo or '-' }}</small></td>
+                <td>{{ d.messaggio }}</td>
+                <td><small>{{ d.valore_originale or '-' }}</small></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Paginazione -->
+{% if dettagli.pages > 1 %}
+<nav>
+    <ul class="pagination pagination-sm justify-content-center">
+        {% if dettagli.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ dettagli.prev_num }}{% if tipo_filter %}&tipo={{ tipo_filter }}{% endif %}">Precedente</a>
+        </li>
+        {% endif %}
+
+        <li class="page-item disabled">
+            <span class="page-link">Pagina {{ dettagli.page }} di {{ dettagli.pages }}</span>
+        </li>
+
+        {% if dettagli.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ dettagli.next_num }}{% if tipo_filter %}&tipo={{ tipo_filter }}{% endif %}">Successiva</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<p class="text-muted text-center"><small>Mostrando {{ dettagli.items|length }} di {{ dettagli.total }} anomalie</small></p>
+
+{% else %}
+<div class="alert alert-success">
+    <strong>Nessuna anomalia trovata!</strong> Elaborazione completata senza errori o warning.
+</div>
+{% endif %}

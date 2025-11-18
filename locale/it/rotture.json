@@ -1,0 +1,174 @@
+{
+  "module": "rotture",
+  "language": "it",
+  "translations": {
+    "title": "Gestione File Rotture",
+    "subtitle": "Upload ed elaborazione file Excel rotture componenti",
+    "buttons": {
+      "sync": "Sincronizza",
+      "upload_new": "Carica Nuove Rotture",
+      "filter": "Filtra",
+      "reset": "Reset",
+      "process": "Elabora",
+      "download": "Download",
+      "edit": "Modifica",
+      "delete": "Elimina",
+      "cancel": "Annulla",
+      "save": "Salva",
+      "upload_first": "Carica il primo file"
+    },
+    "filters": {
+      "year": "Anno",
+      "all": "Tutti",
+      "status": "Stato"
+    },
+    "table": {
+      "headers": {
+        "year": "Anno",
+        "file": "File",
+        "acquisition_date": "Acquisizione",
+        "processing_date": "Elaborazione",
+        "status": "Stato",
+        "path": "Percorso",
+        "notes": "Note",
+        "actions": "Azioni"
+      }
+    },
+    "status": {
+      "to_process": "Da processare",
+      "processed": "Processato",
+      "error": "Errore"
+    },
+    "paths": {
+      "input": "INPUT/rotture",
+      "output": "OUTPUT/rotture"
+    },
+    "messages": {
+      "no_files": "Nessun file rottura trovato.",
+      "sync_completed": "Sincronizzazione completata!",
+      "file_uploaded": "File rottura {filename} caricato con successo!",
+      "file_updated": "File rottura aggiornato!",
+      "file_deleted": "File rottura {filename} eliminato (incluse {num} rotture associate).",
+      "already_processed": "Il file è già stato processato!",
+      "file_not_found": "File non trovato: {filepath}",
+      "processing_success": "File elaborato con successo! Elaborate {num} rotture.",
+      "processing_error": "Errore durante elaborazione: {message}",
+      "move_error": "Errore spostamento file: {error}",
+      "delete_error": "Errore durante eliminazione: {error}",
+      "access_denied": "Accesso negato: solo gli amministratori possono eseguire questa azione."
+    },
+    "legend": {
+      "title": "Legenda Stati",
+      "to_process_desc": "File caricato in INPUT/rotture, in attesa di elaborazione",
+      "processed_desc": "File elaborato con successo e spostato in OUTPUT/rotture",
+      "error_desc": "Errore durante elaborazione, file rimasto in INPUT/rotture"
+    },
+    "actions": {
+      "title": "Azioni disponibili",
+      "sync_desc": "Scansiona le cartelle INPUT/rotture e OUTPUT/rotture e aggiunge file non presenti nel database",
+      "upload_desc": "Aggiunge un nuovo file Excel",
+      "process_desc": "Elabora il file Excel (solo per stati \"Da processare\" ed \"Errore\")",
+      "download_desc": "Scarica il file Excel",
+      "edit_desc": "Modifica metadati e note",
+      "delete_desc": "Elimina file e record database",
+      "folder_structure": "Struttura cartelle: INPUT/po/anno/ (Da processare, Errore) → OUTPUT/po/anno/ (Processato)"
+    },
+    "modals": {
+      "delete": {
+        "title": "Conferma Eliminazione",
+        "body": "Sei sicuro di voler eliminare il file <strong>{filename}</strong> (Anno {year})?<br><br>Verrà eliminato sia il record dal database che il file fisico.",
+        "confirm": "Elimina"
+      },
+      "process": {
+        "confirm": "Sei sicuro di voler elaborare questo file?"
+      }
+    },
+    "pagination": {
+      "previous": "Precedente",
+      "next": "Successiva"
+    },
+    "form": {
+      "year": "Anno",
+      "file": "File Excel",
+      "acquisition_date": "Data Acquisizione",
+      "processing_date": "Data Elaborazione",
+      "status": "Stato",
+      "notes": "Note",
+      "upload_file": "Carica File Rotture",
+      "supported_formats": "Formati supportati: .xls, .xlsx",
+      "date_format": "Formato: gg/mm/aaaa (es. 26/10/2025)",
+      "date_placeholder": "gg/mm/aaaa",
+      "notes_placeholder": "Inserisci eventuali note sul file...",
+      "filename_readonly": "Il nome del file non può essere modificato",
+      "optional_leave_empty": "Opzionale - lascia vuoto se non elaborato",
+      "notes_always_editable": "Le note sono sempre modificabili",
+      "processed_status_readonly": "I file processati non possono cambiare stato"
+    },
+    "create": {
+      "title": "Carica Nuovo File Rottura",
+      "breadcrumb": "Carica Nuovo",
+      "upload_button": "Carica File",
+      "info_title": "Informazioni:",
+      "info_saved_to": "Il file verrà salvato nella cartella <code>INPUT/rotture</code>",
+      "info_initial_status": "Lo stato iniziale sarà <strong>Da processare</strong>",
+      "info_use_process": "Usa il bottone \"Elabora\" per processare il file",
+      "guide_title": "Guida Upload",
+      "guide_year": "<strong>Anno:</strong> Anno di riferimento del file rotture",
+      "guide_acquisition": "<strong>Data Acquisizione:</strong> Data di caricamento del file",
+      "guide_file": "<strong>File Excel:</strong> Seleziona il file .xls o .xlsx contenente i dati delle rotture",
+      "guide_notes": "<strong>Note:</strong> Eventuali annotazioni sul file (opzionale)",
+      "workflow_title": "Workflow:",
+      "workflow_step1": "Carica il file (stato: <span class=\"badge bg-warning text-dark\">Da processare</span>)",
+      "workflow_step2": "Clicca \"Elabora\" per processare",
+      "workflow_step3": "Se OK: file va in OUTPUT (stato: <span class=\"badge bg-success\">Processato</span>)",
+      "workflow_step4": "Se errore: file resta in INPUT (stato: <span class=\"badge bg-danger\">Errore</span>)"
+    },
+    "edit": {
+      "title": "Modifica File Rottura",
+      "breadcrumb": "Modifica {filename}",
+      "save_button": "Salva Modifiche",
+      "file_info_title": "Informazioni File",
+      "file_info_id": "ID:",
+      "file_info_year": "Anno:",
+      "file_info_status": "Stato:",
+      "file_info_path": "Percorso:",
+      "file_info_uploaded": "Caricato il:",
+      "file_info_processed": "Elaborato il:",
+      "file_info_na": "N/D",
+      "download_title": "Download",
+      "download_button": "Scarica File",
+      "danger_zone_title": "Zona Pericolosa",
+      "danger_zone_warning": "L'eliminazione del file è permanente e cancellerà anche il file fisico.",
+      "delete_button": "Elimina File",
+      "processed_alert": "<strong>✅ File Processato</strong><br>Questo file è stato elaborato con successo. È possibile modificare solo le note.",
+      "delete_modal_body": "Sei sicuro di voler eliminare il file <strong>{filename}</strong>?<br><br><strong>Anno:</strong> {year}<br><strong>Stato:</strong> {status}<br><br>Questa azione è <strong>irreversibile</strong> ed eliminerà sia il record dal database che il file fisico.",
+      "delete_permanent_button": "Elimina Definitivamente"
+    },
+    "trace": {
+      "delete_start": "Inizio eliminazione file {filename}",
+      "delete_success": "Eliminazione completata: {filename}",
+      "delete_error": "Errore durante eliminazione: {error}",
+      "components_deleted": "Eliminati {num} record rotture_componenti",
+      "rotture_deleted": "Eliminati {num} record rotture",
+      "file_deleted": "File fisico eliminato: {filepath}",
+      "file_delete_error": "Errore eliminazione file fisico: {error}"
+    },
+    "processing": {
+      "file_not_found": "File non trovato al path: {filepath}",
+      "processed_note": "Elaborate {num} rotture. {message}",
+      "error_note": "Elaborazione OK ma errore spostamento file: {error}",
+      "output_note": "File già processato, trovato in OUTPUT durante sincronizzazione",
+      "start": "Inizio elaborazione file {filename}",
+      "parse_excel": "Lettura file Excel e generazione TSV",
+      "tsv_generated": "File TSV generato: {rows} righe",
+      "insert_data": "Inserimento dati nel database",
+      "complete": "Elaborazione completata: {num} rotture inserite",
+      "success_message": "Elaborazione completata con successo",
+      "error_during_processing": "Errore durante elaborazione: {error}",
+      "errors_found": "Errori durante elaborazione: {num} righe con errori",
+      "errors_see_trace": "{num} righe con errori. Vedere trace per dettagli.",
+      "model_not_found": "Modello {code} non trovato in anagrafica",
+      "protocol_missing": "Protocollo mancante"
+    }
+  }
+}

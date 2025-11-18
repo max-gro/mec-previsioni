@@ -1,0 +1,174 @@
+{
+  "module": "rotture",
+  "language": "en",
+  "translations": {
+    "title": "Breakdowns File Management",
+    "subtitle": "Upload and processing of component breakdowns Excel files",
+    "buttons": {
+      "sync": "Synchronize",
+      "upload_new": "Upload New Breakdowns",
+      "filter": "Filter",
+      "reset": "Reset",
+      "process": "Process",
+      "download": "Download",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "save": "Save",
+      "upload_first": "Upload the first file"
+    },
+    "filters": {
+      "year": "Year",
+      "all": "All",
+      "status": "Status"
+    },
+    "table": {
+      "headers": {
+        "year": "Year",
+        "file": "File",
+        "acquisition_date": "Acquisition",
+        "processing_date": "Processing",
+        "status": "Status",
+        "path": "Path",
+        "notes": "Notes",
+        "actions": "Actions"
+      }
+    },
+    "status": {
+      "to_process": "To process",
+      "processed": "Processed",
+      "error": "Error"
+    },
+    "paths": {
+      "input": "INPUT/rotture",
+      "output": "OUTPUT/rotture"
+    },
+    "messages": {
+      "no_files": "No breakdown files found.",
+      "sync_completed": "Synchronization completed!",
+      "file_uploaded": "Breakdown file {filename} uploaded successfully!",
+      "file_updated": "Breakdown file updated!",
+      "file_deleted": "Breakdown file {filename} deleted (including {num} associated breakdowns).",
+      "already_processed": "The file has already been processed!",
+      "file_not_found": "File not found: {filepath}",
+      "processing_success": "File processed successfully! Processed {num} breakdowns.",
+      "processing_error": "Error during processing: {message}",
+      "move_error": "File move error: {error}",
+      "delete_error": "Error during deletion: {error}",
+      "access_denied": "Access denied: only administrators can perform this action."
+    },
+    "legend": {
+      "title": "Status Legend",
+      "to_process_desc": "File uploaded in INPUT/rotture, waiting for processing",
+      "processed_desc": "File processed successfully and moved to OUTPUT/rotture",
+      "error_desc": "Error during processing, file remained in INPUT/rotture"
+    },
+    "actions": {
+      "title": "Available Actions",
+      "sync_desc": "Scans INPUT/rotture and OUTPUT/rotture folders and adds files not present in the database",
+      "upload_desc": "Adds a new Excel file",
+      "process_desc": "Processes the Excel file (only for states \"To process\" and \"Error\")",
+      "download_desc": "Downloads the Excel file",
+      "edit_desc": "Edits metadata and notes",
+      "delete_desc": "Deletes file and database record",
+      "folder_structure": "Folder structure: INPUT/po/year/ (To process, Error) → OUTPUT/po/year/ (Processed)"
+    },
+    "modals": {
+      "delete": {
+        "title": "Confirm Deletion",
+        "body": "Are you sure you want to delete the file <strong>{filename}</strong> (Year {year})?<br><br>Both the database record and the physical file will be deleted.",
+        "confirm": "Delete"
+      },
+      "process": {
+        "confirm": "Are you sure you want to process this file?"
+      }
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "form": {
+      "year": "Year",
+      "file": "Excel File",
+      "acquisition_date": "Acquisition Date",
+      "processing_date": "Processing Date",
+      "status": "Status",
+      "notes": "Notes",
+      "upload_file": "Upload Breakdown File",
+      "supported_formats": "Supported formats: .xls, .xlsx",
+      "date_format": "Format: dd/mm/yyyy (e.g. 26/10/2025)",
+      "date_placeholder": "dd/mm/yyyy",
+      "notes_placeholder": "Enter any notes about the file...",
+      "filename_readonly": "The file name cannot be modified",
+      "optional_leave_empty": "Optional - leave empty if not processed",
+      "notes_always_editable": "Notes are always editable",
+      "processed_status_readonly": "Processed files cannot change status"
+    },
+    "create": {
+      "title": "Upload New Breakdown File",
+      "breadcrumb": "Upload New",
+      "upload_button": "Upload File",
+      "info_title": "Information:",
+      "info_saved_to": "The file will be saved in the <code>INPUT/rotture</code> folder",
+      "info_initial_status": "The initial status will be <strong>To process</strong>",
+      "info_use_process": "Use the \"Process\" button to process the file",
+      "guide_title": "Upload Guide",
+      "guide_year": "<strong>Year:</strong> Reference year of the breakdown file",
+      "guide_acquisition": "<strong>Acquisition Date:</strong> Date of file upload",
+      "guide_file": "<strong>Excel File:</strong> Select the .xls or .xlsx file containing breakdown data",
+      "guide_notes": "<strong>Notes:</strong> Any notes about the file (optional)",
+      "workflow_title": "Workflow:",
+      "workflow_step1": "Upload the file (status: <span class=\"badge bg-warning text-dark\">To process</span>)",
+      "workflow_step2": "Click \"Process\" to process",
+      "workflow_step3": "If OK: file goes to OUTPUT (status: <span class=\"badge bg-success\">Processed</span>)",
+      "workflow_step4": "If error: file remains in INPUT (status: <span class=\"badge bg-danger\">Error</span>)"
+    },
+    "edit": {
+      "title": "Edit Breakdown File",
+      "breadcrumb": "Edit {filename}",
+      "save_button": "Save Changes",
+      "file_info_title": "File Information",
+      "file_info_id": "ID:",
+      "file_info_year": "Year:",
+      "file_info_status": "Status:",
+      "file_info_path": "Path:",
+      "file_info_uploaded": "Uploaded on:",
+      "file_info_processed": "Processed on:",
+      "file_info_na": "N/A",
+      "download_title": "Download",
+      "download_button": "Download File",
+      "danger_zone_title": "Danger Zone",
+      "danger_zone_warning": "File deletion is permanent and will also delete the physical file.",
+      "delete_button": "Delete File",
+      "processed_alert": "<strong>✅ Processed File</strong><br>This file has been successfully processed. Only notes can be modified.",
+      "delete_modal_body": "Are you sure you want to delete the file <strong>{filename}</strong>?<br><br><strong>Year:</strong> {year}<br><strong>Status:</strong> {status}<br><br>This action is <strong>irreversible</strong> and will delete both the database record and the physical file.",
+      "delete_permanent_button": "Delete Permanently"
+    },
+    "trace": {
+      "delete_start": "Starting deletion of file {filename}",
+      "delete_success": "Deletion completed: {filename}",
+      "delete_error": "Error during deletion: {error}",
+      "components_deleted": "Deleted {num} rotture_componenti records",
+      "rotture_deleted": "Deleted {num} rotture records",
+      "file_deleted": "Physical file deleted: {filepath}",
+      "file_delete_error": "Error deleting physical file: {error}"
+    },
+    "processing": {
+      "file_not_found": "File not found at path: {filepath}",
+      "processed_note": "Processed {num} breakdowns. {message}",
+      "error_note": "Processing OK but file move error: {error}",
+      "output_note": "File already processed, found in OUTPUT during synchronization",
+      "start": "Starting file processing {filename}",
+      "parse_excel": "Reading Excel file and generating TSV",
+      "tsv_generated": "TSV file generated: {rows} rows",
+      "insert_data": "Inserting data into database",
+      "complete": "Processing completed: {num} breakdowns inserted",
+      "success_message": "Processing completed successfully",
+      "error_during_processing": "Error during processing: {error}",
+      "errors_found": "Errors during processing: {num} rows with errors",
+      "errors_see_trace": "{num} rows with errors. See trace for details.",
+      "model_not_found": "Model {code} not found in master data",
+      "protocol_missing": "Protocol missing"
+    }
+  }
+}

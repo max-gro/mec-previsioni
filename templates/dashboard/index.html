@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Elaborazioni - M&C Previsioni{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Dashboard Elaborazioni</h2>
+        <div>
+            <select class="form-select" onchange="window.location.href='?days='+this.value">
+                <option value="7" {% if days == 7 %}selected{% endif %}>Ultimi 7 giorni</option>
+                <option value="30" {% if days == 30 %}selected{% endif %}>Ultimi 30 giorni</option>
+                <option value="90" {% if days == 90 %}selected{% endif %}>Ultimi 90 giorni</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Statistiche Pipeline -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">Ordini</h5>
+                    <div class="row">
+                        <div class="col-6">
+                            <p class="mb-1"><small class="text-muted">File totali</small></p>
+                            <h3>{{ stats_pipeline.ordini.file_totali }}</h3>
+                        </div>
+                        <div class="col-6">
+                            <p class="mb-1"><small class="text-muted">Elaborazioni</small></p>
+                            <h3>{{ stats_pipeline.ordini.elaborazioni_recenti }}</h3>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-success">{{ stats_pipeline.ordini.perc_successo }}% successo</span>
+                        <a href="{{ url_for('ordini.list') }}" class="btn btn-sm btn-outline-primary">Vai →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-success">
+                <div class="card-body">
+                    <h5 class="card-title text-success">Anagrafiche</h5>
+                    <div class="row">
+                        <div class="col-6">
+                            <p class="mb-1"><small class="text-muted">File totali</small></p>
+                            <h3>{{ stats_pipeline.anagrafiche.file_totali }}</h3>
+                        </div>
+                        <div class="col-6">
+                            <p class="mb-1"><small class="text-muted">Elaborazioni</small></p>
+                            <h3>{{ stats_pipeline.anagrafiche.elaborazioni_recenti }}</h3>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-success">{{ stats_pipeline.anagrafiche.perc_successo }}% successo</span>
+                        <a href="{{ url_for('anagrafiche.list') }}" class="btn btn-sm btn-outline-success">Vai →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-warning">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">Rotture</h5>
+                    <div class="row">
+                        <div class="col-6">
+                            <p class="mb-1"><small class="text-muted">File totali</small></p>
+                            <h3>{{ stats_pipeline.rotture.file_totali }}</h3>
+                        </div>
+                        <div class="col-6">
+                            <p class="mb-1"><small class="text-muted">Elaborazioni</small></p>
+                            <h3>{{ stats_pipeline.rotture.elaborazioni_recenti }}</h3>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-success">{{ stats_pipeline.rotture.perc_successo }}% successo</span>
+                        <a href="{{ url_for('rotture.list') }}" class="btn btn-sm btn-outline-warning">Vai →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiche Globali -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <p class="text-muted mb-1">Durata Media</p>
+                    <h4>{{ stats_globali.durata_media }}s</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <p class="text-muted mb-1">Righe Elaborate</p>
+                    <h4>{{ "{:,}".format(stats_globali.totale_righe) }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <p class="text-muted mb-1">Righe con Errori</p>
+                    <h4>{{ "{:,}".format(stats_globali.totale_errori) }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Ultime Elaborazioni -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Ultime Elaborazioni</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Data/Ora</th>
+                                    <th>Pipeline</th>
+                                    <th>File</th>
+                                    <th>Esito</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in ultime_elaborazioni %}
+                                <tr>
+                                    <td><small>{{ item.elaborazione.ts_inizio.strftime('%d/%m %H:%M') }}</small></td>
+                                    <td><span class="badge bg-secondary">{{ item.elaborazione.tipo_pipeline }}</span></td>
+                                    <td><small>{{ item.file.filename if item.file else 'N/A' }}</small></td>
+                                    <td>
+                                        {% if item.elaborazione.esito == 'Successo' %}
+                                        <span class="badge bg-success">Successo</span>
+                                        {% elif item.elaborazione.esito == 'Errore' %}
+                                        <span class="badge bg-danger">Errore</span>
+                                        {% elif item.elaborazione.esito == 'Warning' %}
+                                        <span class="badge bg-warning">Warning</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ item.elaborazione.esito }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">Nessuna elaborazione recente</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Elaborazioni con Errori -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Elaborazioni con Errori</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Data/Ora</th>
+                                    <th>Pipeline</th>
+                                    <th>File</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in errori %}
+                                <tr>
+                                    <td><small>{{ item.elaborazione.ts_inizio.strftime('%d/%m %H:%M') }}</small></td>
+                                    <td><span class="badge bg-secondary">{{ item.elaborazione.tipo_pipeline }}</span></td>
+                                    <td><small>{{ item.file.filename if item.file else 'N/A' }}</small></td>
+                                    <td>
+                                        {% if item.file %}
+                                        <a href="{{ url_for(item.elaborazione.tipo_pipeline + '.elaborazioni_list', id=item.file.id) }}" class="btn btn-sm btn-outline-primary">Dettagli</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">Nessun errore recente</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

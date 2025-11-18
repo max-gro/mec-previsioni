@@ -5,12 +5,13 @@ Blueprint per la gestione Anagrafiche File Excel (CRUD + Upload)
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, AnagraficaFile
+from models import db, AnagraficaFile, TraceElaborazione, TraceElaborazioneDettaglio
 from forms import AnagraficaFileForm, AnagraficaFileEditForm, NuovaMarcaForm
 from utils.decorators import admin_required
 import os
 import shutil
 import random
+import time
 from datetime import datetime, date
 
 anagrafiche_bp = Blueprint('anagrafiche', __name__)
@@ -175,15 +176,31 @@ def scan_anagrafiche_folder():
 
 def elabora_anagrafica(anagrafica_id):
     """
-    Elabora un file di anagrafica
-    
+    Elabora un file di anagrafica con tracciamento dettagliato
+
     Logica simulata:
     - 70% probabilità di successo →  sposta in OUTPUT, stato Processato
     - 30% probabilità di errore →  lascia in INPUT, stato Errore
-    
+
     TODO: Sostituire con logica reale di elaborazione
     """
     anagrafica = AnagraficaFile.query.get_or_404(anagrafica_id)
+
+    # ✅ STEP 1: Crea record elaborazione con timestamp inizio
+    ts_inizio = datetime.utcnow()
+    trace = TraceElaborazione(
+        tipo_pipeline='anagrafiche',
+        id_file=anagrafica_id,
+        ts_inizio=ts_inizio,
+        esito='In corso',
+        messaggio_globale='Elaborazione in corso...'
+    )
+    db.session.add(trace)
+    db.session.commit()
+
+    try:
+        # OLD CODE BELOW - will be replaced
+        anagrafica_OLD = anagrafica
     
     # Verifica che il file esista
     if not os.path.exists(anagrafica.filepath):

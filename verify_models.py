@@ -24,7 +24,6 @@ def verify_models():
             Ordine, ModelloComponente,
             UtenteRottura, Rivenditore, Rottura, RotturaComponente,
             TraceElab, TraceElabDett,
-            TraceElaborazione, TraceElaborazioneDettaglio,
             OrdineAcquisto, AnagraficaFile  # Alias per retrocompatibilità
         )
         print("\n✓ Tutti i modelli importati correttamente\n")
@@ -49,8 +48,6 @@ def verify_models():
         ('RotturaComponente', RotturaComponente, 'rotture_componenti'),
         ('TraceElab', TraceElab, 'trace_elab'),
         ('TraceElabDett', TraceElabDett, 'trace_elab_dett'),
-        ('TraceElaborazione', TraceElaborazione, 'trace_elaborazioni'),
-        ('TraceElaborazioneDettaglio', TraceElaborazioneDettaglio, 'trace_elaborazioni_dettaglio'),
     ]
 
     print("Modelli definiti:")

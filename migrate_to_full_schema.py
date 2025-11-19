@@ -27,8 +27,7 @@ from models import (
     Controparte, Modello, Componente,
     Ordine, ModelloComponente,
     UtenteRottura, Rivenditore, Rottura, RotturaComponente,
-    TraceElab, TraceElabDett,
-    TraceElaborazione, TraceElaborazioneDettaglio
+    TraceElab, TraceElabDett
 )
 
 # Crea istanza app usando factory pattern
@@ -237,8 +236,6 @@ def migrate_schema():
             'rotture_componenti',
             'trace_elab',
             'trace_elab_dett',
-            'trace_elaborazioni',
-            'trace_elaborazioni_dettaglio',
         ]
 
         missing_tables = []

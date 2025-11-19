@@ -326,7 +326,7 @@ class Rottura(db.Model):
     cod_modello = db.Column(db.String(100), db.ForeignKey('modelli.cod_modello'), nullable=False)
     cod_rivenditore = db.Column(db.String(100), db.ForeignKey('rivenditori.cod_rivenditore'), nullable=False)
     cod_utente = db.Column(db.String(100), db.ForeignKey('utenti_rotture.cod_utente_rottura'), nullable=False)
-    CAT = db.Column(db.String(100))
+    cat = db.Column(db.String(100))
     flag_consumer = db.Column(db.String(1))
     flag_da_fatturare = db.Column(db.String(1))
     data_competenza = db.Column(db.Date)

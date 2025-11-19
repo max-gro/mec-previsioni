@@ -6,8 +6,8 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from models import (
     db, FileRottura, Rottura, RotturaComponente,
-    Modello, Componente, Utente, Rivenditore,
-    TraceElaborazioneFile, TraceElaborazioneRecord
+    Modello, Componente, UtenteRottura, Rivenditore,
+    TraceElab, TraceElabDett
 )
 from werkzeug.utils import secure_filename
 import os
@@ -423,9 +423,9 @@ def elabora_file_rottura_completo(file_rottura):
         'RotturaComponente': RotturaComponente,
         'Modello': Modello,
         'Componente': Componente,
-        'Utente': Utente,
+        'UtenteRottura': UtenteRottura,
         'Rivenditore': Rivenditore,
-        'TraceElaborazioneFile': TraceElaborazioneFile,
-        'TraceElaborazioneRecord': TraceElaborazioneRecord
+        'TraceElab': TraceElab,
+        'TraceElabDett': TraceElabDett
     }
     return _elabora_file_rottura_completo(file_rottura, db, current_user, current_app, models_dict)

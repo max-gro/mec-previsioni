@@ -19,7 +19,8 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 # Aggiungi il path dell'app per importare i modelli
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app import app
+from app import create_app
+from config import DevelopmentConfig, ProductionConfig
 from models import (
     db, User,
     FileRottura, FileOrdine, FileAnagrafica,
@@ -29,6 +30,9 @@ from models import (
     TraceElab, TraceElabDett,
     TraceElaborazione, TraceElaborazioneDettaglio
 )
+
+# Crea istanza app usando factory pattern
+app = create_app(DevelopmentConfig)
 
 
 def print_header(title):

@@ -70,6 +70,11 @@ venv\Scripts\activate  # Windows
 
 # Verifica dipendenze
 pip install -r requirements.txt
+
+# Verifica configurazione database
+# Lo script usa DevelopmentConfig (SQLite) di default
+# Per usare PostgreSQL in produzione, modifica migrate_to_full_schema.py
+# cambiando: app = create_app(ProductionConfig)
 ```
 
 ### 3. Verifica File

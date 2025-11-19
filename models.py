@@ -417,6 +417,70 @@ class TraceElabDett(db.Model):
 
 
 # ============================================================================
+# VECCHIO SISTEMA TRACCIAMENTO (MANTENUTO PER COMPATIBILITÀ CODICE ESISTENTE)
+# NON VERRANNO CREATE TABELLE NEL DB - SOLO PER EVITARE ERRORI DI IMPORT
+# ============================================================================
+
+class TraceElaborazione(db.Model):
+    """DEPRECATED - Usa TraceElab invece. Mantenuto solo per compatibilità import."""
+    __tablename__ = 'trace_elaborazioni'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    tipo_pipeline = db.Column(db.String(20), nullable=False)
+    id_file = db.Column(db.Integer, nullable=False)
+    ts_inizio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    ts_fine = db.Column(db.DateTime)
+    durata_secondi = db.Column(db.Integer)
+    esito = db.Column(db.String(50), nullable=False)
+    righe_totali = db.Column(db.Integer, default=0)
+    righe_ok = db.Column(db.Integer, default=0)
+    righe_errore = db.Column(db.Integer, default=0)
+    righe_warning = db.Column(db.Integer, default=0)
+    messaggio_globale = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    dettagli = db.relationship('TraceElaborazioneDettaglio', backref='elaborazione', lazy='dynamic', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<TraceElaborazione {self.tipo_pipeline} #{self.id_file} - {self.esito}>'
+
+    def get_file_object(self):
+        if self.tipo_pipeline == 'ordini':
+            return FileOrdine.query.get(self.id_file)
+        elif self.tipo_pipeline == 'anagrafiche':
+            return FileAnagrafica.query.get(self.id_file)
+        elif self.tipo_pipeline == 'rotture':
+            return FileRottura.query.get(self.id_file)
+        return None
+
+    def percentuale_successo(self):
+        if self.righe_totali == 0:
+            return 0
+        return round((self.righe_ok / self.righe_totali) * 100, 1)
+
+
+class TraceElaborazioneDettaglio(db.Model):
+    """DEPRECATED - Usa TraceElabDett invece. Mantenuto solo per compatibilità import."""
+    __tablename__ = 'trace_elaborazioni_dettaglio'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    id_elaborazione = db.Column(db.Integer, db.ForeignKey('trace_elaborazioni.id'), nullable=False)
+    riga_numero = db.Column(db.Integer)
+    tipo_messaggio = db.Column(db.String(20))
+    codice_errore = db.Column(db.String(50))
+    messaggio = db.Column(db.Text, nullable=False)
+    campo = db.Column(db.String(100))
+    valore_originale = db.Column(db.Text)
+    valore_corretto = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<TraceDettaglio Riga:{self.riga_numero} {self.tipo_messaggio} - {self.codice_errore}>'
+
+
+# ============================================================================
 # COMPATIBILITY ALIASES (per non rompere il codice esistente)
 # ============================================================================
 

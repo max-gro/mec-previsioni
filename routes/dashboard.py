@@ -4,7 +4,7 @@ Blueprint per la Dashboard Generale delle Elaborazioni
 
 from flask import Blueprint, render_template, request
 from flask_login import login_required
-from models import db, TraceElaborazione, OrdineAcquisto, AnagraficaFile, Rottura
+from models import db, TraceElab, TraceElabDett, OrdineAcquisto, AnagraficaFile, Rottura
 from sqlalchemy import func, desc
 from datetime import datetime, timedelta
 
@@ -23,38 +23,41 @@ def index():
 
     # ========== STATISTICHE PER PIPELINE ==========
 
-    # ORDINI
+    # ORDINI (conta solo elaborazioni END = elaborazioni complete)
     ordini_total = OrdineAcquisto.query.count()
-    ordini_elab_total = TraceElaborazione.query.filter_by(tipo_pipeline='ordini').count()
-    ordini_elab_recenti = TraceElaborazione.query.filter_by(tipo_pipeline='ordini').filter(
-        TraceElaborazione.ts_inizio >= data_inizio
+    ordini_elab_total = TraceElab.query.filter_by(tipo_file='ORD', step='END').count()
+    ordini_elab_recenti = TraceElab.query.filter_by(tipo_file='ORD', step='END').filter(
+        TraceElab.created_at >= data_inizio
     ).count()
-    ordini_successo = TraceElaborazione.query.filter_by(
-        tipo_pipeline='ordini',
-        esito='Successo'
-    ).filter(TraceElaborazione.ts_inizio >= data_inizio).count()
+    ordini_successo = TraceElab.query.filter_by(
+        tipo_file='ORD',
+        step='END',
+        stato='OK'
+    ).filter(TraceElab.created_at >= data_inizio).count()
 
     # ANAGRAFICHE
     anagr_total = AnagraficaFile.query.count()
-    anagr_elab_total = TraceElaborazione.query.filter_by(tipo_pipeline='anagrafiche').count()
-    anagr_elab_recenti = TraceElaborazione.query.filter_by(tipo_pipeline='anagrafiche').filter(
-        TraceElaborazione.ts_inizio >= data_inizio
+    anagr_elab_total = TraceElab.query.filter_by(tipo_file='ANA', step='END').count()
+    anagr_elab_recenti = TraceElab.query.filter_by(tipo_file='ANA', step='END').filter(
+        TraceElab.created_at >= data_inizio
     ).count()
-    anagr_successo = TraceElaborazione.query.filter_by(
-        tipo_pipeline='anagrafiche',
-        esito='Successo'
-    ).filter(TraceElaborazione.ts_inizio >= data_inizio).count()
+    anagr_successo = TraceElab.query.filter_by(
+        tipo_file='ANA',
+        step='END',
+        stato='OK'
+    ).filter(TraceElab.created_at >= data_inizio).count()
 
     # ROTTURE
     rotture_total = Rottura.query.count()
-    rotture_elab_total = TraceElaborazione.query.filter_by(tipo_pipeline='rotture').count()
-    rotture_elab_recenti = TraceElaborazione.query.filter_by(tipo_pipeline='rotture').filter(
-        TraceElaborazione.ts_inizio >= data_inizio
+    rotture_elab_total = TraceElab.query.filter_by(tipo_file='ROT', step='END').count()
+    rotture_elab_recenti = TraceElab.query.filter_by(tipo_file='ROT', step='END').filter(
+        TraceElab.created_at >= data_inizio
     ).count()
-    rotture_successo = TraceElaborazione.query.filter_by(
-        tipo_pipeline='rotture',
-        esito='Successo'
-    ).filter(TraceElaborazione.ts_inizio >= data_inizio).count()
+    rotture_successo = TraceElab.query.filter_by(
+        tipo_file='ROT',
+        step='END',
+        stato='OK'
+    ).filter(TraceElab.created_at >= data_inizio).count()
 
     # Calcola % successo
     ordini_perc = round((ordini_successo / ordini_elab_recenti * 100), 1) if ordini_elab_recenti > 0 else 0
@@ -86,61 +89,83 @@ def index():
     }
 
     # ========== ULTIME ELABORAZIONI ==========
-    ultime_elaborazioni = TraceElaborazione.query.filter(
-        TraceElaborazione.ts_inizio >= data_inizio
-    ).order_by(desc(TraceElaborazione.ts_inizio)).limit(10).all()
+    ultime_elaborazioni = TraceElab.query.filter(
+        TraceElab.step == 'END',
+        TraceElab.created_at >= data_inizio
+    ).order_by(desc(TraceElab.created_at)).limit(10).all()
 
     # Arricchisci con info file
     elab_con_file = []
     for elab in ultime_elaborazioni:
-        file_obj = elab.get_file_object()
+        # Determina tipo file e carica oggetto file
+        if elab.tipo_file == 'ORD':
+            file_obj = OrdineAcquisto.query.get(elab.id_file)
+            tipo_pipeline_name = 'ordini'
+        elif elab.tipo_file == 'ANA':
+            file_obj = AnagraficaFile.query.get(elab.id_file)
+            tipo_pipeline_name = 'anagrafiche'
+        elif elab.tipo_file == 'ROT':
+            from models import FileRottura
+            file_obj = FileRottura.query.get(elab.id_file)
+            tipo_pipeline_name = 'rotture'
+        else:
+            file_obj = None
+            tipo_pipeline_name = 'unknown'
+
         elab_con_file.append({
             'elaborazione': elab,
-            'file': file_obj
+            'file': file_obj,
+            'tipo_pipeline': tipo_pipeline_name
         })
 
     # ========== ELABORAZIONI CON ERRORI ==========
-    elab_con_errori = TraceElaborazione.query.filter(
-        TraceElaborazione.esito == 'Errore',
-        TraceElaborazione.ts_inizio >= data_inizio
-    ).order_by(desc(TraceElaborazione.ts_inizio)).limit(10).all()
+    elab_con_errori = TraceElab.query.filter(
+        TraceElab.step == 'END',
+        TraceElab.stato == 'KO',
+        TraceElab.created_at >= data_inizio
+    ).order_by(desc(TraceElab.created_at)).limit(10).all()
 
     errori_con_file = []
     for elab in elab_con_errori:
-        file_obj = elab.get_file_object()
+        # Determina tipo file e carica oggetto file
+        if elab.tipo_file == 'ORD':
+            file_obj = OrdineAcquisto.query.get(elab.id_file)
+            tipo_pipeline_name = 'ordini'
+        elif elab.tipo_file == 'ANA':
+            file_obj = AnagraficaFile.query.get(elab.id_file)
+            tipo_pipeline_name = 'anagrafiche'
+        elif elab.tipo_file == 'ROT':
+            from models import FileRottura
+            file_obj = FileRottura.query.get(elab.id_file)
+            tipo_pipeline_name = 'rotture'
+        else:
+            file_obj = None
+            tipo_pipeline_name = 'unknown'
+
         errori_con_file.append({
             'elaborazione': elab,
-            'file': file_obj
+            'file': file_obj,
+            'tipo_pipeline': tipo_pipeline_name
         })
 
     # ========== STATISTICHE GLOBALI ==========
-    # Durata media elaborazioni (ultimi N giorni, solo successi)
-    durata_media_query = db.session.query(
-        func.avg(TraceElaborazione.durata_secondi)
-    ).filter(
-        TraceElaborazione.ts_inizio >= data_inizio,
-        TraceElaborazione.esito.in_(['Successo', 'Warning']),
-        TraceElaborazione.durata_secondi.isnot(None)
-    ).scalar()
+    # Durata media elaborazioni: calcolata da coppie START/END
+    # Per ora semplifichiamo senza calcolare durata media (richiederebbe query complesse)
+    # In futuro si può aggiungere una vista o calcolo più sofisticato
 
-    durata_media = round(durata_media_query, 1) if durata_media_query else 0
+    # Totale dettagli elaborati (record processati)
+    totale_righe = TraceElabDett.query.join(TraceElab).filter(
+        TraceElab.created_at >= data_inizio
+    ).count()
 
-    # Totale righe elaborate
-    totale_righe = db.session.query(
-        func.sum(TraceElaborazione.righe_totali)
-    ).filter(
-        TraceElaborazione.ts_inizio >= data_inizio
-    ).scalar() or 0
-
-    # Totale errori
-    totale_errori = db.session.query(
-        func.sum(TraceElaborazione.righe_errore)
-    ).filter(
-        TraceElaborazione.ts_inizio >= data_inizio
-    ).scalar() or 0
+    # Totale errori (dettagli con stato KO)
+    totale_errori = TraceElabDett.query.join(TraceElab).filter(
+        TraceElab.created_at >= data_inizio,
+        TraceElabDett.stato == 'KO'
+    ).count()
 
     stats_globali = {
-        'durata_media': durata_media,
+        'durata_media': 0,  # Placeholder - da implementare con calcolo START/END
         'totale_righe': totale_righe,
         'totale_errori': totale_errori
     }

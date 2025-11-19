@@ -5,7 +5,7 @@ Blueprint per la gestione Ordini di Acquisto (CRUD + Upload PDF + Elaborazione)
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, OrdineAcquisto, TraceElaborazione, TraceElaborazioneDettaglio
+from models import db, OrdineAcquisto, TraceElab, TraceElabDett
 from forms import OrdineAcquistoForm, OrdineAcquistoEditForm
 from utils.decorators import admin_required
 import os
@@ -63,39 +63,46 @@ def elabora_ordine(ordine_id):
     if not ordine:
         return False, "Ordine non trovato"
 
-    # ✅ STEP 1: Crea record elaborazione con timestamp inizio
+    # ✅ STEP 1: Crea record elaborazione - START
     ts_inizio = datetime.utcnow()
-    trace = TraceElaborazione(
-        tipo_pipeline='ordini',
+    trace = TraceElab(
         id_file=ordine_id,
-        ts_inizio=ts_inizio,
-        esito='In corso',
-        messaggio_globale='Elaborazione in corso...'
+        tipo_file='ORD',
+        step='START',
+        stato='OK',
+        messaggio='Inizio elaborazione ordine'
     )
     db.session.add(trace)
     db.session.commit()  # Commit per avere l'ID
+    id_trace = trace.id_trace
 
     try:
         # Verifica che il file esista
         if not os.path.exists(ordine.filepath):
             # Logga errore critico
-            dettaglio = TraceElaborazioneDettaglio(
-                id_elaborazione=trace.id,
-                tipo_messaggio='ERRORE',
-                codice_errore='FILE_NOT_FOUND',
+            dettaglio = TraceElabDett(
+                id_trace=id_trace,
+                record_pos=0,
+                record_key='FILE_NOT_FOUND',
+                stato='KO',
                 messaggio=f"File non trovato sul filesystem: {ordine.filepath}"
             )
             db.session.add(dettaglio)
 
-            # Finalizza elaborazione
-            trace.ts_fine = datetime.utcnow()
-            trace.durata_secondi = int((trace.ts_fine - trace.ts_inizio).total_seconds())
-            trace.esito = 'Errore'
-            trace.righe_errore = 1
-            trace.messaggio_globale = "File non trovato"
+            # Finalizza elaborazione con errore
+            ts_fine = datetime.utcnow()
+            durata_secondi = int((ts_fine - ts_inizio).total_seconds())
+            trace_end = TraceElab(
+                id_file=ordine_id,
+                tipo_file='ORD',
+                step='END',
+                stato='KO',
+                messaggio=f"File non trovato (durata: {durata_secondi}s)"
+            )
+            db.session.add(trace_end)
 
             ordine.esito = 'Errore'
-            ordine.data_elaborazione = trace.ts_fine
+            ordine.data_elaborazione = ts_fine
             ordine.note = "File non trovato sul filesystem"
 
             db.session.commit()
@@ -117,13 +124,14 @@ def elabora_ordine(ordine_id):
                 # Simula qualche warning (opzionale)
                 num_warnings = random.randint(0, 5)
                 for i in range(num_warnings):
-                    dettaglio = TraceElaborazioneDettaglio(
-                        id_elaborazione=trace.id,
-                        riga_numero=random.randint(1, num_componenti),
-                        tipo_messaggio='WARNING',
-                        codice_errore='VAL_WARN',
+                    riga_num = random.randint(1, num_componenti)
+                    dettaglio = TraceElabDett(
+                        id_trace=id_trace,
+                        record_pos=riga_num,
+                        record_key=f'VAL_WARN|prezzo|{riga_num}',
+                        stato='WARN',
                         messaggio=f"Prezzo componente sospetto (troppo basso): €{random.uniform(0.01, 0.99):.2f}",
-                        campo='prezzo'
+                        record_data={'campo': 'prezzo', 'riga': riga_num}
                     )
                     db.session.add(dettaglio)
 
@@ -131,41 +139,53 @@ def elabora_ordine(ordine_id):
                 shutil.move(ordine.filepath, new_filepath)
 
                 # ✅ STEP 3: Finalizza elaborazione con successo
-                trace.ts_fine = datetime.utcnow()
-                trace.durata_secondi = int((trace.ts_fine - trace.ts_inizio).total_seconds())
-                trace.esito = 'Successo' if num_warnings == 0 else 'Warning'
-                trace.righe_totali = num_componenti
-                trace.righe_ok = num_componenti - num_warnings
-                trace.righe_warning = num_warnings
-                trace.messaggio_globale = f"Elaborati {num_componenti} componenti con successo. Importo totale: €{random.randint(1000, 50000):,}"
+                ts_fine = datetime.utcnow()
+                durata_secondi = int((ts_fine - ts_inizio).total_seconds())
+                importo_totale = random.randint(1000, 50000)
+                messaggio_finale = f"Elaborati {num_componenti} componenti. Importo totale: €{importo_totale:,}. {num_warnings} warning. Durata: {durata_secondi}s"
+
+                trace_end = TraceElab(
+                    id_file=ordine_id,
+                    tipo_file='ORD',
+                    step='END',
+                    stato='WARN' if num_warnings > 0 else 'OK',
+                    messaggio=messaggio_finale
+                )
+                db.session.add(trace_end)
 
                 # Aggiorna record file
                 ordine.filepath = new_filepath
                 ordine.esito = 'Processato'
-                ordine.data_elaborazione = trace.ts_fine
-                ordine.note = trace.messaggio_globale
+                ordine.data_elaborazione = ts_fine
+                ordine.note = messaggio_finale
 
                 db.session.commit()
                 return True, "Ordine elaborato con successo!"
 
             except Exception as e:
                 # Errore nello spostamento file
-                dettaglio = TraceElaborazioneDettaglio(
-                    id_elaborazione=trace.id,
-                    tipo_messaggio='ERRORE',
-                    codice_errore='FILE_MOVE_ERROR',
+                dettaglio = TraceElabDett(
+                    id_trace=id_trace,
+                    record_pos=0,
+                    record_key='FILE_MOVE_ERROR',
+                    stato='KO',
                     messaggio=f"Errore spostamento file: {str(e)}"
                 )
                 db.session.add(dettaglio)
 
-                trace.ts_fine = datetime.utcnow()
-                trace.durata_secondi = int((trace.ts_fine - trace.ts_inizio).total_seconds())
-                trace.esito = 'Errore'
-                trace.righe_errore = 1
-                trace.messaggio_globale = f"Errore durante lo spostamento del file"
+                ts_fine = datetime.utcnow()
+                durata_secondi = int((ts_fine - ts_inizio).total_seconds())
+                trace_end = TraceElab(
+                    id_file=ordine_id,
+                    tipo_file='ORD',
+                    step='END',
+                    stato='KO',
+                    messaggio=f"Errore durante spostamento file (durata: {durata_secondi}s)"
+                )
+                db.session.add(trace_end)
 
                 ordine.esito = 'Errore'
-                ordine.data_elaborazione = trace.ts_fine
+                ordine.data_elaborazione = ts_fine
                 ordine.note = str(e)
 
                 db.session.commit()
@@ -186,38 +206,52 @@ def elabora_ordine(ordine_id):
             # Simula errori su più righe
             num_errori = random.randint(3, 15)
             for i in range(num_errori):
-                dettaglio = TraceElaborazioneDettaglio(
-                    id_elaborazione=trace.id,
-                    riga_numero=random.randint(1, num_componenti),
-                    tipo_messaggio='ERRORE',
-                    codice_errore=errore_code,
+                riga_num = random.randint(1, num_componenti)
+                campo = random.choice(['codice_componente', 'quantita', 'prezzo', 'data_ordine'])
+                dettaglio = TraceElabDett(
+                    id_trace=id_trace,
+                    record_pos=riga_num,
+                    record_key=f'{errore_code}|{campo}|{riga_num}',
+                    stato='KO',
                     messaggio=errore_msg,
-                    campo=random.choice(['codice_componente', 'quantita', 'prezzo', 'data_ordine'])
+                    record_data={'campo': campo, 'riga': riga_num}
                 )
                 db.session.add(dettaglio)
 
             # ✅ STEP 3: Finalizza elaborazione con errore
-            trace.ts_fine = datetime.utcnow()
-            trace.durata_secondi = int((trace.ts_fine - trace.ts_inizio).total_seconds())
-            trace.esito = 'Errore'
-            trace.righe_totali = num_componenti
-            trace.righe_errore = num_errori
-            trace.righe_ok = num_componenti - num_errori
-            trace.messaggio_globale = f"Elaborazione fallita: {errore_msg}. Trovati {num_errori} errori su {num_componenti} righe."
+            ts_fine = datetime.utcnow()
+            durata_secondi = int((ts_fine - ts_inizio).total_seconds())
+            messaggio_finale = f"Elaborazione fallita: {errore_msg}. Trovati {num_errori} errori su {num_componenti} righe. Durata: {durata_secondi}s"
+
+            trace_end = TraceElab(
+                id_file=ordine_id,
+                tipo_file='ORD',
+                step='END',
+                stato='KO',
+                messaggio=messaggio_finale
+            )
+            db.session.add(trace_end)
 
             ordine.esito = 'Errore'
-            ordine.data_elaborazione = trace.ts_fine
-            ordine.note = trace.messaggio_globale
+            ordine.data_elaborazione = ts_fine
+            ordine.note = messaggio_finale
 
             db.session.commit()
             return False, f"Elaborazione fallita: {errore_msg}"
 
     except Exception as e:
         # Gestione errori imprevisti
-        trace.ts_fine = datetime.utcnow()
-        trace.durata_secondi = int((trace.ts_fine - trace.ts_inizio).total_seconds())
-        trace.esito = 'Errore'
-        trace.messaggio_globale = f"Errore imprevisto: {str(e)}"
+        ts_fine = datetime.utcnow()
+        durata_secondi = int((ts_fine - ts_inizio).total_seconds())
+
+        trace_end = TraceElab(
+            id_file=ordine_id,
+            tipo_file='ORD',
+            step='END',
+            stato='KO',
+            messaggio=f"Errore imprevisto: {str(e)} (durata: {durata_secondi}s)"
+        )
+        db.session.add(trace_end)
         db.session.commit()
         return False, f"Errore imprevisto: {str(e)}"
 
@@ -527,11 +561,20 @@ def elaborazioni_list(id):
     """
     ordine = OrdineAcquisto.query.get_or_404(id)
 
-    # Recupera tutte le elaborazioni per questo ordine
-    elaborazioni = TraceElaborazione.query.filter_by(
-        tipo_pipeline='ordini',
-        id_file=id
-    ).order_by(TraceElaborazione.ts_inizio.desc()).all()
+    # Recupera tutte le elaborazioni START per questo ordine (ogni START rappresenta un'elaborazione)
+    elaborazioni = TraceElab.query.filter_by(
+        tipo_file='ORD',
+        id_file=id,
+        step='START'
+    ).order_by(TraceElab.created_at.desc()).all()
+
+    # Per ogni elaborazione, arricchisci con info END
+    for elab in elaborazioni:
+        elab.trace_end = TraceElab.query.filter_by(
+            tipo_file='ORD',
+            id_file=id,
+            step='END'
+        ).filter(TraceElab.created_at >= elab.created_at).order_by(TraceElab.created_at).first()
 
     return render_template('ordini/elaborazioni_list.html',
                          ordine=ordine,
@@ -545,49 +588,66 @@ def elaborazione_dettaglio(id, id_elab):
     LIVELLO 3: Dettaglio completo di un'elaborazione specifica (JSON per modal)
     """
     ordine = OrdineAcquisto.query.get_or_404(id)
-    elaborazione = TraceElaborazione.query.get_or_404(id_elab)
+    elaborazione = TraceElab.query.get_or_404(id_elab)
 
     # Verifica che l'elaborazione appartenga all'ordine
-    if elaborazione.tipo_pipeline != 'ordini' or elaborazione.id_file != id:
+    if elaborazione.tipo_file != 'ORD' or elaborazione.id_file != id:
         flash('Elaborazione non trovata per questo ordine', 'danger')
         return redirect(url_for('ordini.elaborazioni_list', id=id))
 
+    # Trova il trace END corrispondente
+    elaborazione.trace_end = TraceElab.query.filter_by(
+        tipo_file='ORD',
+        id_file=id,
+        step='END'
+    ).filter(TraceElab.created_at >= elaborazione.created_at).order_by(TraceElab.created_at).first()
+
     # Recupera tutti i dettagli (anomalie)
     page = request.args.get('page', 1, type=int)
-    tipo_filter = request.args.get('tipo', '')
+    stato_filter = request.args.get('stato', '')
 
-    query = TraceElaborazioneDettaglio.query.filter_by(id_elaborazione=id_elab)
+    query = TraceElabDett.query.filter_by(id_trace=id_elab)
 
-    if tipo_filter:
-        query = query.filter_by(tipo_messaggio=tipo_filter)
+    if stato_filter:
+        query = query.filter_by(stato=stato_filter)
 
-    query = query.order_by(TraceElaborazioneDettaglio.riga_numero)
+    query = query.order_by(TraceElabDett.record_pos)
     dettagli = query.paginate(page=page, per_page=50, error_out=False)
 
     # Se richiesta AJAX, ritorna JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         from flask import jsonify
+
+        # Calcola statistiche dai dettagli
+        num_ko = sum(1 for d in dettagli.items if d.stato == 'KO')
+        num_warn = sum(1 for d in dettagli.items if d.stato == 'WARN')
+        num_ok = len(dettagli.items) - num_ko - num_warn
+
+        durata_secondi = None
+        if elaborazione.trace_end:
+            durata_secondi = int((elaborazione.trace_end.created_at - elaborazione.created_at).total_seconds())
+
         return jsonify({
             'elaborazione': {
-                'id': elaborazione.id,
-                'ts_inizio': elaborazione.ts_inizio.isoformat() if elaborazione.ts_inizio else None,
-                'ts_fine': elaborazione.ts_fine.isoformat() if elaborazione.ts_fine else None,
-                'durata_secondi': elaborazione.durata_secondi,
-                'esito': elaborazione.esito,
-                'righe_totali': elaborazione.righe_totali,
-                'righe_ok': elaborazione.righe_ok,
-                'righe_errore': elaborazione.righe_errore,
-                'righe_warning': elaborazione.righe_warning,
-                'messaggio_globale': elaborazione.messaggio_globale
+                'id': elaborazione.id_trace,
+                'ts_inizio': elaborazione.created_at.isoformat() if elaborazione.created_at else None,
+                'ts_fine': elaborazione.trace_end.created_at.isoformat() if elaborazione.trace_end else None,
+                'durata_secondi': durata_secondi,
+                'esito': elaborazione.trace_end.stato if elaborazione.trace_end else 'IN_CORSO',
+                'righe_totali': len(dettagli.items),
+                'righe_ok': num_ok,
+                'righe_errore': num_ko,
+                'righe_warning': num_warn,
+                'messaggio_globale': elaborazione.trace_end.messaggio if elaborazione.trace_end else elaborazione.messaggio
             },
             'dettagli': [{
-                'id': d.id,
-                'riga_numero': d.riga_numero,
-                'tipo_messaggio': d.tipo_messaggio,
-                'codice_errore': d.codice_errore,
+                'id': d.id_dett,
+                'riga_numero': d.record_pos,
+                'tipo_messaggio': d.stato,
+                'codice_errore': d.record_key,
                 'messaggio': d.messaggio,
-                'campo': d.campo,
-                'valore_originale': d.valore_originale
+                'campo': d.record_data.get('campo') if d.record_data else None,
+                'valore_originale': None
             } for d in dettagli.items],
             'pagination': {
                 'page': dettagli.page,
@@ -603,7 +663,7 @@ def elaborazione_dettaglio(id, id_elab):
                          ordine=ordine,
                          elaborazione=elaborazione,
                          dettagli=dettagli,
-                         tipo_filter=tipo_filter)
+                         stato_filter=stato_filter)
 
 
 @ordini_bp.route('/<int:id>/elaborazioni/<int:id_elab>/export')
@@ -617,17 +677,17 @@ def elaborazione_export(id, id_elab):
     from io import StringIO
 
     ordine = OrdineAcquisto.query.get_or_404(id)
-    elaborazione = TraceElaborazione.query.get_or_404(id_elab)
+    elaborazione = TraceElab.query.get_or_404(id_elab)
 
     # Verifica che l'elaborazione appartenga all'ordine
-    if elaborazione.tipo_pipeline != 'ordini' or elaborazione.id_file != id:
+    if elaborazione.tipo_file != 'ORD' or elaborazione.id_file != id:
         flash('Elaborazione non trovata per questo ordine', 'danger')
         return redirect(url_for('ordini.elaborazioni_list', id=id))
 
     # Recupera tutti i dettagli
-    dettagli = TraceElaborazioneDettaglio.query.filter_by(
-        id_elaborazione=id_elab
-    ).order_by(TraceElaborazioneDettaglio.riga_numero).all()
+    dettagli = TraceElabDett.query.filter_by(
+        id_trace=id_elab
+    ).order_by(TraceElabDett.record_pos).all()
 
     # Crea CSV in memoria
     si = StringIO()
@@ -645,13 +705,14 @@ def elaborazione_export(id, id_elab):
 
     # Dati
     for d in dettagli:
+        campo = d.record_data.get('campo') if d.record_data else ''
         writer.writerow([
-            d.riga_numero or '',
-            d.tipo_messaggio or '',
-            d.codice_errore or '',
+            d.record_pos or '',
+            d.stato or '',
+            d.record_key or '',
             d.messaggio or '',
-            d.campo or '',
-            d.valore_originale or ''
+            campo or '',
+            ''  # valore_originale non più presente nel nuovo sistema
         ])
 
     # Ritorna come download

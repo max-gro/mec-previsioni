@@ -5,7 +5,7 @@ Blueprint per la gestione Anagrafiche File Excel (CRUD + Upload)
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, AnagraficaFile, TraceElaborazione, TraceElaborazioneDettaglio
+from models import db, AnagraficaFile, TraceElab, TraceElabDett
 from forms import AnagraficaFileForm, AnagraficaFileEditForm, NuovaMarcaForm
 from utils.decorators import admin_required
 import os
@@ -186,20 +186,33 @@ def elabora_anagrafica(anagrafica_id):
     """
     anagrafica = AnagraficaFile.query.get_or_404(anagrafica_id)
 
-    # ✅ STEP 1: Crea record elaborazione con timestamp inizio
+    # ✅ STEP 1: Crea record elaborazione START
     ts_inizio = datetime.utcnow()
-    trace = TraceElaborazione(
-        tipo_pipeline='anagrafiche',
+    trace = TraceElab(
         id_file=anagrafica_id,
-        ts_inizio=ts_inizio,
-        esito='In corso',
-        messaggio_globale='Elaborazione in corso...'
+        tipo_file='ANA',
+        step='START',
+        stato='OK',
+        messaggio='Inizio elaborazione anagrafica'
     )
     db.session.add(trace)
     db.session.commit()
+    id_trace = trace.id_trace
 
     # Verifica che il file esista
     if not os.path.exists(anagrafica.filepath):
+        # Crea trace END con errore
+        ts_fine = datetime.utcnow()
+        durata = int((ts_fine - ts_inizio).total_seconds())
+        trace_end = TraceElab(
+            id_file=anagrafica_id,
+            tipo_file='ANA',
+            step='END',
+            stato='KO',
+            messaggio=f'File non trovato sul filesystem (durata: {durata}s)'
+        )
+        db.session.add(trace_end)
+
         anagrafica.esito = 'Errore'
         anagrafica.data_elaborazione = date.today()
         anagrafica.note = '❌ File non trovato sul filesystem'
@@ -222,21 +235,48 @@ def elabora_anagrafica(anagrafica_id):
         try:
             # Sposta file da INPUT a OUTPUT
             shutil.move(anagrafica.filepath, new_filepath)
-            
+
+            # Statistiche simulate
+            num_record = random.randint(50, 500)
+            num_componenti = random.randint(20, 200)
+
+            # Crea trace END con successo
+            ts_fine = datetime.utcnow()
+            durata = int((ts_fine - ts_inizio).total_seconds())
+            trace_end = TraceElab(
+                id_file=anagrafica_id,
+                tipo_file='ANA',
+                step='END',
+                stato='OK',
+                messaggio=f'Elaborazione completata. Record: {num_record}, Componenti: {num_componenti}. Durata: {durata}s'
+            )
+            db.session.add(trace_end)
+
             # Aggiorna database
             anagrafica.filepath = new_filepath
             anagrafica.esito = 'Processato'
             anagrafica.data_elaborazione = date.today()
             anagrafica.note = f'Elaborazione completata con successo.\n' \
-                            f'Record elaborati: {random.randint(50, 500)}.\n' \
-                            f'Componenti aggiornati: {random.randint(20, 200)}.'
-            
+                            f'Record elaborati: {num_record}.\n' \
+                            f'Componenti aggiornati: {num_componenti}.'
+
             db.session.commit()
-            
+
             return True, 'Elaborazione completata con successo!'
-        
+
         except Exception as e:
             # Errore durante lo spostamento
+            ts_fine = datetime.utcnow()
+            durata = int((ts_fine - ts_inizio).total_seconds())
+            trace_end = TraceElab(
+                id_file=anagrafica_id,
+                tipo_file='ANA',
+                step='END',
+                stato='KO',
+                messaggio=f'Errore spostamento file: {str(e)} (durata: {durata}s)'
+            )
+            db.session.add(trace_end)
+
             anagrafica.esito = 'Errore'
             anagrafica.data_elaborazione = date.today()
             anagrafica.note = f'Errore durante lo spostamento file: {str(e)}'
@@ -245,10 +285,7 @@ def elabora_anagrafica(anagrafica_id):
     
     else:
         # ELABORAZIONE FALLITA
-        
-        anagrafica.esito = 'Errore'
-        anagrafica.data_elaborazione = date.today()
-        
+
         # Messaggi di errore random realistici
         errori_possibili = [
             '❌ Formato file non valido: colonne mancanti',
@@ -257,10 +294,26 @@ def elabora_anagrafica(anagrafica_id):
             '❌ Errore di integrità : riferimenti a marche inesistenti',
             '❌ File corrotto o incompleto',
         ]
-        
-        anagrafica.note = random.choice(errori_possibili)
+
+        errore_msg = random.choice(errori_possibili)
+
+        # Crea trace END con errore
+        ts_fine = datetime.utcnow()
+        durata = int((ts_fine - ts_inizio).total_seconds())
+        trace_end = TraceElab(
+            id_file=anagrafica_id,
+            tipo_file='ANA',
+            step='END',
+            stato='KO',
+            messaggio=f'{errore_msg} (durata: {durata}s)'
+        )
+        db.session.add(trace_end)
+
+        anagrafica.esito = 'Errore'
+        anagrafica.data_elaborazione = date.today()
+        anagrafica.note = errore_msg
         db.session.commit()
-        
+
         return False, anagrafica.note
 
 

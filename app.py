@@ -81,12 +81,12 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(ordini_bp, url_prefix='/ordini')
     app.register_blueprint(anagrafiche_bp, url_prefix='/anagrafiche')  # Gestione file anagrafiche
 
-    # Homepage - Redirect alla dashboard elaborazioni
+    # Homepage con card per funzioni principali
     @app.route('/')
     @login_required
     def index():
-        """Homepage - reindirizza alla dashboard elaborazioni"""
-        return redirect(url_for('dashboard.index'))
+        """Homepage con card per accedere alle funzioni principali"""
+        return render_template('home.html')
     
     # Context processor per rendere current_user disponibile in tutti i template
     @app.context_processor

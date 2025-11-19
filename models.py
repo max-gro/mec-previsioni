@@ -29,7 +29,7 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def is_admin(self):
-        return self.role == 'Amministratore'
+        return self.role == 'admin'
 
 
 # ============================================================================

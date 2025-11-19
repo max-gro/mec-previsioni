@@ -418,11 +418,12 @@ class TraceElabDett(db.Model):
 
 # ============================================================================
 # VECCHIO SISTEMA TRACCIAMENTO (MANTENUTO PER COMPATIBILITÀ CODICE ESISTENTE)
-# NON VERRANNO CREATE TABELLE NEL DB - SOLO PER EVITARE ERRORI DI IMPORT
+# Queste tabelle VERRANNO CREATE nel DB perché usate dal codice esistente.
+# Nelle fasi 2-4 il codice verrà migrato al nuovo sistema (TraceElab/TraceElabDett)
 # ============================================================================
 
 class TraceElaborazione(db.Model):
-    """DEPRECATED - Usa TraceElab invece. Mantenuto solo per compatibilità import."""
+    """DEPRECATED - Usa TraceElab invece. Usato da routes/ordini.py, routes/dashboard.py, routes/anagrafiche.py"""
     __tablename__ = 'trace_elaborazioni'
     __table_args__ = {'extend_existing': True}
 

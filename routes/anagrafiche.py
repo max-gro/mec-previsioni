@@ -198,10 +198,6 @@ def elabora_anagrafica(anagrafica_id):
     db.session.add(trace)
     db.session.commit()
 
-    try:
-        # OLD CODE BELOW - will be replaced
-        anagrafica_OLD = anagrafica
-    
     # Verifica che il file esista
     if not os.path.exists(anagrafica.filepath):
         anagrafica.esito = 'Errore'

@@ -35,3 +35,7 @@ Thumbs.db
 #orders_model_quantity_FINAL.xlsx
 #orders_model_quantity_FINAL_shadow.xlsx
 tree.txt
+
+# Ignora tutti i contenuti della cartella dei grafici generati
+static/pred_charts/
+static/pred_charts_stat/

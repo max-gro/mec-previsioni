@@ -56,10 +56,10 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
     RotturaComponente = models_dict['RotturaComponente']
     Modello = models_dict['Modello']
     Componente = models_dict['Componente']
-    Utente = models_dict['Utente']
+    UtenteRottura = models_dict['UtenteRottura']
     Rivenditore = models_dict['Rivenditore']
-    TraceElaborazioneFile = models_dict['TraceElaborazioneFile']
-    TraceElaborazioneRecord = models_dict['TraceElaborazioneRecord']
+    TraceElab = models_dict['TraceElab']
+    TraceElabDett = models_dict['TraceElabDett']
 
     base_dir = current_app.config.get('BASE_DIR', os.path.dirname(os.path.dirname(__file__)))
     parsed_dir = os.path.join(base_dir, 'INPUT', 'rotture_parsed')
@@ -71,11 +71,11 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
     tsv_filepath = os.path.join(parsed_dir, tsv_filename)
 
     # Crea trace file
-    trace_file = TraceElaborazioneFile(
+    trace_file = TraceElab(
         id_file=file_rottura.id,
-        tipo_file='rotture',
+        tipo_file='ROT',
         step='start',
-        stato='start',
+        stato='OK',
         messaggio=f'Inizio elaborazione file {file_rottura.filename}'
     )
     db.session.add(trace_file)
@@ -92,11 +92,12 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
         # Salva come TSV
         df.to_csv(tsv_filepath, sep='\t', index=False, encoding='utf-8')
 
-        trace_rec = TraceElaborazioneRecord(
-            id_trace_file=trace_file.id_trace,
-            tipo_record='file',
+        trace_rec = TraceElabDett(
+            id_trace=trace_file.id_trace,
+            record_pos=0,
             record_key=tsv_filename,
-            messaggio=f'File TSV generato: {len(df)} righe'
+            messaggio=f'File TSV generato: {len(df)} righe',
+            stato='OK'
         )
         db.session.add(trace_rec)
         db.session.flush()
@@ -131,12 +132,12 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                     modello = Modello.query.filter_by(cod_modello_norm=cod_modello_norm).first()
                     if not modello:
                         # Modello non trovato - segnala e skippa
-                        trace_rec = TraceElaborazioneRecord(
-                            id_trace_file=trace_file.id_trace,
-                            riga_file=riga_file,
-                            tipo_record='rottura',
-                            record_key=prot,
-                            errore=f'Modello {cod_modello} non trovato in anagrafica'
+                        trace_rec = TraceElabDett(
+                            id_trace=trace_file.id_trace,
+                            record_pos=riga_file,
+                            record_key=f'rottura|{prot}',
+                            stato='KO',
+                            messaggio=f'Modello {cod_modello} non trovato in anagrafica'
                         )
                         db.session.add(trace_rec)
                         num_errori += 1
@@ -158,15 +159,15 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                     modello.updated_by = user_id
                     modello.updated_from = 'rotture'
 
-                # Gestisci Utente (insert/update)
+                # Gestisci UtenteRottura (insert/update)
                 cod_utente = str(row.get('cod_utente', '')).strip()
                 if cod_utente:
-                    utente = Utente.query.get(cod_utente)
+                    utente = UtenteRottura.query.get(cod_utente)
                     if not utente:
-                        utente = Utente(cod_utente=cod_utente, created_by=user_id)
+                        utente = UtenteRottura(cod_utente_rottura=cod_utente, created_by=user_id)
                         db.session.add(utente)
-                    utente.pv_utente = str(row.get('pv_utente', '')).strip() if row.get('pv_utente') else None
-                    utente.comune_utente = str(row.get('comune_utente', '')).strip() if row.get('comune_utente') else None
+                    utente.pv_utente_rottura = str(row.get('pv_utente', '')).strip() if row.get('pv_utente') else None
+                    utente.comune_utente_rottura = str(row.get('comune_utente', '')).strip() if row.get('comune_utente') else None
                     utente.updated_by = user_id
 
                 # Gestisci Rivenditore (insert/update)
@@ -247,12 +248,12 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
 
             except Exception as e:
                 # Trace errore per singola riga
-                trace_rec = TraceElaborazioneRecord(
-                    id_trace_file=trace_file.id_trace,
-                    riga_file=riga_file,
-                    tipo_record='rottura',
+                trace_rec = TraceElabDett(
+                    id_trace=trace_file.id_trace,
+                    record_pos=riga_file,
                     record_key=prot if 'prot' in locals() else f'riga_{riga_file}',
-                    errore=str(e)
+                    stato='KO',
+                    messaggio=str(e)
                 )
                 db.session.add(trace_rec)
                 num_errori += 1

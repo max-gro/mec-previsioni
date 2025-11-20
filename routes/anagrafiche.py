@@ -248,6 +248,25 @@ def elabora_anagrafica(anagrafica_id):
             num_componenti = random.randint(20, 200)
             num_warnings = random.randint(0, 10)
 
+            # Crea alcuni record di dettaglio simulati per i warnings
+            if num_warnings > 0:
+                warnings_simulati = [
+                    'Codice componente mancante',
+                    'Descrizione troppo lunga (troncata)',
+                    'Prezzo non valido (impostato a 0)',
+                    'Data non valida',
+                    'Marca sconosciuta'
+                ]
+                for i in range(min(num_warnings, 5)):  # Max 5 warning di esempio
+                    trace_dett = TraceElabDett(
+                        id_trace=trace_start.id_trace,
+                        record_pos=random.randint(1, num_record),
+                        record_data={'key': f'ANA-{random.randint(1000, 9999)}', 'campo': random.choice(['codice', 'descrizione', 'prezzo', 'data', 'marca'])},
+                        stato='WARN',
+                        messaggio=random.choice(warnings_simulati)
+                    )
+                    db.session.add(trace_dett)
+
             # Crea trace END con successo
             trace_end = TraceElab(
                 id_elab=id_elab,
@@ -313,6 +332,24 @@ def elabora_anagrafica(anagrafica_id):
 
         # Simula numero errori
         num_errori = random.randint(5, 50)
+
+        # Crea alcuni record di dettaglio simulati per gli errori
+        errori_dettaglio = [
+            'Formato colonna non valido',
+            'Valore duplicato trovato',
+            'Riferimento a marca inesistente',
+            'Codice componente già esistente',
+            'Lunghezza campo superata'
+        ]
+        for i in range(min(num_errori, 8)):  # Max 8 errori di esempio
+            trace_dett = TraceElabDett(
+                id_trace=trace_start.id_trace,
+                record_pos=random.randint(1, 100),
+                record_data={'key': f'ANA-{random.randint(1000, 9999)}', 'campo': random.choice(['codice', 'descrizione', 'marca', 'categoria'])},
+                stato='KO',
+                messaggio=random.choice(errori_dettaglio)
+            )
+            db.session.add(trace_dett)
 
         # Crea trace END con errore
         trace_end = TraceElab(
@@ -398,7 +435,7 @@ def list():
 @admin_required
 def create():
     """Upload nuovo file anagrafica"""
-    form = FileAnagraficaForm()
+    form = AnagraficaFileForm()
     
     # Popola le scelte della select marca
     marche = get_marche_disponibili()
@@ -483,7 +520,7 @@ def nuova_marca():
 def edit(id):
     """Modifica un'anagrafica esistente"""
     anagrafica = FileAnagrafica.query.get_or_404(id)
-    form = FileAnagraficaEditForm(obj=anagrafica)  # ← WTForms popola automaticamente
+    form = AnagraficaFileEditForm(obj=anagrafica)  # ← WTForms popola automaticamente
     
     if form.validate_on_submit():
         anagrafica.anno = int(form.anno.data)

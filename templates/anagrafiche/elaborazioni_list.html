@@ -46,9 +46,11 @@
     <div class="card">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Storico Elaborazioni</h5>
+            {% if file_ana.esito != 'Processato' %}
             <form method="POST" action="{{ url_for('anagrafiche.elabora', id=file_ana.id) }}" style="display: inline;">
                 <button type="submit" class="btn btn-primary btn-sm">Nuova Elaborazione</button>
             </form>
+            {% endif %}
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">

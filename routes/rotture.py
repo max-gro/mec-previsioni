@@ -225,13 +225,17 @@ def edit(id):
         # Permetti modifica solo note per file giÃ  processati
         if rottura.esito == 'Processato':
             rottura.note = form.note.data
+            rottura.updated_at = datetime.utcnow()
+            rottura.updated_by = current_user.id
         else:
             rottura.data_acquisizione = form.data_acquisizione.data
             if form.data_elaborazione.data:
                 rottura.data_elaborazione = datetime.combine(form.data_elaborazione.data, datetime.min.time())
             rottura.esito = form.esito.data
             rottura.note = form.note.data
-        
+            rottura.updated_at = datetime.utcnow()
+            rottura.updated_by = current_user.id
+
         db.session.commit()
         flash(f'File rottura aggiornato!', 'success')
         return redirect(url_for('rotture.list'))
@@ -355,6 +359,8 @@ def elabora(id):
         file_rottura.esito = 'Errore'
         file_rottura.note = f"File non trovato al path: {file_rottura.filepath}"
         file_rottura.data_elaborazione = datetime.now()
+        file_rottura.updated_at = datetime.utcnow()
+        file_rottura.updated_by = current_user.id
         db.session.commit()
         return redirect(url_for('rotture.list'))
     
@@ -379,6 +385,8 @@ def elabora(id):
             file_rottura.esito = 'Processato'
             file_rottura.data_elaborazione = datetime.now()
             file_rottura.note = f"Elaborate {num_rotture} rotture. {message}"
+            file_rottura.updated_at = datetime.utcnow()
+            file_rottura.updated_by = current_user.id
             db.session.commit()
             
             flash(f'File elaborato con successo! Elaborate {num_rotture} rotture.', 'success')
@@ -387,12 +395,16 @@ def elabora(id):
             file_rottura.esito = 'Errore'
             file_rottura.note = f"Elaborazione OK ma errore spostamento file: {str(e)}"
             file_rottura.data_elaborazione = datetime.now()
+            file_rottura.updated_at = datetime.utcnow()
+            file_rottura.updated_by = current_user.id
             db.session.commit()
     else:
         # Elaborazione fallita
         file_rottura.esito = 'Errore'
         file_rottura.note = message
         file_rottura.data_elaborazione = datetime.now()
+        file_rottura.updated_at = datetime.utcnow()
+        file_rottura.updated_by = current_user.id
         db.session.commit()
         
         flash(f'Errore durante elaborazione: {message}', 'error')

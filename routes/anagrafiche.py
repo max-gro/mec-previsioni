@@ -226,6 +226,8 @@ def elabora_anagrafica(anagrafica_id):
         anagrafica.esito = 'Errore'
         anagrafica.data_elaborazione = date.today()
         anagrafica.note = '❌ File non trovato sul filesystem'
+        anagrafica.updated_at = datetime.utcnow()
+        anagrafica.updated_by = current_user.id
         db.session.commit()
         return False, 'File non trovato sul filesystem'
     
@@ -294,6 +296,8 @@ def elabora_anagrafica(anagrafica_id):
             anagrafica.note = f'Elaborazione completata con successo.\n' \
                             f'Record elaborati: {num_record}.\n' \
                             f'Componenti aggiornati: {num_componenti}.'
+            anagrafica.updated_at = datetime.utcnow()
+            anagrafica.updated_by = current_user.id
             db.session.commit()  # ← Se fallisce, i log sono GIÀ salvati!
 
             return True, 'Elaborazione completata con successo!'
@@ -319,6 +323,8 @@ def elabora_anagrafica(anagrafica_id):
             anagrafica.esito = 'Errore'
             anagrafica.data_elaborazione = date.today()
             anagrafica.note = f'Errore durante lo spostamento file: {str(e)}'
+            anagrafica.updated_at = datetime.utcnow()
+            anagrafica.updated_by = current_user.id
             db.session.commit()
             return False, f'Errore durante lo spostamento: {str(e)}'
     
@@ -378,6 +384,8 @@ def elabora_anagrafica(anagrafica_id):
         anagrafica.esito = 'Errore'
         anagrafica.data_elaborazione = date.today()
         anagrafica.note = f'❌ {errore_msg}'
+        anagrafica.updated_at = datetime.utcnow()
+        anagrafica.updated_by = current_user.id
         db.session.commit()
 
         return False, anagrafica.note
@@ -537,7 +545,9 @@ def edit(id):
         anagrafica.data_elaborazione = form.data_elaborazione.data
         anagrafica.esito = form.esito.data
         anagrafica.note = form.note.data
-        
+        anagrafica.updated_at = datetime.utcnow()
+        anagrafica.updated_by = current_user.id
+
         db.session.commit()
         flash(f'Anagrafica {anagrafica.filename} aggiornata!', 'success')
         return redirect(url_for('anagrafiche.list'))

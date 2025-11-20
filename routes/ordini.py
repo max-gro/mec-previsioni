@@ -132,6 +132,8 @@ def elabora_ordine(ordine_id):
             ordine.esito = 'Errore'
             ordine.data_elaborazione = datetime.utcnow()
             ordine.note = "File non trovato sul filesystem"
+            ordine.updated_at = datetime.utcnow()
+            ordine.updated_by = current_user.id
             db.session.commit()
 
             return False, "File non trovato sul filesystem"
@@ -193,6 +195,8 @@ def elabora_ordine(ordine_id):
             ordine.esito = 'Errore'
             ordine.data_elaborazione = datetime.utcnow()
             ordine.note = f"Errore generazione TSV: {str(e)}"
+            ordine.updated_at = datetime.utcnow()
+            ordine.updated_by = current_user.id
             db.session.commit()
 
             return False, f"Errore generazione TSV: {str(e)}"
@@ -257,6 +261,8 @@ def elabora_ordine(ordine_id):
             ordine.esito = 'Errore'
             ordine.data_elaborazione = datetime.utcnow()
             ordine.note = messaggio_finale
+            ordine.updated_at = datetime.utcnow()
+            ordine.updated_by = current_user.id
             db.session.commit()
 
             return False, messaggio_finale
@@ -308,6 +314,8 @@ def elabora_ordine(ordine_id):
             ordine.esito = 'Processato'
             ordine.data_elaborazione = datetime.utcnow()
             ordine.note = messaggio_finale
+            ordine.updated_at = datetime.utcnow()
+            ordine.updated_by = current_user.id
             db.session.commit()
 
             success_msg = f"Ordine elaborato con successo! {num_righe_ok} righe inserite"
@@ -351,6 +359,8 @@ def elabora_ordine(ordine_id):
             ordine.esito = 'Errore'
             ordine.data_elaborazione = datetime.utcnow()
             ordine.note = f"TSV elaborato ma errore: {str(e)}"
+            ordine.updated_at = datetime.utcnow()
+            ordine.updated_by = current_user.id
             db.session.commit()
 
             return False, f"Errore: {str(e)}"
@@ -390,6 +400,8 @@ def elabora_ordine(ordine_id):
         ordine.esito = 'Errore'
         ordine.data_elaborazione = datetime.utcnow()
         ordine.note = str(e)
+        ordine.updated_at = datetime.utcnow()
+        ordine.updated_by = current_user.id
         db.session.commit()
 
         return False, f"Errore imprevisto: {str(e)}"
@@ -596,7 +608,9 @@ def edit(id):
         ordine.data_acquisizione = form.data_acquisizione.data
         ordine.esito = form.esito.data
         ordine.note = form.note.data
-        
+        ordine.updated_at = datetime.utcnow()
+        ordine.updated_by = current_user.id
+
         db.session.commit()
         flash(f'Ordine {ordine.filename} aggiornato!', 'success')
         return redirect(url_for('ordini.list'))

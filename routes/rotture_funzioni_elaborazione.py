@@ -95,7 +95,7 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
         trace_rec = TraceElabDett(
             id_trace=trace_file.id_trace,
             record_pos=0,
-            record_key=tsv_filename,
+            record_data={'key': tsv_filename},
             messaggio=f'File TSV generato: {len(df)} righe',
             stato='OK'
         )
@@ -135,7 +135,7 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                         trace_rec = TraceElabDett(
                             id_trace=trace_file.id_trace,
                             record_pos=riga_file,
-                            record_key=f'rottura|{prot}',
+                            record_data={'key': f'rottura|{prot}'},
                             stato='KO',
                             messaggio=f'Modello {cod_modello} non trovato in anagrafica'
                         )
@@ -251,7 +251,7 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                 trace_rec = TraceElabDett(
                     id_trace=trace_file.id_trace,
                     record_pos=riga_file,
-                    record_key=prot if 'prot' in locals() else f'riga_{riga_file}',
+                    record_data={'key': prot if 'prot' in locals() else f'riga_{riga_file}'},
                     stato='KO',
                     messaggio=str(e)
                 )

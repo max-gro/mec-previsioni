@@ -558,6 +558,23 @@ def sync():
     return redirect(url_for('anagrafiche.list'))
 
 
+@anagrafiche_bp.route('/<int:id>/elaborazioni')
+@login_required
+def elaborazioni_list(id):
+    """Lista di tutte le elaborazioni per un file anagrafica specifico"""
+    file_ana = FileAnagrafica.query.get_or_404(id)
+
+    # Recupera tutte le elaborazioni per questo file
+    elaborazioni = TraceElab.query.filter_by(
+        tipo_file='ANA',
+        id_file=id
+    ).order_by(TraceElab.created_at.desc()).all()
+
+    return render_template('anagrafiche/elaborazioni_list.html',
+                         file_ana=file_ana,
+                         elaborazioni=elaborazioni)
+
+
 #from flask import Markup
 from markupsafe import Markup
 import pandas as pd

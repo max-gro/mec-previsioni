@@ -416,6 +416,24 @@ def sync():
     flash('Sincronizzazione completata!', 'success')
     return redirect(url_for('rotture.list'))
 
+
+@rotture_bp.route('/<int:id>/elaborazioni')
+@login_required
+def elaborazioni_list(id):
+    """Lista di tutte le elaborazioni per un file rottura specifico"""
+    file_rottura = FileRottura.query.get_or_404(id)
+
+    # Recupera tutte le elaborazioni per questo file
+    elaborazioni = TraceElab.query.filter_by(
+        tipo_file='ROT',
+        id_file=id
+    ).order_by(TraceElab.created_at.desc()).all()
+
+    return render_template('rotture/elaborazioni_list.html',
+                         file_rottura=file_rottura,
+                         elaborazioni=elaborazioni)
+
+
 def elabora_file_rottura_completo(file_rottura):
     """Wrapper per chiamare la funzione di elaborazione con i parametri corretti"""
     models_dict = {

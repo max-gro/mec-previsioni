@@ -17,11 +17,11 @@
             <div class="row">
                 <div class="col-md-3">
                     <p class="mb-1"><small class="text-muted">Anno</small></p>
-                    <p>{{ ordine.anno }}</p>
+                    <p><strong>{{ ordine.anno }}</strong></p>
                 </div>
                 <div class="col-md-3">
                     <p class="mb-1"><small class="text-muted">Data Acquisizione</small></p>
-                    <p>{{ ordine.data_acquisizione.strftime('%d/%m/%Y') if ordine.data_acquisizione else '-' }}</p>
+                    <p><strong>{{ ordine.data_acquisizione.strftime('%d/%m/%Y') if ordine.data_acquisizione else '-' }}</strong></p>
                 </div>
                 <div class="col-md-3">
                     <p class="mb-1"><small class="text-muted">Totale Elaborazioni</small></p>

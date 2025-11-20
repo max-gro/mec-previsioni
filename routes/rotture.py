@@ -395,8 +395,9 @@ def elabora(id):
         db.session.commit()
         
         flash(f'Errore durante elaborazione: {message}', 'error')
-    
-    return redirect(url_for('rotture.list'))
+
+    # Redirect alla pagina storico elaborazioni
+    return redirect(url_for('rotture.elaborazioni_list', id=id))
 
 
 @rotture_bp.route('/<int:id>/download')
@@ -424,18 +425,142 @@ def sync():
 @rotture_bp.route('/<int:id>/elaborazioni')
 @login_required
 def elaborazioni_list(id):
-    """Lista di tutte le elaborazioni per un file rottura specifico"""
+    """Lista storico elaborazioni raggruppate per id_elab"""
     file_rottura = FileRottura.query.get_or_404(id)
 
-    # Recupera tutte le elaborazioni per questo file
-    elaborazioni = TraceElab.query.filter_by(
+    # Recupera tutti i record END (contengono le metriche)
+    elaborazioni_end = TraceElab.query.filter_by(
         tipo_file='ROT',
-        id_file=id
+        id_file=id,
+        step='END'
     ).order_by(TraceElab.created_at.desc()).all()
+
+    # Per ogni END, trova il corrispondente START
+    elaborazioni = []
+    for elab_end in elaborazioni_end:
+        elab_start = TraceElab.query.filter_by(
+            id_elab=elab_end.id_elab,
+            tipo_file='ROT',
+            id_file=id,
+            step='START'
+        ).first()
+
+        elaborazioni.append({
+            'id_elab': elab_end.id_elab,
+            'ts_inizio': elab_start.created_at if elab_start else elab_end.created_at,
+            'ts_fine': elab_end.created_at,
+            'esito': elab_end.stato,
+            'messaggio': elab_end.messaggio,
+            'righe_totali': elab_end.righe_totali,
+            'righe_ok': elab_end.righe_ok,
+            'righe_errore': elab_end.righe_errore,
+            'righe_warning': elab_end.righe_warning
+        })
 
     return render_template('rotture/elaborazioni_list.html',
                          file_rottura=file_rottura,
                          elaborazioni=elaborazioni)
+
+
+@rotture_bp.route('/<int:id>/elaborazioni/<int:id_elab>/dettaglio')
+@login_required
+def elaborazione_dettaglio(id, id_elab):
+    """Mostra i dettagli di una specifica elaborazione"""
+    file_rottura = FileRottura.query.get_or_404(id)
+
+    # Trova tutti i trace di questa elaborazione
+    traces = TraceElab.query.filter_by(
+        id_elab=id_elab,
+        tipo_file='ROT',
+        id_file=id
+    ).order_by(TraceElab.created_at).all()
+
+    if not traces:
+        flash('Elaborazione non trovata', 'warning')
+        return redirect(url_for('rotture.elaborazioni_list', id=id))
+
+    # Separa START e END
+    trace_start = next((t for t in traces if t.step == 'START'), None)
+    trace_end = next((t for t in traces if t.step == 'END'), None)
+
+    # Recupera dettagli da trace_elab_dett
+    page = request.args.get('page', 1, type=int)
+    stato_filter = request.args.get('stato', '')
+
+    id_traces = [t.id_trace for t in traces]
+    query = TraceElabDett.query.filter(TraceElabDett.id_trace.in_(id_traces))
+
+    if stato_filter:
+        query = query.filter_by(stato=stato_filter)
+
+    dettagli = query.order_by(TraceElabDett.record_pos).paginate(page=page, per_page=50, error_out=False)
+
+    return render_template('rotture/elaborazione_dettaglio_modal.html',
+                         file_rottura=file_rottura,
+                         trace_start=trace_start,
+                         trace_end=trace_end,
+                         dettagli=dettagli,
+                         stato_filter=stato_filter)
+
+
+@rotture_bp.route('/<int:id>/elaborazioni/<int:id_elab>/export')
+@login_required
+def elaborazione_export(id, id_elab):
+    """Esporta i dettagli di un'elaborazione in CSV"""
+    import csv
+    import io
+    from flask import Response
+
+    file_rottura = FileRottura.query.get_or_404(id)
+
+    # Trova tutti i traces di questa elaborazione
+    traces = TraceElab.query.filter_by(
+        id_elab=id_elab,
+        tipo_file='ROT',
+        id_file=id
+    ).all()
+
+    if not traces:
+        flash('Elaborazione non trovata', 'warning')
+        return redirect(url_for('rotture.elaborazioni_list', id=id))
+
+    # Recupera tutti i dettagli
+    id_traces = [t.id_trace for t in traces]
+    dettagli = TraceElabDett.query.filter(
+        TraceElabDett.id_trace.in_(id_traces)
+    ).order_by(TraceElabDett.record_pos).all()
+
+    # Crea CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header
+    writer.writerow(['Posizione', 'Stato', 'Codice', 'Messaggio', 'Campo'])
+
+    # Righe
+    for d in dettagli:
+        campo = d.record_data.get('campo') if d.record_data else ''
+        codice = d.record_data.get('key') if d.record_data else ''
+
+        writer.writerow([
+            d.record_pos or '',
+            d.stato or '',
+            codice or '',
+            d.messaggio or '',
+            campo or ''
+        ])
+
+    # Prepara risposta
+    output.seek(0)
+    trace_start = next((t for t in traces if t.step == 'START'), None)
+    timestamp = trace_start.created_at.strftime('%Y%m%d_%H%M%S') if trace_start else datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    filename = f"elaborazione_{file_rottura.filename}_elab{id_elab}_{timestamp}.csv"
+
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
 
 
 def elabora_file_rottura_completo(file_rottura):

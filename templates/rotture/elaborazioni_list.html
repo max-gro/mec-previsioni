@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Elaborazioni - {{ file_rottura.filename }}{% endblock %}
+{% block title %}Elaborazioni - {{ file_rottura.filename }} - M&C Previsioni{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
@@ -17,11 +17,11 @@
             <div class="row">
                 <div class="col-md-3">
                     <p class="mb-1"><small class="text-muted">Anno</small></p>
-                    <p>{{ file_rottura.anno }}</p>
+                    <p><strong>{{ file_rottura.anno }}</strong></p>
                 </div>
                 <div class="col-md-3">
                     <p class="mb-1"><small class="text-muted">Data Acquisizione</small></p>
-                    <p>{{ file_rottura.data_acquisizione|date_format if file_rottura.data_acquisizione else '-' }}</p>
+                    <p><strong>{{ file_rottura.data_acquisizione.strftime('%d/%m/%Y') if file_rottura.data_acquisizione else '-' }}</strong></p>
                 </div>
                 <div class="col-md-3">
                     <p class="mb-1"><small class="text-muted">Totale Elaborazioni</small></p>
@@ -35,7 +35,7 @@
                         {% elif file_rottura.esito == 'Errore' %}
                         <span class="badge bg-danger">{{ file_rottura.esito }}</span>
                         {% else %}
-                        <span class="badge bg-warning text-dark">{{ file_rottura.esito }}</span>
+                        <span class="badge bg-secondary">{{ file_rottura.esito }}</span>
                         {% endif %}
                     </p>
                 </div>
@@ -46,12 +46,9 @@
     <div class="card">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Storico Elaborazioni</h5>
-            {% if current_user.is_admin() and file_rottura.esito != 'Processato' %}
-            <form method="POST" action="{{ url_for('rotture.elabora', id=file_rottura.id) }}" style="display: inline;"
-                  onsubmit="return confirm('Sei sicuro di voler elaborare questo file?');">
+            <form method="POST" action="{{ url_for('rotture.elabora', id=file_rottura.id) }}" style="display: inline;">
                 <button type="submit" class="btn btn-primary btn-sm">Nuova Elaborazione</button>
             </form>
-            {% endif %}
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -59,46 +56,59 @@
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th>Data/Ora</th>
-                            <th>Step</th>
-                            <th>Stato</th>
-                            <th>Messaggio</th>
-                            <th>Dettagli</th>
+                            <th>Data/Ora Inizio</th>
+                            <th>Data/Ora Fine</th>
+                            <th>Esito</th>
+                            <th>Righe Totali</th>
+                            <th>Righe OK</th>
+                            <th>Errori</th>
+                            <th>Warning</th>
+                            <th>Azioni</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for elab in elaborazioni %}
                         <tr {% if loop.first %}class="table-info"{% endif %}>
                             <td>
-                                {{ loop.revindex }}
+                                {{ elab.id_elab }}
                                 {% if loop.first %}<span class="badge bg-info">ULTIMA</span>{% endif %}
                             </td>
-                            <td><small>{{ elab.created_at.strftime('%d/%m/%Y %H:%M:%S') if elab.created_at else '-' }}</small></td>
-                            <td><span class="badge bg-secondary">{{ elab.step }}</span></td>
+                            <td><small>{{ elab.ts_inizio.strftime('%d/%m/%Y %H:%M:%S') if elab.ts_inizio else '-' }}</small></td>
+                            <td><small>{{ elab.ts_fine.strftime('%d/%m/%Y %H:%M:%S') if elab.ts_fine else '-' }}</small></td>
                             <td>
-                                {% if elab.stato == 'OK' or elab.stato == 'success' %}
-                                <span class="badge bg-success">{{ elab.stato }}</span>
-                                {% elif elab.stato == 'KO' or elab.stato == 'error' %}
-                                <span class="badge bg-danger">{{ elab.stato }}</span>
+                                {% if elab.esito == 'OK' %}
+                                <span class="badge bg-success">Successo</span>
+                                {% elif elab.esito == 'KO' %}
+                                <span class="badge bg-danger">Errore</span>
+                                {% elif elab.esito == 'WARN' %}
+                                <span class="badge bg-warning text-dark">Warning</span>
                                 {% else %}
-                                <span class="badge bg-warning text-dark">{{ elab.stato }}</span>
+                                <span class="badge bg-secondary">{{ elab.esito }}</span>
                                 {% endif %}
                             </td>
+                            <td>{{ elab.righe_totali or 0 }}</td>
+                            <td><span class="badge bg-success">{{ elab.righe_ok or 0 }}</span></td>
+                            <td><span class="badge bg-danger">{{ elab.righe_errore or 0 }}</span></td>
+                            <td><span class="badge bg-warning text-dark">{{ elab.righe_warning or 0 }}</span></td>
                             <td>
-                                <small>{{ elab.messaggio or '-' }}</small>
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        onclick="showDettaglio({{ elab.id_elab }})">
+                                    Dettagli
+                                </button>
+                                <a href="{{ url_for('rotture.elaborazione_export', id=file_rottura.id, id_elab=elab.id_elab) }}"
+                                   class="btn btn-sm btn-outline-success">
+                                    CSV
+                                </a>
                             </td>
-                            <td>
-                                {% set num_dettagli = elab.dettagli.count() %}
-                                {% if num_dettagli > 0 %}
-                                <span class="badge bg-info">{{ num_dettagli }} record</span>
-                                {% else %}
-                                -
-                                {% endif %}
+                        </tr>
+                        <tr>
+                            <td colspan="9" class="bg-light">
+                                <small><strong>Note:</strong> {{ elab.messaggio or '-' }}</small>
                             </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted">Nessuna elaborazione trovata</td>
+                            <td colspan="10" class="text-center text-muted">Nessuna elaborazione trovata</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -106,9 +116,41 @@
             </div>
         </div>
     </div>
+</div>
 
-    <div class="mt-3">
-        <a href="{{ url_for('rotture.list') }}" class="btn btn-secondary">← Torna all'elenco</a>
+<!-- Modal Dettaglio Elaborazione -->
+<div class="modal fade" id="dettaglioModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Dettaglio Elaborazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="dettaglioContent">
+                <div class="text-center"><div class="spinner-border" role="status"></div></div>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+function showDettaglio(elabId) {
+    const modal = new bootstrap.Modal(document.getElementById('dettaglioModal'));
+    const content = document.getElementById('dettaglioContent');
+
+    // Mostra loading
+    content.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div><p>Caricamento...</p></div>';
+    modal.show();
+
+    // Carica contenuto
+    fetch(`{{ url_for('rotture.elaborazione_dettaglio', id=file_rottura.id, id_elab=0) }}`.replace('/0/', '/' + elabId + '/'))
+        .then(response => response.text())
+        .then(html => {
+            content.innerHTML = html;
+        })
+        .catch(error => {
+            content.innerHTML = '<div class="alert alert-danger">Errore nel caricamento dei dettagli</div>';
+        });
+}
+</script>
 {% endblock %}

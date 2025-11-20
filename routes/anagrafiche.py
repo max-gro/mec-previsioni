@@ -186,30 +186,37 @@ def elabora_anagrafica(anagrafica_id):
     """
     anagrafica = FileAnagrafica.query.get_or_404(anagrafica_id)
 
-    # ✅ STEP 1: Crea record elaborazione START
+    # ✅ STEP 1: Genera nuovo id_elab
+    result = db.session.execute(db.text("SELECT nextval('seq_id_elab')"))
+    id_elab = result.scalar()
+
+    # ✅ STEP 2: Crea record elaborazione START
     ts_inizio = datetime.utcnow()
-    trace = TraceElab(
+    trace_start = TraceElab(
+        id_elab=id_elab,
         id_file=anagrafica_id,
         tipo_file='ANA',
         step='START',
         stato='OK',
         messaggio='Inizio elaborazione anagrafica'
     )
-    db.session.add(trace)
+    db.session.add(trace_start)
     db.session.commit()
-    id_trace = trace.id_trace
 
     # Verifica che il file esista
     if not os.path.exists(anagrafica.filepath):
         # Crea trace END con errore
-        ts_fine = datetime.utcnow()
-        durata = int((ts_fine - ts_inizio).total_seconds())
         trace_end = TraceElab(
+            id_elab=id_elab,
             id_file=anagrafica_id,
             tipo_file='ANA',
             step='END',
             stato='KO',
-            messaggio=f'File non trovato sul filesystem (durata: {durata}s)'
+            messaggio='File non trovato sul filesystem',
+            righe_totali=0,
+            righe_ok=0,
+            righe_errore=1,
+            righe_warning=0
         )
         db.session.add(trace_end)
 
@@ -239,16 +246,20 @@ def elabora_anagrafica(anagrafica_id):
             # Statistiche simulate
             num_record = random.randint(50, 500)
             num_componenti = random.randint(20, 200)
+            num_warnings = random.randint(0, 10)
 
             # Crea trace END con successo
-            ts_fine = datetime.utcnow()
-            durata = int((ts_fine - ts_inizio).total_seconds())
             trace_end = TraceElab(
+                id_elab=id_elab,
                 id_file=anagrafica_id,
                 tipo_file='ANA',
                 step='END',
-                stato='OK',
-                messaggio=f'Elaborazione completata. Record: {num_record}, Componenti: {num_componenti}. Durata: {durata}s'
+                stato='WARN' if num_warnings > 0 else 'OK',
+                messaggio=f'Elaborazione completata. Record: {num_record}, Componenti: {num_componenti}',
+                righe_totali=num_record,
+                righe_ok=num_record - num_warnings,
+                righe_errore=0,
+                righe_warning=num_warnings
             )
             db.session.add(trace_end)
 
@@ -266,14 +277,17 @@ def elabora_anagrafica(anagrafica_id):
 
         except Exception as e:
             # Errore durante lo spostamento
-            ts_fine = datetime.utcnow()
-            durata = int((ts_fine - ts_inizio).total_seconds())
             trace_end = TraceElab(
+                id_elab=id_elab,
                 id_file=anagrafica_id,
                 tipo_file='ANA',
                 step='END',
                 stato='KO',
-                messaggio=f'Errore spostamento file: {str(e)} (durata: {durata}s)'
+                messaggio=f'Errore spostamento file: {str(e)}',
+                righe_totali=0,
+                righe_ok=0,
+                righe_errore=1,
+                righe_warning=0
             )
             db.session.add(trace_end)
 
@@ -297,21 +311,27 @@ def elabora_anagrafica(anagrafica_id):
 
         errore_msg = random.choice(errori_possibili)
 
+        # Simula numero errori
+        num_errori = random.randint(5, 50)
+
         # Crea trace END con errore
-        ts_fine = datetime.utcnow()
-        durata = int((ts_fine - ts_inizio).total_seconds())
         trace_end = TraceElab(
+            id_elab=id_elab,
             id_file=anagrafica_id,
             tipo_file='ANA',
             step='END',
             stato='KO',
-            messaggio=f'{errore_msg} (durata: {durata}s)'
+            messaggio=errore_msg,
+            righe_totali=num_errori,
+            righe_ok=0,
+            righe_errore=num_errori,
+            righe_warning=0
         )
         db.session.add(trace_end)
 
         anagrafica.esito = 'Errore'
         anagrafica.data_elaborazione = date.today()
-        anagrafica.note = errore_msg
+        anagrafica.note = f'❌ {errore_msg}'
         db.session.commit()
 
         return False, anagrafica.note
@@ -483,13 +503,14 @@ def edit(id):
 def elabora(id):
     """Elabora un file di anagrafica"""
     success, message = elabora_anagrafica(id)
-    
+
     if success:
         flash(message, 'success')
     else:
         flash(message, 'danger')
-    
-    return redirect(url_for('anagrafiche.list'))
+
+    # Redirect alla pagina storico elaborazioni
+    return redirect(url_for('anagrafiche.elaborazioni_list', id=id))
 
 
 @anagrafiche_bp.route('/<int:id>/delete', methods=['POST'])
@@ -561,18 +582,142 @@ def sync():
 @anagrafiche_bp.route('/<int:id>/elaborazioni')
 @login_required
 def elaborazioni_list(id):
-    """Lista di tutte le elaborazioni per un file anagrafica specifico"""
+    """Lista storico elaborazioni raggruppate per id_elab"""
     file_ana = FileAnagrafica.query.get_or_404(id)
 
-    # Recupera tutte le elaborazioni per questo file
-    elaborazioni = TraceElab.query.filter_by(
+    # Recupera tutti i record END (contengono le metriche)
+    elaborazioni_end = TraceElab.query.filter_by(
         tipo_file='ANA',
-        id_file=id
+        id_file=id,
+        step='END'
     ).order_by(TraceElab.created_at.desc()).all()
+
+    # Per ogni END, trova il corrispondente START
+    elaborazioni = []
+    for elab_end in elaborazioni_end:
+        elab_start = TraceElab.query.filter_by(
+            id_elab=elab_end.id_elab,
+            tipo_file='ANA',
+            id_file=id,
+            step='START'
+        ).first()
+
+        elaborazioni.append({
+            'id_elab': elab_end.id_elab,
+            'ts_inizio': elab_start.created_at if elab_start else elab_end.created_at,
+            'ts_fine': elab_end.created_at,
+            'esito': elab_end.stato,
+            'messaggio': elab_end.messaggio,
+            'righe_totali': elab_end.righe_totali,
+            'righe_ok': elab_end.righe_ok,
+            'righe_errore': elab_end.righe_errore,
+            'righe_warning': elab_end.righe_warning
+        })
 
     return render_template('anagrafiche/elaborazioni_list.html',
                          file_ana=file_ana,
                          elaborazioni=elaborazioni)
+
+
+@anagrafiche_bp.route('/<int:id>/elaborazioni/<int:id_elab>/dettaglio')
+@login_required
+def elaborazione_dettaglio(id, id_elab):
+    """Mostra i dettagli di una specifica elaborazione"""
+    file_ana = FileAnagrafica.query.get_or_404(id)
+
+    # Trova tutti i trace di questa elaborazione
+    traces = TraceElab.query.filter_by(
+        id_elab=id_elab,
+        tipo_file='ANA',
+        id_file=id
+    ).order_by(TraceElab.created_at).all()
+
+    if not traces:
+        flash('Elaborazione non trovata', 'warning')
+        return redirect(url_for('anagrafiche.elaborazioni_list', id=id))
+
+    # Separa START e END
+    trace_start = next((t for t in traces if t.step == 'START'), None)
+    trace_end = next((t for t in traces if t.step == 'END'), None)
+
+    # Recupera dettagli da trace_elab_dett
+    page = request.args.get('page', 1, type=int)
+    stato_filter = request.args.get('stato', '')
+
+    id_traces = [t.id_trace for t in traces]
+    query = TraceElabDett.query.filter(TraceElabDett.id_trace.in_(id_traces))
+
+    if stato_filter:
+        query = query.filter_by(stato=stato_filter)
+
+    dettagli = query.order_by(TraceElabDett.record_pos).paginate(page=page, per_page=50, error_out=False)
+
+    return render_template('anagrafiche/elaborazione_dettaglio_modal.html',
+                         file_ana=file_ana,
+                         trace_start=trace_start,
+                         trace_end=trace_end,
+                         dettagli=dettagli,
+                         stato_filter=stato_filter)
+
+
+@anagrafiche_bp.route('/<int:id>/elaborazioni/<int:id_elab>/export')
+@login_required
+def elaborazione_export(id, id_elab):
+    """Esporta i dettagli di un'elaborazione in CSV"""
+    import csv
+    import io
+    from flask import Response
+
+    file_ana = FileAnagrafica.query.get_or_404(id)
+
+    # Trova tutti i traces di questa elaborazione
+    traces = TraceElab.query.filter_by(
+        id_elab=id_elab,
+        tipo_file='ANA',
+        id_file=id
+    ).all()
+
+    if not traces:
+        flash('Elaborazione non trovata', 'warning')
+        return redirect(url_for('anagrafiche.elaborazioni_list', id=id))
+
+    # Recupera tutti i dettagli
+    id_traces = [t.id_trace for t in traces]
+    dettagli = TraceElabDett.query.filter(
+        TraceElabDett.id_trace.in_(id_traces)
+    ).order_by(TraceElabDett.record_pos).all()
+
+    # Crea CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header
+    writer.writerow(['Posizione', 'Stato', 'Codice', 'Messaggio', 'Campo'])
+
+    # Righe
+    for d in dettagli:
+        campo = d.record_data.get('campo') if d.record_data else ''
+        codice = d.record_data.get('key') if d.record_data else ''
+
+        writer.writerow([
+            d.record_pos or '',
+            d.stato or '',
+            codice or '',
+            d.messaggio or '',
+            campo or ''
+        ])
+
+    # Prepara risposta
+    output.seek(0)
+    trace_start = next((t for t in traces if t.step == 'START'), None)
+    timestamp = trace_start.created_at.strftime('%Y%m%d_%H%M%S') if trace_start else datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    filename = f"elaborazione_{file_ana.filename}_elab{id_elab}_{timestamp}.csv"
+
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
 
 
 #from flask import Markup

@@ -88,6 +88,11 @@ class FileOrdineForm(FlaskForm):
         validators=[DataRequired()],
         render_kw={'type': 'date'}
     )
+    esito = SelectField('Esito', choices=[
+        ('Da processare', 'Da processare'),
+        ('Processato', 'Processato'),
+        ('Errore', 'Errore')
+    ], default='Da processare')
     note = TextAreaField('Note')
 
 

@@ -264,22 +264,24 @@ def delete(id):
         rotture_ids = [r.id_rottura for r in Rottura.query.filter_by(id_file_rotture=id).all()]
         if rotture_ids:
             num_comp = RotturaComponente.query.filter(RotturaComponente.id_rottura.in_(rotture_ids)).delete(synchronize_session=False)
-            trace_rec = TraceElaborazioneRecord(
-                id_trace_file=trace_file.id_trace,
-                tipo_record='rotture_componenti',
-                record_key=f'{len(rotture_ids)} rotture',
-                messaggio=f'Eliminati {num_comp} record rotture_componenti'
+            trace_rec = TraceElabDett(
+                id_trace=trace_file.id_trace,
+                record_pos=0,
+                record_data={'key': f'{len(rotture_ids)} rotture', 'tipo': 'rotture_componenti'},
+                messaggio=f'Eliminati {num_comp} record rotture_componenti',
+                stato='OK'
             )
             db.session.add(trace_rec)
 
         # Elimina rotture associate
         num_rotture = Rottura.query.filter_by(id_file_rotture=id).delete()
         if num_rotture > 0:
-            trace_rec = TraceElaborazioneRecord(
-                id_trace_file=trace_file.id_trace,
-                tipo_record='rotture',
-                record_key=str(id),
-                messaggio=f'Eliminati {num_rotture} record rotture'
+            trace_rec = TraceElabDett(
+                id_trace=trace_file.id_trace,
+                record_pos=0,
+                record_data={'key': str(id), 'tipo': 'rotture'},
+                messaggio=f'Eliminati {num_rotture} record rotture',
+                stato='OK'
             )
             db.session.add(trace_rec)
 
@@ -287,20 +289,22 @@ def delete(id):
         if os.path.exists(file_rottura.filepath):
             try:
                 os.remove(file_rottura.filepath)
-                trace_rec = TraceElaborazioneRecord(
-                    id_trace_file=trace_file.id_trace,
-                    tipo_record='file',
-                    record_key=filename,
-                    messaggio=f'File fisico eliminato: {file_rottura.filepath}'
+                trace_rec = TraceElabDett(
+                    id_trace=trace_file.id_trace,
+                    record_pos=0,
+                    record_data={'key': filename, 'tipo': 'file'},
+                    messaggio=f'File fisico eliminato: {file_rottura.filepath}',
+                    stato='OK'
                 )
                 db.session.add(trace_rec)
             except Exception as e:
                 flash(f'Errore eliminazione file fisico: {e}', 'warning')
-                trace_rec = TraceElaborazioneRecord(
-                    id_trace_file=trace_file.id_trace,
-                    tipo_record='file',
-                    record_key=filename,
-                    errore=f'Errore eliminazione file fisico: {str(e)}'
+                trace_rec = TraceElabDett(
+                    id_trace=trace_file.id_trace,
+                    record_pos=0,
+                    record_data={'key': filename, 'tipo': 'file'},
+                    messaggio=f'Errore eliminazione file fisico: {str(e)}',
+                    stato='KO'
                 )
                 db.session.add(trace_rec)
 

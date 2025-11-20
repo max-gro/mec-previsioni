@@ -5,7 +5,7 @@ Blueprint per la gestione Anagrafiche File Excel (CRUD + Upload)
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, AnagraficaFile, TraceElab, TraceElabDett
+from models import db, FileAnagrafica, TraceElab, TraceElabDett
 from forms import AnagraficaFileForm, AnagraficaFileEditForm, NuovaMarcaForm
 from utils.decorators import admin_required
 import os
@@ -117,11 +117,11 @@ def scan_anagrafiche_folder():
                 files_trovati.add(filepath)
                 
                 # Controlla se già  nel DB
-                existing = AnagraficaFile.query.filter_by(filepath=filepath).first()
+                existing = FileAnagrafica.query.filter_by(filepath=filepath).first()
                 
                 if not existing:
                     # Aggiungi al database
-                    nuova_anagrafica = AnagraficaFile(
+                    nuova_anagrafica = FileAnagrafica(
                         anno=date.today().year,
                         marca=marca,
                         filename=filename,
@@ -148,11 +148,11 @@ def scan_anagrafiche_folder():
                 files_trovati.add(filepath)
                 
                 # Controlla se già  nel DB
-                existing = AnagraficaFile.query.filter_by(filepath=filepath).first()
+                existing = FileAnagrafica.query.filter_by(filepath=filepath).first()
                 
                 if not existing:
                     # Aggiungi al database
-                    nuova_anagrafica = AnagraficaFile(
+                    nuova_anagrafica = FileAnagrafica(
                         anno=date.today().year,
                         marca=marca,
                         filename=filename,
@@ -165,7 +165,7 @@ def scan_anagrafiche_folder():
                     print(f"[SYNC] Aggiunto: {filepath}")
     
     # Rimuovi record orfani
-    tutte_anagrafiche = AnagraficaFile.query.all()
+    tutte_anagrafiche = FileAnagrafica.query.all()
     for anagrafica in tutte_anagrafiche:
         if anagrafica.filepath not in files_trovati:
             print(f"[SYNC] Rimosso record orfano: {anagrafica.filepath}")
@@ -184,7 +184,7 @@ def elabora_anagrafica(anagrafica_id):
 
     TODO: Sostituire con logica reale di elaborazione
     """
-    anagrafica = AnagraficaFile.query.get_or_404(anagrafica_id)
+    anagrafica = FileAnagrafica.query.get_or_404(anagrafica_id)
 
     # ✅ STEP 1: Crea record elaborazione START
     ts_inizio = datetime.utcnow()
@@ -332,7 +332,7 @@ def list():
     sort_by = request.args.get('sort', 'created_at')
     order = request.args.get('order', 'desc')
     
-    query = AnagraficaFile.query
+    query = FileAnagrafica.query
     
     # Filtri
     if marca_filter:
@@ -342,7 +342,7 @@ def list():
     if anno_filter:
         query = query.filter_by(anno=anno_filter)
     if q:
-        query = query.filter(AnagraficaFile.filename.ilike(f"%{q}%"))
+        query = query.filter(FileAnagrafica.filename.ilike(f"%{q}%"))
     
     # Ordinamento dinamico
     sortable_columns = ['anno','marca','filename','data_acquisizione','data_elaborazione','esito','created_at','updated_at']
@@ -354,13 +354,13 @@ def list():
             query = query.order_by(column.asc())
     else:
         # Default: ordina per data creazione decrescente
-        query = query.order_by(AnagraficaFile.created_at.desc())
+        query = query.order_by(FileAnagrafica.created_at.desc())
     
     anagrafiche = query.paginate(page=page, per_page=20, error_out=False)
     
     # Liste per filtri
     marche_disponibili = get_marche_disponibili()
-    anni_disponibili = [r[0] for r in db.session.query(AnagraficaFile.anno).distinct().order_by(AnagraficaFile.anno.desc())]
+    anni_disponibili = [r[0] for r in db.session.query(FileAnagrafica.anno).distinct().order_by(FileAnagrafica.anno.desc())]
     
     return render_template('anagrafiche/list.html',
                          anagrafiche=anagrafiche,
@@ -378,7 +378,7 @@ def list():
 @admin_required
 def create():
     """Upload nuovo file anagrafica"""
-    form = AnagraficaFileForm()
+    form = FileAnagraficaForm()
     
     # Popola le scelte della select marca
     marche = get_marche_disponibili()
@@ -415,7 +415,7 @@ def create():
         file.save(filepath)
         
         # Crea record nel database
-        anagrafica = AnagraficaFile(
+        anagrafica = FileAnagrafica(
             anno=anno,
             marca=marca,
             filename=filename,
@@ -462,8 +462,8 @@ def nuova_marca():
 @admin_required
 def edit(id):
     """Modifica un'anagrafica esistente"""
-    anagrafica = AnagraficaFile.query.get_or_404(id)
-    form = AnagraficaFileEditForm(obj=anagrafica)  # ← WTForms popola automaticamente
+    anagrafica = FileAnagrafica.query.get_or_404(id)
+    form = FileAnagraficaEditForm(obj=anagrafica)  # ← WTForms popola automaticamente
     
     if form.validate_on_submit():
         anagrafica.anno = int(form.anno.data)
@@ -496,7 +496,7 @@ def elabora(id):
 @admin_required
 def delete(id):
     """Elimina un'anagrafica"""
-    anagrafica = AnagraficaFile.query.get_or_404(id)
+    anagrafica = FileAnagrafica.query.get_or_404(id)
     filename = anagrafica.filename
     filepath = anagrafica.filepath
     
@@ -520,7 +520,7 @@ def delete(id):
 @login_required
 def download(id):
     """Download del file Excel"""
-    anagrafica = AnagraficaFile.query.get_or_404(id)
+    anagrafica = FileAnagrafica.query.get_or_404(id)
     
     if not os.path.exists(anagrafica.filepath):
         flash('File non trovato sul server!', 'danger')
@@ -536,7 +536,7 @@ def download(id):
 @login_required
 def view(id):
     """Apri il file Excel nel browser (se possibile)"""
-    anagrafica = AnagraficaFile.query.get_or_404(id)
+    anagrafica = FileAnagrafica.query.get_or_404(id)
     
     if not os.path.exists(anagrafica.filepath):
         flash('File non trovato sul server!', 'danger')
@@ -583,7 +583,7 @@ import pandas as pd
 @login_required
 def preview(id):
     """Anteprima HTML del file Excel (prime righe del primo foglio)."""
-    ana = AnagraficaFile.query.get_or_404(id)
+    ana = FileAnagrafica.query.get_or_404(id)
 
     # Verifica path e stato/cartella
     filepath = ana.filepath

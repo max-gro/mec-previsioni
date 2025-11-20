@@ -188,7 +188,7 @@
                                     
                                     {# Pulsante ELABORA - solo per Da processare ed Errore #}
                                     {% if ordine.esito in ['Da processare', 'Errore'] %}
-                                    <form method="POST" action="{{ url_for('ordini.elabora', id=ordine.id) }}" class="elabora-form" onsubmit="return confirm('Elaborare questo ordine?\n\nL\'operazione potrebbe richiedere alcuni secondi.');">
+                                    <form method="POST" action="{{ url_for('ordini.elabora', id=ordine.id, anno=anno_filter, esito=esito_filter, filename=filename_filter, sort=sort_by, order=order, page=ordini.page) }}" class="elabora-form" onsubmit="return confirm('Elaborare questo ordine?\n\nL\'operazione potrebbe richiedere alcuni secondi.');">
                                         <button type="submit" class="btn btn-outline-warning btn-elabora" title="Elabora ordine">
                                             ⚙️
                                         </button>

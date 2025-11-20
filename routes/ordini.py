@@ -83,7 +83,7 @@ def elabora_ordine(ordine_id):
             dettaglio = TraceElabDett(
                 id_trace=id_trace,
                 record_pos=0,
-                record_key='FILE_NOT_FOUND',
+                record_data={'key': 'FILE_NOT_FOUND'},
                 stato='KO',
                 messaggio=f"File non trovato sul filesystem: {ordine.filepath}"
             )
@@ -128,10 +128,9 @@ def elabora_ordine(ordine_id):
                     dettaglio = TraceElabDett(
                         id_trace=id_trace,
                         record_pos=riga_num,
-                        record_key=f'VAL_WARN|prezzo|{riga_num}',
                         stato='WARN',
                         messaggio=f"Prezzo componente sospetto (troppo basso): €{random.uniform(0.01, 0.99):.2f}",
-                        record_data={'campo': 'prezzo', 'riga': riga_num}
+                        record_data={'key': f'VAL_WARN|prezzo|{riga_num}', 'campo': 'prezzo', 'riga': riga_num}
                     )
                     db.session.add(dettaglio)
 
@@ -167,7 +166,7 @@ def elabora_ordine(ordine_id):
                 dettaglio = TraceElabDett(
                     id_trace=id_trace,
                     record_pos=0,
-                    record_key='FILE_MOVE_ERROR',
+                    record_data={'key': 'FILE_MOVE_ERROR'},
                     stato='KO',
                     messaggio=f"Errore spostamento file: {str(e)}"
                 )
@@ -211,10 +210,9 @@ def elabora_ordine(ordine_id):
                 dettaglio = TraceElabDett(
                     id_trace=id_trace,
                     record_pos=riga_num,
-                    record_key=f'{errore_code}|{campo}|{riga_num}',
                     stato='KO',
                     messaggio=errore_msg,
-                    record_data={'campo': campo, 'riga': riga_num}
+                    record_data={'key': f'{errore_code}|{campo}|{riga_num}', 'campo': campo, 'riga': riga_num}
                 )
                 db.session.add(dettaglio)
 
@@ -548,7 +546,15 @@ def elabora(id):
     else:
         flash(message, 'danger')
 
-    return redirect(url_for('ordini.list'))
+    # Preserva filtri e ordinamento
+    anno = request.args.get('anno', '')
+    esito = request.args.get('esito', '')
+    filename = request.args.get('filename', '')
+    sort = request.args.get('sort', '')
+    order = request.args.get('order', '')
+    page = request.args.get('page', 1, type=int)
+
+    return redirect(url_for('ordini.list', anno=anno, esito=esito, filename=filename, sort=sort, order=order, page=page))
 
 
 # ========== NUOVI ENDPOINT PER TRACCIAMENTO ELABORAZIONI ==========

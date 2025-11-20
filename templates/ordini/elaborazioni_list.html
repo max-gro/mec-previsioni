@@ -94,10 +94,10 @@
                             <td><span class="badge bg-warning text-dark">{{ elab.righe_warning or 0 }}</span></td>
                             <td>
                                 <button type="button" class="btn btn-sm btn-outline-primary"
-                                        onclick="showDettaglio({{ elab.id }})">
+                                        onclick="showDettaglio({{ elab.id_trace }})">
                                     Dettagli
                                 </button>
-                                <a href="{{ url_for('ordini.elaborazione_export', id=ordine.id, id_elab=elab.id) }}"
+                                <a href="{{ url_for('ordini.elaborazione_export', id=ordine.id, id_elab=elab.id_trace) }}"
                                    class="btn btn-sm btn-outline-success">
                                     CSV
                                 </a>

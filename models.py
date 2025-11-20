@@ -386,18 +386,26 @@ class TraceElab(db.Model):
     __tablename__ = 'trace_elab'
 
     id_trace = db.Column(db.Integer, primary_key=True)
+    id_elab = db.Column(db.Integer, nullable=False, index=True)  # Identifica gruppo elaborazione
     id_file = db.Column(db.Integer, nullable=False, index=True)
     tipo_file = db.Column(db.String(10), nullable=False)  # 'ORD', 'ANA', 'ROT'
-    step = db.Column(db.String(50), nullable=False, default='PROCESS')  # 'INIZIO ETL', 'FINE ETL', 'INIZIO UPD DB', 'FINE UPD DB', 'PROCESS'
-    stato = db.Column(db.String(20), nullable=False, default='OK')  # 'OK', 'KO'
+    step = db.Column(db.String(50), nullable=False, default='PROCESS')  # 'START', 'END', 'PROCESS'
+    stato = db.Column(db.String(20), nullable=False, default='OK')  # 'OK', 'KO', 'WARN'
     messaggio = db.Column(db.Text)
+
+    # Metriche elaborazione
+    righe_totali = db.Column(db.Integer, default=0)
+    righe_ok = db.Column(db.Integer, default=0)
+    righe_errore = db.Column(db.Integer, default=0)
+    righe_warning = db.Column(db.Integer, default=0)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationship con i dettagli
     dettagli = db.relationship('TraceElabDett', backref='elaborazione', lazy='dynamic', cascade='all, delete-orphan')
 
     def __repr__(self):
-        return f'<TraceElab {self.tipo_file} #{self.id_file} - {self.step} - {self.stato}>'
+        return f'<TraceElab elab:{self.id_elab} {self.tipo_file} #{self.id_file} - {self.step} - {self.stato}>'
 
 
 class TraceElabDett(db.Model):

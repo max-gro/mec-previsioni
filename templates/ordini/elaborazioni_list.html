@@ -58,7 +58,6 @@
                             <th>#</th>
                             <th>Data/Ora Inizio</th>
                             <th>Data/Ora Fine</th>
-                            <th>Durata</th>
                             <th>Esito</th>
                             <th>Righe Totali</th>
                             <th>Righe OK</th>
@@ -76,14 +75,13 @@
                             </td>
                             <td><small>{{ elab.ts_inizio.strftime('%d/%m/%Y %H:%M:%S') if elab.ts_inizio else '-' }}</small></td>
                             <td><small>{{ elab.ts_fine.strftime('%d/%m/%Y %H:%M:%S') if elab.ts_fine else '-' }}</small></td>
-                            <td>{{ elab.durata_secondi }}s</td>
                             <td>
-                                {% if elab.esito == 'Successo' %}
-                                <span class="badge bg-success">{{ elab.esito }}</span>
-                                {% elif elab.esito == 'Errore' %}
-                                <span class="badge bg-danger">{{ elab.esito }}</span>
-                                {% elif elab.esito == 'Warning' %}
-                                <span class="badge bg-warning text-dark">{{ elab.esito }}</span>
+                                {% if elab.esito == 'OK' %}
+                                <span class="badge bg-success">Successo</span>
+                                {% elif elab.esito == 'KO' %}
+                                <span class="badge bg-danger">Errore</span>
+                                {% elif elab.esito == 'WARN' %}
+                                <span class="badge bg-warning text-dark">Warning</span>
                                 {% else %}
                                 <span class="badge bg-secondary">{{ elab.esito }}</span>
                                 {% endif %}
@@ -94,18 +92,18 @@
                             <td><span class="badge bg-warning text-dark">{{ elab.righe_warning or 0 }}</span></td>
                             <td>
                                 <button type="button" class="btn btn-sm btn-outline-primary"
-                                        onclick="showDettaglio({{ elab.id_trace }})">
+                                        onclick="showDettaglio({{ elab.id_elab }})">
                                     Dettagli
                                 </button>
-                                <a href="{{ url_for('ordini.elaborazione_export', id=ordine.id, id_elab=elab.id_trace) }}"
+                                <a href="{{ url_for('ordini.elaborazione_export', id=ordine.id, id_elab=elab.id_elab) }}"
                                    class="btn btn-sm btn-outline-success">
                                     CSV
                                 </a>
                             </td>
                         </tr>
                         <tr>
-                            <td colspan="10" class="bg-light">
-                                <small><strong>Note:</strong> {{ elab.messaggio_globale or 'Nessuna nota' }}</small>
+                            <td colspan="9" class="bg-light">
+                                <small><strong>Note:</strong> {{ elab.messaggio or '-' }}</small>
                             </td>
                         </tr>
                         {% else %}

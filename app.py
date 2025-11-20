@@ -9,18 +9,88 @@ from models import db, User
 from config import DevelopmentConfig, ProductionConfig
 from utils.db_log import init_log_session, cleanup_log_session
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 from sqlalchemy import text
+
+
+def setup_logging(app):
+    """
+    Configura il sistema di logging per l'applicazione.
+
+    - Crea cartella logs/ se non esiste
+    - File di log rotanti (max 10MB, mantiene 10 backup)
+    - Formato: [timestamp] [LEVEL] [modulo] messaggio
+    - Livello DEBUG in development, INFO in production
+    """
+    # Crea cartella logs se non esiste
+    logs_dir = os.path.join(app.root_path, 'logs')
+    if not os.path.exists(logs_dir):
+        os.makedirs(logs_dir)
+
+    # Determina livello log in base all'ambiente
+    log_level = logging.DEBUG if app.config['DEBUG'] else logging.INFO
+
+    # Formato log dettagliato
+    log_format = logging.Formatter(
+        '[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+    # File handler principale (rotating, max 10MB, 10 backup files)
+    file_handler = RotatingFileHandler(
+        os.path.join(logs_dir, 'app.log'),
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=10,
+        encoding='utf-8'
+    )
+    file_handler.setLevel(log_level)
+    file_handler.setFormatter(log_format)
+
+    # File handler per errori critici (separato)
+    error_handler = RotatingFileHandler(
+        os.path.join(logs_dir, 'errors.log'),
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5,
+        encoding='utf-8'
+    )
+    error_handler.setLevel(logging.ERROR)
+    error_handler.setFormatter(log_format)
+
+    # Console handler (per vedere log anche in console)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(log_level)
+    console_handler.setFormatter(log_format)
+
+    # Configura root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(error_handler)
+    root_logger.addHandler(console_handler)
+
+    # Log di startup
+    app.logger.info('='*60)
+    app.logger.info('Sistema MEC Previsioni - Avvio applicazione')
+    app.logger.info(f'Ambiente: {"Development" if app.config["DEBUG"] else "Production"}')
+    app.logger.info(f'Livello log: {logging.getLevelName(log_level)}')
+    app.logger.info(f'Log file: {os.path.join(logs_dir, "app.log")}')
+    app.logger.info('='*60)
 
 
 def create_app(config_class=DevelopmentConfig):
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
+
+    # ✅ SETUP LOGGING (prima di tutto per catturare ogni evento)
+    setup_logging(app)
+
     # Assicurati che la cartella instance esista
     instance_path = os.path.join(app.root_path, 'instance')
     if not os.path.exists(instance_path):
         os.makedirs(instance_path)
-    
+        app.logger.info(f'Creata cartella instance: {instance_path}')
+
     # Inizializza estensioni
     db.init_app(app)
 
@@ -31,14 +101,19 @@ def create_app(config_class=DevelopmentConfig):
     # Stampa informazioni sul database
     with app.app_context():
         eng = db.engine
-        print(f"[DB Main] Dialect: {eng.dialect.name}  Driver: {eng.dialect.driver}")
-        print(f"[DB Main] URL effettivo: {eng.url}")
+        app.logger.info(f"[DB Main] Dialect: {eng.dialect.name}  Driver: {eng.dialect.driver}")
+        app.logger.info(f"[DB Main] URL: {str(eng.url).split('@')[-1] if '@' in str(eng.url) else eng.url}")  # Nascondi password
+
         # Mostra versione solo per PostgreSQL
         if eng.dialect.name == 'postgresql':
-            print("[DB Main] Versione:", db.session.execute(text("select version()")).scalar())
+            version = db.session.execute(text("select version()")).scalar()
+            app.logger.info(f"[DB Main] PostgreSQL version: {version.split(',')[0]}")
         elif eng.dialect.name == 'sqlite':
-            print("[DB Main] Versione SQLite:", db.session.execute(text("select sqlite_version()")).scalar())
+            version = db.session.execute(text("select sqlite_version()")).scalar()
+            app.logger.info(f"[DB Main] SQLite version: {version}")
+
         db.create_all()
+        app.logger.info("[DB Main] Tabelle database create/verificate")
 
     # Flask-Login
     login_manager = LoginManager()

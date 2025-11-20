@@ -137,17 +137,17 @@
                                 {% for item in ultime_elaborazioni %}
                                 <tr>
                                     <td><small>{{ item.elaborazione.ts_inizio.strftime('%d/%m %H:%M') }}</small></td>
-                                    <td><span class="badge bg-secondary">{{ item.elaborazione.tipo_pipeline }}</span></td>
+                                    <td><span class="badge bg-secondary">{{ item.tipo_pipeline }}</span></td>
                                     <td><small>{{ item.file.filename if item.file else 'N/A' }}</small></td>
                                     <td>
-                                        {% if item.elaborazione.esito == 'Successo' %}
+                                        {% if item.elaborazione.stato == 'OK' %}
                                         <span class="badge bg-success">Successo</span>
-                                        {% elif item.elaborazione.esito == 'Errore' %}
+                                        {% elif item.elaborazione.stato == 'KO' %}
                                         <span class="badge bg-danger">Errore</span>
-                                        {% elif item.elaborazione.esito == 'Warning' %}
-                                        <span class="badge bg-warning">Warning</span>
+                                        {% elif item.elaborazione.stato == 'WARN' %}
+                                        <span class="badge bg-warning text-dark">Warning</span>
                                         {% else %}
-                                        <span class="badge bg-secondary">{{ item.elaborazione.esito }}</span>
+                                        <span class="badge bg-secondary">{{ item.elaborazione.stato }}</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -184,11 +184,11 @@
                                 {% for item in errori %}
                                 <tr>
                                     <td><small>{{ item.elaborazione.ts_inizio.strftime('%d/%m %H:%M') }}</small></td>
-                                    <td><span class="badge bg-secondary">{{ item.elaborazione.tipo_pipeline }}</span></td>
+                                    <td><span class="badge bg-secondary">{{ item.tipo_pipeline }}</span></td>
                                     <td><small>{{ item.file.filename if item.file else 'N/A' }}</small></td>
                                     <td>
                                         {% if item.file %}
-                                        <a href="{{ url_for(item.elaborazione.tipo_pipeline + '.elaborazioni_list', id=item.file.id) }}" class="btn btn-sm btn-outline-primary">Dettagli</a>
+                                        <a href="{{ url_for(item.tipo_pipeline + '.elaborazioni_list', id=item.file.id) }}" class="btn btn-sm btn-outline-primary">Dettagli</a>
                                         {% endif %}
                                     </td>
                                 </tr>

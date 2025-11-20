@@ -89,61 +89,97 @@ def index():
     }
 
     # ========== ULTIME ELABORAZIONI ==========
-    ultime_elaborazioni = TraceElab.query.filter(
+    ultime_elaborazioni_end = TraceElab.query.filter(
         TraceElab.step == 'END',
         TraceElab.created_at >= data_inizio
     ).order_by(desc(TraceElab.created_at)).limit(10).all()
 
-    # Arricchisci con info file
+    # Arricchisci con info file e trace START
     elab_con_file = []
-    for elab in ultime_elaborazioni:
+    for elab_end in ultime_elaborazioni_end:
+        # Trova trace START corrispondente
+        elab_start = TraceElab.query.filter_by(
+            id_elab=elab_end.id_elab,
+            tipo_file=elab_end.tipo_file,
+            id_file=elab_end.id_file,
+            step='START'
+        ).first()
+
         # Determina tipo file e carica oggetto file
-        if elab.tipo_file == 'ORD':
-            file_obj = OrdineAcquisto.query.get(elab.id_file)
+        if elab_end.tipo_file == 'ORD':
+            file_obj = OrdineAcquisto.query.get(elab_end.id_file)
             tipo_pipeline_name = 'ordini'
-        elif elab.tipo_file == 'ANA':
-            file_obj = AnagraficaFile.query.get(elab.id_file)
+        elif elab_end.tipo_file == 'ANA':
+            file_obj = AnagraficaFile.query.get(elab_end.id_file)
             tipo_pipeline_name = 'anagrafiche'
-        elif elab.tipo_file == 'ROT':
+        elif elab_end.tipo_file == 'ROT':
             from models import FileRottura
-            file_obj = FileRottura.query.get(elab.id_file)
+            file_obj = FileRottura.query.get(elab_end.id_file)
             tipo_pipeline_name = 'rotture'
         else:
             file_obj = None
             tipo_pipeline_name = 'unknown'
 
         elab_con_file.append({
-            'elaborazione': elab,
+            'elaborazione': {
+                'id_elab': elab_end.id_elab,
+                'ts_inizio': elab_start.created_at if elab_start else elab_end.created_at,
+                'ts_fine': elab_end.created_at,
+                'stato': elab_end.stato,
+                'messaggio': elab_end.messaggio,
+                'righe_totali': elab_end.righe_totali,
+                'righe_ok': elab_end.righe_ok,
+                'righe_errore': elab_end.righe_errore,
+                'righe_warning': elab_end.righe_warning
+            },
             'file': file_obj,
             'tipo_pipeline': tipo_pipeline_name
         })
 
     # ========== ELABORAZIONI CON ERRORI ==========
-    elab_con_errori = TraceElab.query.filter(
+    elab_con_errori_end = TraceElab.query.filter(
         TraceElab.step == 'END',
         TraceElab.stato == 'KO',
         TraceElab.created_at >= data_inizio
     ).order_by(desc(TraceElab.created_at)).limit(10).all()
 
     errori_con_file = []
-    for elab in elab_con_errori:
+    for elab_end in elab_con_errori_end:
+        # Trova trace START corrispondente
+        elab_start = TraceElab.query.filter_by(
+            id_elab=elab_end.id_elab,
+            tipo_file=elab_end.tipo_file,
+            id_file=elab_end.id_file,
+            step='START'
+        ).first()
+
         # Determina tipo file e carica oggetto file
-        if elab.tipo_file == 'ORD':
-            file_obj = OrdineAcquisto.query.get(elab.id_file)
+        if elab_end.tipo_file == 'ORD':
+            file_obj = OrdineAcquisto.query.get(elab_end.id_file)
             tipo_pipeline_name = 'ordini'
-        elif elab.tipo_file == 'ANA':
-            file_obj = AnagraficaFile.query.get(elab.id_file)
+        elif elab_end.tipo_file == 'ANA':
+            file_obj = AnagraficaFile.query.get(elab_end.id_file)
             tipo_pipeline_name = 'anagrafiche'
-        elif elab.tipo_file == 'ROT':
+        elif elab_end.tipo_file == 'ROT':
             from models import FileRottura
-            file_obj = FileRottura.query.get(elab.id_file)
+            file_obj = FileRottura.query.get(elab_end.id_file)
             tipo_pipeline_name = 'rotture'
         else:
             file_obj = None
             tipo_pipeline_name = 'unknown'
 
         errori_con_file.append({
-            'elaborazione': elab,
+            'elaborazione': {
+                'id_elab': elab_end.id_elab,
+                'ts_inizio': elab_start.created_at if elab_start else elab_end.created_at,
+                'ts_fine': elab_end.created_at,
+                'stato': elab_end.stato,
+                'messaggio': elab_end.messaggio,
+                'righe_totali': elab_end.righe_totali,
+                'righe_ok': elab_end.righe_ok,
+                'righe_errore': elab_end.righe_errore,
+                'righe_warning': elab_end.righe_warning
+            },
             'file': file_obj,
             'tipo_pipeline': tipo_pipeline_name
         })

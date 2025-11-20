@@ -138,11 +138,11 @@
                                     📄 {{ ordine.filename }}
                                 </a>
                             </td>
-                            <td>{{ ordine.data_acquisizione.strftime('%d/%m/%Y') if ordine.data_acquisizione else '-' }}</td>
+                            <td>{{ ordine.data_acquisizione|datetime_format }}</td>
                             <td>
                                 {% if ordine.data_elaborazione %}
                                 <small class="text-muted">
-                                    {{ ordine.data_elaborazione.strftime('%d/%m/%Y %H:%M') }}
+                                    {{ ordine.data_elaborazione|datetime_format }}
                                 </small>
                                 {% else %}
                                 -

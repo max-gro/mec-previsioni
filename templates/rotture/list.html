@@ -84,10 +84,10 @@
                                     📄 {{ rottura.filename }}
                                 </a>
                             </td>
-                            <td>{{ rottura.data_acquisizione.strftime('%d/%m/%Y') if rottura.data_acquisizione else '-' }}</td>
+                            <td>{{ rottura.data_acquisizione|datetime_format }}</td>
                             <td>
                                 {% if rottura.data_elaborazione %}
-                                {{ rottura.data_elaborazione.strftime('%d/%m/%Y %H:%M') }}
+                                {{ rottura.data_elaborazione|datetime_format }}
                                 {% else %}
                                 <span class="text-muted">-</span>
                                 {% endif %}

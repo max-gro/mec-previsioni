@@ -122,8 +122,8 @@
                 <span class="badge text-bg-{{ badge }}">{{ ana.esito }}</span>
               </td>
 
-              <td>{{ ana.data_acquisizione.strftime('%d/%m/%Y') if ana.data_acquisizione else '-' }}</td>
-              <td>{{ ana.data_elaborazione.strftime('%d/%m/%Y') if ana.data_elaborazione else '-' }}</td>
+              <td>{{ ana.data_acquisizione|datetime_format }}</td>
+              <td>{{ ana.data_elaborazione|datetime_format }}</td>
               <td class="text-truncate" style="max-width: 24rem;" title="{{ ana.note }}">{{ ana.note }}</td>
 
               <td>

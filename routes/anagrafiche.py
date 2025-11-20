@@ -366,8 +366,8 @@ def list():
     
     # Ordinamento dinamico
     sortable_columns = ['anno','marca','filename','data_acquisizione','data_elaborazione','esito','created_at','updated_at']
-    if sort_by in sortable_columns and hasattr(AnagraficaFile, sort_by):
-        column = getattr(AnagraficaFile, sort_by)
+    if sort_by in sortable_columns and hasattr(FileAnagrafica, sort_by):
+        column = getattr(FileAnagrafica, sort_by)
         if order == 'desc':
             query = query.order_by(column.desc())
         else:

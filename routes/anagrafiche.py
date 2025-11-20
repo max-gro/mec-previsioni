@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 from models import db, FileAnagrafica, TraceElab, TraceElabDett
 from forms import AnagraficaFileForm, AnagraficaFileEditForm, NuovaMarcaForm
 from utils.decorators import admin_required
+from utils.db_log import log_session  # Sessione separata per log (AUTONOMOUS TRANSACTION)
 import os
 import shutil
 import random
@@ -190,7 +191,7 @@ def elabora_anagrafica(anagrafica_id):
     result = db.session.execute(db.text("SELECT nextval('seq_id_elab')"))
     id_elab = result.scalar()
 
-    # ✅ STEP 2: Crea record elaborazione START
+    # ✅ STEP 2: Crea record elaborazione START (LOG SESSION)
     ts_inizio = datetime.utcnow()
     trace_start = TraceElab(
         id_elab=id_elab,
@@ -200,8 +201,8 @@ def elabora_anagrafica(anagrafica_id):
         stato='OK',
         messaggio='Inizio elaborazione anagrafica'
     )
-    db.session.add(trace_start)
-    db.session.commit()
+    log_session.add(trace_start)
+    log_session.commit()  # ← AUTONOMOUS: Commit immediato
 
     # Verifica che il file esista
     if not os.path.exists(anagrafica.filepath):
@@ -218,8 +219,10 @@ def elabora_anagrafica(anagrafica_id):
             righe_errore=1,
             righe_warning=0
         )
-        db.session.add(trace_end)
+        log_session.add(trace_end)
+        log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
+        # Aggiorna tabella operativa (DB SESSION)
         anagrafica.esito = 'Errore'
         anagrafica.data_elaborazione = date.today()
         anagrafica.note = '❌ File non trovato sul filesystem'
@@ -248,7 +251,7 @@ def elabora_anagrafica(anagrafica_id):
             num_componenti = random.randint(20, 200)
             num_warnings = random.randint(0, 10)
 
-            # Crea alcuni record di dettaglio simulati per i warnings
+            # Crea alcuni record di dettaglio simulati per i warnings (LOG SESSION)
             if num_warnings > 0:
                 warnings_simulati = [
                     'Codice componente mancante',
@@ -265,9 +268,10 @@ def elabora_anagrafica(anagrafica_id):
                         stato='WARN',
                         messaggio=random.choice(warnings_simulati)
                     )
-                    db.session.add(trace_dett)
+                    log_session.add(trace_dett)
+                log_session.commit()  # ← AUTONOMOUS: Warning log persistiti
 
-            # Crea trace END con successo
+            # Crea trace END con successo (LOG SESSION)
             trace_end = TraceElab(
                 id_elab=id_elab,
                 id_file=anagrafica_id,
@@ -280,22 +284,22 @@ def elabora_anagrafica(anagrafica_id):
                 righe_errore=0,
                 righe_warning=num_warnings
             )
-            db.session.add(trace_end)
+            log_session.add(trace_end)
+            log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
-            # Aggiorna database
+            # Aggiorna tabella operativa (DB SESSION - TRANSAZIONALE)
             anagrafica.filepath = new_filepath
             anagrafica.esito = 'Processato'
             anagrafica.data_elaborazione = date.today()
             anagrafica.note = f'Elaborazione completata con successo.\n' \
                             f'Record elaborati: {num_record}.\n' \
                             f'Componenti aggiornati: {num_componenti}.'
-
-            db.session.commit()
+            db.session.commit()  # ← Se fallisce, i log sono GIÀ salvati!
 
             return True, 'Elaborazione completata con successo!'
 
         except Exception as e:
-            # Errore durante lo spostamento
+            # Errore durante lo spostamento (LOG SESSION)
             trace_end = TraceElab(
                 id_elab=id_elab,
                 id_file=anagrafica_id,
@@ -308,8 +312,10 @@ def elabora_anagrafica(anagrafica_id):
                 righe_errore=1,
                 righe_warning=0
             )
-            db.session.add(trace_end)
+            log_session.add(trace_end)
+            log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
+            # Aggiorna tabella operativa (DB SESSION)
             anagrafica.esito = 'Errore'
             anagrafica.data_elaborazione = date.today()
             anagrafica.note = f'Errore durante lo spostamento file: {str(e)}'
@@ -333,7 +339,7 @@ def elabora_anagrafica(anagrafica_id):
         # Simula numero errori
         num_errori = random.randint(5, 50)
 
-        # Crea alcuni record di dettaglio simulati per gli errori
+        # Crea alcuni record di dettaglio simulati per gli errori (LOG SESSION)
         errori_dettaglio = [
             'Formato colonna non valido',
             'Valore duplicato trovato',
@@ -349,9 +355,10 @@ def elabora_anagrafica(anagrafica_id):
                 stato='KO',
                 messaggio=random.choice(errori_dettaglio)
             )
-            db.session.add(trace_dett)
+            log_session.add(trace_dett)
+        log_session.commit()  # ← AUTONOMOUS: Error log persistiti
 
-        # Crea trace END con errore
+        # Crea trace END con errore (LOG SESSION)
         trace_end = TraceElab(
             id_elab=id_elab,
             id_file=anagrafica_id,
@@ -364,8 +371,10 @@ def elabora_anagrafica(anagrafica_id):
             righe_errore=num_errori,
             righe_warning=0
         )
-        db.session.add(trace_end)
+        log_session.add(trace_end)
+        log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
+        # Aggiorna tabella operativa (DB SESSION)
         anagrafica.esito = 'Errore'
         anagrafica.data_elaborazione = date.today()
         anagrafica.note = f'❌ {errore_msg}'

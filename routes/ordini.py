@@ -9,6 +9,7 @@ from models import db, OrdineAcquisto, TraceElab, TraceElabDett
 from forms import OrdineAcquistoForm, OrdineAcquistoEditForm
 from utils.decorators import admin_required
 from utils.pdf_parser import parse_purchase_order_pdf
+from utils.db_log import log_session  # Sessione separata per log (AUTONOMOUS TRANSACTION)
 import os
 import re
 import shutil
@@ -77,7 +78,7 @@ def elabora_ordine(ordine_id):
     result = db.session.execute(db.text("SELECT nextval('seq_id_elab')"))
     id_elab = result.scalar()
 
-    # ✅ STEP 1: Crea record elaborazione - START
+    # ✅ STEP 1: Crea record elaborazione - START (LOG SESSION - COMMIT IMMEDIATO)
     trace_start = TraceElab(
         id_elab=id_elab,
         id_file=ordine_id,
@@ -86,8 +87,8 @@ def elabora_ordine(ordine_id):
         stato='OK',
         messaggio='Inizio elaborazione ordine PDF'
     )
-    db.session.add(trace_start)
-    db.session.commit()  # Commit per avere l'ID
+    log_session.add(trace_start)
+    log_session.commit()  # ← AUTONOMOUS: Commit immediato, sempre persistito
     id_trace_start = trace_start.id_trace
 
     try:
@@ -95,7 +96,7 @@ def elabora_ordine(ordine_id):
         if not os.path.exists(ordine.filepath):
             logger.error(f"File not found: {ordine.filepath}")
 
-            # Logga errore critico
+            # Logga errore critico (LOG SESSION)
             dettaglio = TraceElabDett(
                 id_trace=id_trace_start,
                 record_pos=0,
@@ -103,9 +104,10 @@ def elabora_ordine(ordine_id):
                 stato='KO',
                 messaggio=f"File non trovato sul filesystem: {ordine.filepath}"
             )
-            db.session.add(dettaglio)
+            log_session.add(dettaglio)
+            log_session.commit()  # ← AUTONOMOUS: Log persistito immediatamente
 
-            # Finalizza elaborazione con errore
+            # Finalizza elaborazione con errore (LOG SESSION)
             trace_end = TraceElab(
                 id_elab=id_elab,
                 id_file=ordine_id,
@@ -118,13 +120,15 @@ def elabora_ordine(ordine_id):
                 righe_errore=1,
                 righe_warning=0
             )
-            db.session.add(trace_end)
+            log_session.add(trace_end)
+            log_session.commit()  # ← AUTONOMOUS: Log END sempre persistito
 
+            # Aggiorna tabella operativa (DB SESSION)
             ordine.esito = 'Errore'
             ordine.data_elaborazione = datetime.utcnow()
             ordine.note = "File non trovato sul filesystem"
-
             db.session.commit()
+
             return False, "File non trovato sul filesystem"
 
         # ✅ STEP 2: Parse PDF
@@ -136,7 +140,7 @@ def elabora_ordine(ordine_id):
         num_errors = len(parse_result.get('errors', []))
         num_warnings = len(parse_result.get('warnings', []))
 
-        # Log warnings
+        # Log warnings (LOG SESSION - commit immediato dopo tutti i warning)
         for warning in parse_result.get('warnings', []):
             dettaglio = TraceElabDett(
                 id_trace=id_trace_start,
@@ -145,9 +149,11 @@ def elabora_ordine(ordine_id):
                 messaggio=warning,
                 record_data={'key': 'PARSE_WARN'}
             )
-            db.session.add(dettaglio)
+            log_session.add(dettaglio)
+        if parse_result.get('warnings'):
+            log_session.commit()  # ← AUTONOMOUS: Warning log persistiti
 
-        # Log errors
+        # Log errors (LOG SESSION - commit immediato dopo tutti gli errori)
         for idx, error in enumerate(parse_result.get('errors', [])):
             dettaglio = TraceElabDett(
                 id_trace=id_trace_start,
@@ -159,7 +165,9 @@ def elabora_ordine(ordine_id):
                     'raw_data': str(error.get('raw_data')) if error.get('raw_data') else None
                 }
             )
-            db.session.add(dettaglio)
+            log_session.add(dettaglio)
+        if parse_result.get('errors'):
+            log_session.commit()  # ← AUTONOMOUS: Error log persistiti
 
         # Determina se l'elaborazione è un successo
         has_critical_errors = num_errors > 0 and num_items == 0
@@ -168,6 +176,7 @@ def elabora_ordine(ordine_id):
             # ✅ STEP 4A: ERRORE CRITICO - file rimane in INPUT
             messaggio_finale = f"Elaborazione fallita: trovati {num_errors} errori critici, 0 righe valide estratte."
 
+            # Log END con errore critico (LOG SESSION)
             trace_end = TraceElab(
                 id_elab=id_elab,
                 id_file=ordine_id,
@@ -180,13 +189,15 @@ def elabora_ordine(ordine_id):
                 righe_errore=num_errors,
                 righe_warning=num_warnings
             )
-            db.session.add(trace_end)
+            log_session.add(trace_end)
+            log_session.commit()  # ← AUTONOMOUS: Log END sempre persistito
 
+            # Aggiorna tabella operativa (DB SESSION)
             ordine.esito = 'Errore'
             ordine.data_elaborazione = datetime.utcnow()
             ordine.note = messaggio_finale
-
             db.session.commit()
+
             logger.error(f"Critical parsing errors for {ordine.filename}: {num_errors} errors")
             return False, f"Elaborazione fallita: {num_errors} errori critici nel PDF"
 
@@ -231,6 +242,7 @@ def elabora_ordine(ordine_id):
 
                 messaggio_finale = ". ".join(msg_parts)
 
+                # ✅ STEP 5A: Log END con successo (LOG SESSION - COMMIT IMMEDIATO)
                 trace_end = TraceElab(
                     id_elab=id_elab,
                     id_file=ordine_id,
@@ -243,15 +255,15 @@ def elabora_ordine(ordine_id):
                     righe_errore=num_errors,
                     righe_warning=num_warnings
                 )
-                db.session.add(trace_end)
+                log_session.add(trace_end)
+                log_session.commit()  # ← AUTONOMOUS: Log END sempre persistito
 
-                # Aggiorna record file
+                # ✅ STEP 5B: Aggiorna tabella operativa (DB SESSION - TRANSAZIONALE)
                 ordine.filepath = new_filepath
                 ordine.esito = 'Processato'
                 ordine.data_elaborazione = datetime.utcnow()
                 ordine.note = messaggio_finale
-
-                db.session.commit()
+                db.session.commit()  # ← Se fallisce, i log sono GIÀ salvati!
 
                 success_msg = f"Ordine elaborato con successo! {num_items} righe estratte"
                 if num_warnings > 0:
@@ -263,6 +275,7 @@ def elabora_ordine(ordine_id):
                 # Errore nello spostamento file o nel salvataggio
                 logger.exception(f"Error moving file or saving data: {str(e)}")
 
+                # Log dettaglio errore (LOG SESSION)
                 dettaglio = TraceElabDett(
                     id_trace=id_trace_start,
                     record_pos=0,
@@ -270,8 +283,10 @@ def elabora_ordine(ordine_id):
                     messaggio=f"Errore post-parsing: {str(e)}",
                     record_data={'key': 'FILE_MOVE_ERROR'}
                 )
-                db.session.add(dettaglio)
+                log_session.add(dettaglio)
+                log_session.commit()  # ← AUTONOMOUS: Log errore persistito
 
+                # Log END con errore (LOG SESSION)
                 trace_end = TraceElab(
                     id_elab=id_elab,
                     id_file=ordine_id,
@@ -284,19 +299,22 @@ def elabora_ordine(ordine_id):
                     righe_errore=num_errors + 1,
                     righe_warning=num_warnings
                 )
-                db.session.add(trace_end)
+                log_session.add(trace_end)
+                log_session.commit()  # ← AUTONOMOUS: Log END sempre persistito
 
+                # Aggiorna tabella operativa (DB SESSION)
                 ordine.esito = 'Errore'
                 ordine.data_elaborazione = datetime.utcnow()
                 ordine.note = str(e)
-
                 db.session.commit()
+
                 return False, f"Errore: {str(e)}"
 
     except Exception as e:
         # Gestione errori imprevisti
         logger.exception(f"Unexpected error during elaboration: {str(e)}")
 
+        # Log dettaglio errore imprevisto (LOG SESSION)
         dettaglio = TraceElabDett(
             id_trace=id_trace_start,
             record_pos=0,
@@ -304,8 +322,10 @@ def elabora_ordine(ordine_id):
             messaggio=f"Errore imprevisto: {str(e)}",
             record_data={'key': 'UNEXPECTED_ERROR'}
         )
-        db.session.add(dettaglio)
+        log_session.add(dettaglio)
+        log_session.commit()  # ← AUTONOMOUS: Log errore persistito
 
+        # Log END con errore imprevisto (LOG SESSION)
         trace_end = TraceElab(
             id_elab=id_elab,
             id_file=ordine_id,
@@ -318,13 +338,15 @@ def elabora_ordine(ordine_id):
             righe_errore=1,
             righe_warning=0
         )
-        db.session.add(trace_end)
+        log_session.add(trace_end)
+        log_session.commit()  # ← AUTONOMOUS: Log END sempre persistito
 
+        # Aggiorna tabella operativa (DB SESSION)
         ordine.esito = 'Errore'
         ordine.data_elaborazione = datetime.utcnow()
         ordine.note = str(e)
-
         db.session.commit()
+
         return False, f"Errore imprevisto: {str(e)}"
 
 def scan_po_folder():

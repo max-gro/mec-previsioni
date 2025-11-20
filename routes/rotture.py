@@ -10,6 +10,7 @@ from models import (
     TraceElab, TraceElabDett
 )
 from werkzeug.utils import secure_filename
+from utils.db_log import log_session  # Sessione separata per log (AUTONOMOUS TRANSACTION)
 import os
 from datetime import datetime
 
@@ -575,4 +576,4 @@ def elabora_file_rottura_completo(file_rottura):
         'TraceElab': TraceElab,
         'TraceElabDett': TraceElabDett
     }
-    return _elabora_file_rottura_completo(file_rottura, db, current_user, current_app, models_dict)
+    return _elabora_file_rottura_completo(file_rottura, db, current_user, current_app, models_dict, log_session)

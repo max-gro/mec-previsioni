@@ -199,7 +199,7 @@ def elabora_ordine(ordine_id):
 
         # ✅ STEP 3: Elabora TSV e popola database (controparti, modelli, ordini)
         logger.info(f"Elaborazione TSV: {tsv_filepath}")
-        success_tsv, message_tsv, stats = elabora_tsv_ordine(ordine_id, tsv_filepath, current_user.id_user)
+        success_tsv, message_tsv, stats = elabora_tsv_ordine(ordine_id, tsv_filepath, current_user.id)
 
         # Estrai statistiche
         num_righe_ok = stats.get('righe_ok', 0)

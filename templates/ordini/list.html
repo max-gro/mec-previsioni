@@ -138,11 +138,11 @@
                                     📄 {{ ordine.filename }}
                                 </a>
                             </td>
-                            <td>{{ ordine.data_acquisizione.strftime('%d/%m/%Y') if ordine.data_acquisizione else '-' }}</td>
+                            <td>{{ ordine.data_acquisizione|datetime_format }}</td>
                             <td>
                                 {% if ordine.data_elaborazione %}
                                 <small class="text-muted">
-                                    {{ ordine.data_elaborazione.strftime('%d/%m/%Y %H:%M') }}
+                                    {{ ordine.data_elaborazione|datetime_format }}
                                 </small>
                                 {% else %}
                                 -
@@ -188,7 +188,7 @@
                                     
                                     {# Pulsante ELABORA - solo per Da processare ed Errore #}
                                     {% if ordine.esito in ['Da processare', 'Errore'] %}
-                                    <form method="POST" action="{{ url_for('ordini.elabora', id=ordine.id) }}" class="elabora-form" onsubmit="return confirm('Elaborare questo ordine?\n\nL\'operazione potrebbe richiedere alcuni secondi.');">
+                                    <form method="POST" action="{{ url_for('ordini.elabora', id=ordine.id, anno=anno_filter, esito=esito_filter, filename=filename_filter, sort=sort_by, order=order, page=ordini.page) }}" class="elabora-form" onsubmit="return confirm('Elaborare questo ordine?\n\nL\'operazione potrebbe richiedere alcuni secondi.');">
                                         <button type="submit" class="btn btn-outline-warning btn-elabora" title="Elabora ordine">
                                             ⚙️
                                         </button>

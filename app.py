@@ -7,6 +7,7 @@ from flask import Flask, render_template, redirect, url_for
 from flask_login import LoginManager, login_required, current_user
 from models import db, User
 from config import DevelopmentConfig, ProductionConfig
+from utils.db_log import init_log_session, cleanup_log_session
 import os
 from sqlalchemy import text
 
@@ -23,16 +24,20 @@ def create_app(config_class=DevelopmentConfig):
     # Inizializza estensioni
     db.init_app(app)
 
+    # Inizializza sessione log separata (AUTONOMOUS TRANSACTION)
+    with app.app_context():
+        init_log_session(app.config['SQLALCHEMY_DATABASE_URI'])
+
     # Stampa informazioni sul database
     with app.app_context():
         eng = db.engine
-        print(f"[DB] Dialect: {eng.dialect.name}  Driver: {eng.dialect.driver}")
-        print(f"[DB] URL effettivo: {eng.url}")
+        print(f"[DB Main] Dialect: {eng.dialect.name}  Driver: {eng.dialect.driver}")
+        print(f"[DB Main] URL effettivo: {eng.url}")
         # Mostra versione solo per PostgreSQL
         if eng.dialect.name == 'postgresql':
-            print("[DB] Versione:", db.session.execute(text("select version()")).scalar())
+            print("[DB Main] Versione:", db.session.execute(text("select version()")).scalar())
         elif eng.dialect.name == 'sqlite':
-            print("[DB] Versione SQLite:", db.session.execute(text("select sqlite_version()")).scalar())
+            print("[DB Main] Versione SQLite:", db.session.execute(text("select sqlite_version()")).scalar())
         db.create_all()
 
     # Flask-Login
@@ -81,18 +86,43 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(ordini_bp, url_prefix='/ordini')
     app.register_blueprint(anagrafiche_bp, url_prefix='/anagrafiche')  # Gestione file anagrafiche
 
-    # Homepage - Redirect alla dashboard elaborazioni
+    # Teardown handler per pulire la log session
+    @app.teardown_appcontext
+    def shutdown_log_session(exception=None):
+        """Pulisce la log session alla fine di ogni request"""
+        cleanup_log_session()
+
+    # Homepage con card per funzioni principali
     @app.route('/')
     @login_required
     def index():
-        """Homepage - reindirizza alla dashboard elaborazioni"""
-        return redirect(url_for('dashboard.index'))
-    
+        """Homepage con card per accedere alle funzioni principali"""
+        return render_template('home.html')
+
+    # Filtri Jinja2 custom per formattazione date
+    @app.template_filter('datetime_format')
+    def datetime_format(value, format='%d/%m/%Y %H:%M'):
+        """Formatta datetime in formato italiano con ora"""
+        if value is None:
+            return '-'
+        if isinstance(value, str):
+            return value
+        return value.strftime(format)
+
+    @app.template_filter('date_format')
+    def date_format(value, format='%d/%m/%Y'):
+        """Formatta date (senza ora) in formato italiano"""
+        if value is None:
+            return '-'
+        if isinstance(value, str):
+            return value
+        return value.strftime(format)
+
     # Context processor per rendere current_user disponibile in tutti i template
     @app.context_processor
     def inject_user():
         return dict(current_user=current_user)
-    
+
     return app
 
 if __name__ == '__main__':

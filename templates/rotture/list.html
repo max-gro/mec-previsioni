@@ -2,6 +2,23 @@
 
 {% block title %}Gestione File Rotture{% endblock %}
 
+{% block extra_css %}
+<style>
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+.sortable-header:hover {
+    background-color: #dee2e6 !important;
+}
+.sort-icon {
+    font-size: 0.8em;
+    margin-left: 5px;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="row mb-4">
@@ -27,6 +44,8 @@
             <!-- <div class="card shadow-sm"> -->
                 <div class="card-body">
                     <form method="GET" action="{{ url_for('rotture.list') }}" class="row g-3">
+                        <input type="hidden" name="sort" value="{{ sort_by }}">
+                        <input type="hidden" name="order" value="{{ order }}">
                         <div class="col-md-2">
                             <label class="form-label">Anno</label>
                             <select name="anno" class="form-select">
@@ -59,15 +78,41 @@
     <div class="card shadow-sm">
         <div class="card-body">
             {% if rotture.items %}
+
+            {# Macro per link ordinamento #}
+            {% macro sort_link(column, label) %}
+                <a href="{{ url_for('rotture.list',
+                           page=1,
+                           anno=anno_filter,
+                           esito=esito_filter,
+                           sort=column,
+                           order='desc' if sort_by == column and order == 'asc' else 'asc') }}"
+                   class="text-decoration-none text-dark d-flex align-items-center">
+                    {{ label }}
+                    {% if sort_by == column %}
+                        <span class="sort-icon">
+                            {% if order == 'asc' %}
+                                <strong>▲</strong>
+                            {% else %}
+                                <strong>▼</strong>
+                            {% endif %}
+                        </span>
+                    {% else %}
+                        <span class="sort-icon text-muted">⇅</span>
+                    {% endif %}
+                </a>
+            {% endmacro %}
+
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th>Anno</th>
-                            <th>File</th>
-                            <th>Acquisizione</th>
-                            <th>Elaborazione</th>
-                            <th>Stato</th>
+                            <th class="sortable-header">{{ sort_link('anno', 'Anno') }}</th>
+                            <th class="sortable-header">{{ sort_link('filename', 'File') }}</th>
+                            <th class="sortable-header">{{ sort_link('data_acquisizione', 'Acquisizione') }}</th>
+                            <th class="sortable-header">{{ sort_link('data_elaborazione', 'Elaborazione') }}</th>
+                            <th class="sortable-header">{{ sort_link('esito', 'Stato') }}</th>
+                            <th>Elaborazioni</th>
                             <th>Percorso</th>
                             <th>Note</th>
                             {% if current_user.is_admin() %}
@@ -84,10 +129,10 @@
                                     📄 {{ rottura.filename }}
                                 </a>
                             </td>
-                            <td>{{ rottura.data_acquisizione.strftime('%d/%m/%Y') if rottura.data_acquisizione else '-' }}</td>
+                            <td>{{ rottura.data_acquisizione|datetime_format }}</td>
                             <td>
                                 {% if rottura.data_elaborazione %}
-                                {{ rottura.data_elaborazione.strftime('%d/%m/%Y %H:%M') }}
+                                {{ rottura.data_elaborazione|datetime_format }}
                                 {% else %}
                                 <span class="text-muted">-</span>
                                 {% endif %}
@@ -100,6 +145,11 @@
                                 {% else %}
                                 <span class="badge bg-warning text-dark">⏳ {{ rottura.esito }}</span>
                                 {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{{ url_for('rotture.elaborazioni_list', id=rottura.id) }}" class="btn btn-sm btn-outline-info" title="Vedi elaborazioni">
+                                    📊 Dettagli
+                                </a>
                             </td>
                             <td>
                                 <small class="text-muted">
@@ -160,21 +210,21 @@
             <nav aria-label="Navigazione pagine">
                 <ul class="pagination justify-content-center mt-4">
                     <li class="page-item {% if not rotture.has_prev %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('rotture.list', page=rotture.prev_num, anno=anno_filter, esito=esito_filter) }}">Precedente</a>
+                        <a class="page-link" href="{{ url_for('rotture.list', page=rotture.prev_num, anno=anno_filter, esito=esito_filter, sort=sort_by, order=order) }}">Precedente</a>
                     </li>
-                    
+
                     {% for page_num in rotture.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                         {% if page_num %}
                             <li class="page-item {% if page_num == rotture.page %}active{% endif %}">
-                                <a class="page-link" href="{{ url_for('rotture.list', page=page_num, anno=anno_filter, esito=esito_filter) }}">{{ page_num }}</a>
+                                <a class="page-link" href="{{ url_for('rotture.list', page=page_num, anno=anno_filter, esito=esito_filter, sort=sort_by, order=order) }}">{{ page_num }}</a>
                             </li>
                         {% else %}
                             <li class="page-item disabled"><span class="page-link">...</span></li>
                         {% endif %}
                     {% endfor %}
-                    
+
                     <li class="page-item {% if not rotture.has_next %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('rotture.list', page=rotture.next_num, anno=anno_filter, esito=esito_filter) }}">Successiva</a>
+                        <a class="page-link" href="{{ url_for('rotture.list', page=rotture.next_num, anno=anno_filter, esito=esito_filter, sort=sort_by, order=order) }}">Successiva</a>
                     </li>
                 </ul>
             </nav>

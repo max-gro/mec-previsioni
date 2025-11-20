@@ -41,15 +41,31 @@ class RotturaForm(FlaskForm):
         FileAllowed(['xls', 'xlsx'], 'Solo file Excel (.xls, .xlsx) sono permessi!')
     ])
     anno = IntegerField('Anno', validators=[DataRequired()])
-    data_acquisizione = DateTimeField('Data Acquisizione', format='%d/%m/%Y %H:%M', validators=[DataRequired()])
+    data_acquisizione = DateField(
+        'Data Acquisizione',
+        format='%d/%m/%Y',
+        default=date.today,
+        validators=[DataRequired()],
+        render_kw={'type': 'date'}
+    )
 
     note = TextAreaField('Note')
 
 
 class RotturaEditForm(FlaskForm):
     """Form per modifica File Rottura (senza upload)"""
-    data_acquisizione = DateTimeField('Data Acquisizione', format='%d/%m/%Y %H:%M', validators=[DataRequired()])
-    data_elaborazione = DateTimeField('Data Elaborazione', format='%d/%m/%Y %H:%M', validators=[Optional()])
+    data_acquisizione = DateField(
+        'Data Acquisizione',
+        format='%d/%m/%Y',
+        validators=[DataRequired()],
+        render_kw={'type': 'date'}
+    )
+    data_elaborazione = DateTimeField(
+        'Data Elaborazione',
+        format='%d/%m/%Y %H:%M',
+        validators=[Optional()],
+        render_kw={'type': 'datetime-local'}
+    )
     esito = SelectField('Esito', choices=[
         ('Da processare', 'Da processare'),
         ('Processato', 'Processato'),
@@ -64,7 +80,13 @@ class OrdineAcquistoForm(FlaskForm):
         FileRequired(message='Seleziona un file PDF'),
         FileAllowed(['pdf'], 'Solo file PDF sono permessi!')
     ])
-    data_acquisizione = DateTimeField('Data Acquisizione', format='%d/%m/%Y %H:%M', validators=[DataRequired()])
+    data_acquisizione = DateField(
+        'Data Acquisizione',
+        format='%d/%m/%Y',
+        default=date.today,
+        validators=[DataRequired()],
+        render_kw={'type': 'date'}
+    )
     esito = SelectField('Esito', choices=[
         ('Da processare', 'Da processare'),
         ('Processato', 'Processato'),
@@ -75,7 +97,12 @@ class OrdineAcquistoForm(FlaskForm):
 
 class OrdineAcquistoEditForm(FlaskForm):
     """Form per modifica Ordine di Acquisto (senza upload file)"""
-    data_acquisizione = DateTimeField('Data Acquisizione', format='%d/%m/%Y %H:%M', validators=[DataRequired()])
+    data_acquisizione = DateField(
+        'Data Acquisizione',
+        format='%d/%m/%Y',
+        validators=[DataRequired()],
+        render_kw={'type': 'date'}
+    )
     esito = SelectField('Esito', choices=[
         ('Da processare', 'Da processare'),
         ('Processato', 'Processato'),
@@ -98,7 +125,13 @@ class AnagraficaFileForm(FlaskForm):
         validators=[DataRequired(), NumberRange(min=minY, max=maxY, message=f"Anno valido tra {minY} e {maxY}")],
         render_kw={"min": minY, "max": maxY, "placeholder": str(date.today().year)}
     )    
-    data_acquisizione = DateTimeField('Data Acquisizione', format='%d/%m/%Y %H:%M', validators=[DataRequired()])
+    data_acquisizione = DateField(
+        'Data Acquisizione',
+        format='%d/%m/%Y',
+        default=date.today,
+        validators=[DataRequired()],
+        render_kw={'type': 'date'}
+    )
     note = TextAreaField('Note')
 
     def validate_anno(self, field):
@@ -116,8 +149,18 @@ class AnagraficaFileEditForm(FlaskForm):
         validators=[DataRequired(), NumberRange(min=minY, max=maxY, message=f"Anno valido tra {minY} e {maxY}")],
         render_kw={"min": minY, "max": maxY}
     )
-    data_acquisizione = DateTimeField('Data Acquisizione', format='%d/%m/%Y %H:%M', validators=[DataRequired()])
-    data_elaborazione = DateTimeField('Data Elaborazione', format='%d/%m/%Y %H:%M', validators=[Optional()])
+    data_acquisizione = DateField(
+        'Data Acquisizione',
+        format='%d/%m/%Y',
+        validators=[DataRequired()],
+        render_kw={'type': 'date'}
+    )
+    data_elaborazione = DateTimeField(
+        'Data Elaborazione',
+        format='%d/%m/%Y %H:%M',
+        validators=[Optional()],
+        render_kw={'type': 'datetime-local'}
+    )
     esito = SelectField('Esito', choices=[
         ('Da processare', 'Da processare'),
         ('Processato', 'Processato'),

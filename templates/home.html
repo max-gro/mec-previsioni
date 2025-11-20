@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Sistema Previsioni MEC{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="text-center mb-5">
+        <h1 class="display-4">🏠 Sistema Previsioni MEC</h1>
+        <p class="lead text-muted">Gestione pipeline Ordini, Anagrafiche e Rotture</p>
+    </div>
+
+    <div class="row g-4">
+        <!-- Card Dashboard -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-speedometer2 text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">📊 Dashboard</h5>
+                    <p class="card-text text-muted">
+                        Visualizza statistiche globali e stato elaborazioni delle 3 pipeline
+                    </p>
+                    <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">
+                        Vai alla Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Ordini -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">📄 Ordini di Acquisto</h5>
+                    <p class="card-text text-muted">
+                        Gestione file PDF ordini di acquisto e pipeline di elaborazione
+                    </p>
+                    <a href="{{ url_for('ordini.list') }}" class="btn btn-danger">
+                        Gestisci Ordini
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Anagrafiche -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-file-earmark-excel text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">📗 Anagrafiche (BOM)</h5>
+                    <p class="card-text text-muted">
+                        Gestione file Excel distinte base componenti per marca/modello
+                    </p>
+                    <a href="{{ url_for('anagrafiche.list') }}" class="btn btn-success">
+                        Gestisci Anagrafiche
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Rotture -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-file-earmark-excel text-warning" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">🔧 Rotture</h5>
+                    <p class="card-text text-muted">
+                        Gestione file Excel eventi di guasto e componenti sostituiti
+                    </p>
+                    <a href="{{ url_for('rotture.list') }}" class="btn btn-warning">
+                        Gestisci Rotture
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Previsioni (Placeholder per futura implementazione) -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card border-secondary">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-graph-up-arrow text-info" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">📈 Previsioni</h5>
+                    <p class="card-text text-muted">
+                        Analisi predittiva e forecast basato su dati storici
+                    </p>
+                    <button class="btn btn-secondary" disabled>
+                        Prossimamente
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Utenti (Solo Admin) -->
+        {% if current_user.is_admin() %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card border-primary">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-people text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">👥 Utenti</h5>
+                    <p class="card-text text-muted">
+                        Gestione utenti e permessi (solo amministratori)
+                    </p>
+                    <a href="{{ url_for('users.list') }}" class="btn btn-primary">
+                        Gestisci Utenti
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Info Box -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h5 class="alert-heading">
+                    <i class="bi bi-info-circle"></i> Sistema a 3 Pipeline
+                </h5>
+                <p class="mb-0">
+                    Il sistema gestisce 3 pipeline di elaborazione dati:
+                    <strong>Ordini</strong> (PDF) → <strong>Anagrafiche</strong> (Excel BOM) → <strong>Rotture</strong> (Excel eventi).
+                    Ogni pipeline alimenta tabelle centralizzate (modelli, componenti, controparti) per analisi predittive.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.card-body i {
+    transition: transform 0.2s ease-in-out;
+}
+
+.hover-card:hover i {
+    transform: scale(1.1);
+}
+</style>
+{% endblock %}

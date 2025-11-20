@@ -95,9 +95,10 @@
               <th style="width: 90px;">{{ sort_link('Anno','anno') }}</th>
               <th>{{ sort_link('File','filename') }}</th>
               <th style="width: 130px;">{{ sort_link('Stato','esito') }}</th>
+              <th style="width: 100px;">Elaborazioni</th>
               <th style="width: 140px;">{{ sort_link('Acquisizione','data_acquisizione') }}</th>
               <th style="width: 140px;">{{ sort_link('Elaborazione','data_elaborazione') }}</th>
-              <th>{{ sort_link('Note','updated_at') }}</th>			  
+              <th>{{ sort_link('Note','updated_at') }}</th>
               <th style="width: 220px;">Azioni</th>
             </tr>
           </thead>
@@ -106,7 +107,7 @@
             <tr>
               <td><span class="badge text-bg-light border">{{ ana.marca }}</span></td>
 			  <td><span class="badge text-bg-light border">{{ ana.anno }}</span></td>
-			  
+
               <!-- Nome file → Anteprima -->
               <td>
                 <a href="{{ url_for('anagrafiche.preview', id=ana.id) }}" class="text-decoration-none">
@@ -122,8 +123,14 @@
                 <span class="badge text-bg-{{ badge }}">{{ ana.esito }}</span>
               </td>
 
-              <td>{{ ana.data_acquisizione.strftime('%d/%m/%Y') if ana.data_acquisizione else '-' }}</td>
-              <td>{{ ana.data_elaborazione.strftime('%d/%m/%Y') if ana.data_elaborazione else '-' }}</td>
+              <td class="text-center">
+                <a href="{{ url_for('anagrafiche.elaborazioni_list', id=ana.id) }}" class="btn btn-sm btn-outline-info" title="Vedi elaborazioni">
+                  📊 Dettagli
+                </a>
+              </td>
+
+              <td>{{ ana.data_acquisizione|datetime_format }}</td>
+              <td>{{ ana.data_elaborazione|datetime_format }}</td>
               <td class="text-truncate" style="max-width: 24rem;" title="{{ ana.note }}">{{ ana.note }}</td>
 
               <td>

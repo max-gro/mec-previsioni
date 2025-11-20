@@ -1,27 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}Elaborazioni - {{ ordine.filename }} - M&C Previsioni{% endblock %}
+{% block title %}Elaborazioni - {{ file_rottura.filename }} - M&C Previsioni{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('ordini.list') }}">Ordini</a></li>
-            <li class="breadcrumb-item active">Elaborazioni - {{ ordine.filename }}</li>
+            <li class="breadcrumb-item"><a href="{{ url_for('rotture.list') }}">Rotture</a></li>
+            <li class="breadcrumb-item active">Elaborazioni - {{ file_rottura.filename }}</li>
         </ol>
     </nav>
 
     <div class="card mb-4">
         <div class="card-body">
-            <h4>File: {{ ordine.filename }}</h4>
+            <h4>File: {{ file_rottura.filename }}</h4>
             <div class="row">
                 <div class="col-md-3">
                     <p class="mb-1"><small class="text-muted">Anno</small></p>
-                    <p><strong>{{ ordine.anno }}</strong></p>
+                    <p><strong>{{ file_rottura.anno }}</strong></p>
                 </div>
                 <div class="col-md-3">
                     <p class="mb-1"><small class="text-muted">Data Acquisizione</small></p>
-                    <p><strong>{{ ordine.data_acquisizione.strftime('%d/%m/%Y') if ordine.data_acquisizione else '-' }}</strong></p>
+                    <p><strong>{{ file_rottura.data_acquisizione.strftime('%d/%m/%Y') if file_rottura.data_acquisizione else '-' }}</strong></p>
                 </div>
                 <div class="col-md-3">
                     <p class="mb-1"><small class="text-muted">Totale Elaborazioni</small></p>
@@ -30,12 +30,12 @@
                 <div class="col-md-3">
                     <p class="mb-1"><small class="text-muted">Stato Attuale</small></p>
                     <p>
-                        {% if ordine.esito == 'Processato' %}
-                        <span class="badge bg-success">{{ ordine.esito }}</span>
-                        {% elif ordine.esito == 'Errore' %}
-                        <span class="badge bg-danger">{{ ordine.esito }}</span>
+                        {% if file_rottura.esito == 'Processato' %}
+                        <span class="badge bg-success">{{ file_rottura.esito }}</span>
+                        {% elif file_rottura.esito == 'Errore' %}
+                        <span class="badge bg-danger">{{ file_rottura.esito }}</span>
                         {% else %}
-                        <span class="badge bg-secondary">{{ ordine.esito }}</span>
+                        <span class="badge bg-secondary">{{ file_rottura.esito }}</span>
                         {% endif %}
                     </p>
                 </div>
@@ -46,9 +46,11 @@
     <div class="card">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Storico Elaborazioni</h5>
-            <form method="POST" action="{{ url_for('ordini.elabora', id=ordine.id) }}" style="display: inline;">
+            {% if file_rottura.esito != 'Processato' %}
+            <form method="POST" action="{{ url_for('rotture.elabora', id=file_rottura.id) }}" style="display: inline;">
                 <button type="submit" class="btn btn-primary btn-sm">Nuova Elaborazione</button>
             </form>
+            {% endif %}
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -95,7 +97,7 @@
                                         onclick="showDettaglio({{ elab.id_elab }})">
                                     Dettagli
                                 </button>
-                                <a href="{{ url_for('ordini.elaborazione_export', id=ordine.id, id_elab=elab.id_elab) }}"
+                                <a href="{{ url_for('rotture.elaborazione_export', id=file_rottura.id, id_elab=elab.id_elab) }}"
                                    class="btn btn-sm btn-outline-success">
                                     CSV
                                 </a>
@@ -143,7 +145,7 @@ function showDettaglio(elabId) {
     modal.show();
 
     // Carica contenuto
-    fetch(`{{ url_for('ordini.elaborazione_dettaglio', id=ordine.id, id_elab=0) }}`.replace('/0/', '/' + elabId + '/'))
+    fetch(`{{ url_for('rotture.elaborazione_dettaglio', id=file_rottura.id, id_elab=0) }}`.replace('/0/', '/' + elabId + '/'))
         .then(response => response.text())
         .then(html => {
             content.innerHTML = html;

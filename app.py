@@ -81,18 +81,37 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(ordini_bp, url_prefix='/ordini')
     app.register_blueprint(anagrafiche_bp, url_prefix='/anagrafiche')  # Gestione file anagrafiche
 
-    # Homepage - Redirect alla dashboard elaborazioni
+    # Homepage con card per funzioni principali
     @app.route('/')
     @login_required
     def index():
-        """Homepage - reindirizza alla dashboard elaborazioni"""
-        return redirect(url_for('dashboard.index'))
-    
+        """Homepage con card per accedere alle funzioni principali"""
+        return render_template('home.html')
+
+    # Filtri Jinja2 custom per formattazione date
+    @app.template_filter('datetime_format')
+    def datetime_format(value, format='%d/%m/%Y %H:%M'):
+        """Formatta datetime in formato italiano con ora"""
+        if value is None:
+            return '-'
+        if isinstance(value, str):
+            return value
+        return value.strftime(format)
+
+    @app.template_filter('date_format')
+    def date_format(value, format='%d/%m/%Y'):
+        """Formatta date (senza ora) in formato italiano"""
+        if value is None:
+            return '-'
+        if isinstance(value, str):
+            return value
+        return value.strftime(format)
+
     # Context processor per rendere current_user disponibile in tutti i template
     @app.context_processor
     def inject_user():
         return dict(current_user=current_user)
-    
+
     return app
 
 if __name__ == '__main__':

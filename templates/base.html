@@ -103,8 +103,14 @@
                             🏠 Home
                         </a>
                     </li>
-                    
+
                     {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('dashboard.index') }}">
+                            📊 Dashboard
+                        </a>
+                    </li>
+
                     <!-- Menu Anagrafiche -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarAnagrafiche" role="button" data-bs-toggle="dropdown">

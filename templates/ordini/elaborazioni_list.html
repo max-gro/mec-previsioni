@@ -70,7 +70,7 @@
                         {% for elab in elaborazioni %}
                         <tr {% if loop.first %}class="table-info"{% endif %}>
                             <td>
-                                {{ loop.revindex }}
+                                {{ elab.id_elab }}
                                 {% if loop.first %}<span class="badge bg-info">ULTIMA</span>{% endif %}
                             </td>
                             <td><small>{{ elab.ts_inizio.strftime('%d/%m/%Y %H:%M:%S') if elab.ts_inizio else '-' }}</small></td>

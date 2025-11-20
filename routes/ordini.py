@@ -564,15 +564,8 @@ def elabora(id):
     else:
         flash(message, 'danger')
 
-    # Preserva filtri e ordinamento
-    anno = request.args.get('anno', '')
-    esito = request.args.get('esito', '')
-    filename = request.args.get('filename', '')
-    sort = request.args.get('sort', '')
-    order = request.args.get('order', '')
-    page = request.args.get('page', 1, type=int)
-
-    return redirect(url_for('ordini.list', anno=anno, esito=esito, filename=filename, sort=sort, order=order, page=page))
+    # Redirect alla pagina storico elaborazioni per vedere immediatamente il risultato
+    return redirect(url_for('ordini.elaborazioni_list', id=id))
 
 
 # ========== NUOVI ENDPOINT PER TRACCIAMENTO ELABORAZIONI ==========
@@ -766,7 +759,10 @@ def elaborazione_export(id, id_elab):
     output = si.getvalue()
     si.close()
 
-    filename = f"elaborazione_{ordine.filename}_{elaborazione.id}_{elaborazione.ts_inizio.strftime('%Y%m%d_%H%M%S')}.csv"
+    # Usa timestamp dal trace_start se disponibile
+    trace_start = next((t for t in traces if t.step == 'START'), None)
+    timestamp = trace_start.created_at.strftime('%Y%m%d_%H%M%S') if trace_start else datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    filename = f"elaborazione_{ordine.filename}_elab{id_elab}_{timestamp}.csv"
 
     return Response(
         output,

@@ -5,27 +5,37 @@
         <table class="table table-sm">
             <tr>
                 <th>Inizio:</th>
-                <td>{{ elaborazione.ts_inizio.strftime('%d/%m/%Y %H:%M:%S') if elaborazione.ts_inizio else '-' }}</td>
+                <td>{{ trace_start.created_at.strftime('%d/%m/%Y %H:%M:%S') if trace_start else '-' }}</td>
             </tr>
             <tr>
                 <th>Fine:</th>
-                <td>{{ elaborazione.ts_fine.strftime('%d/%m/%Y %H:%M:%S') if elaborazione.ts_fine else '-' }}</td>
+                <td>{{ trace_end.created_at.strftime('%d/%m/%Y %H:%M:%S') if trace_end else '-' }}</td>
             </tr>
             <tr>
                 <th>Durata:</th>
-                <td>{{ elaborazione.durata_secondi }} secondi</td>
+                <td>
+                    {% if trace_start and trace_end %}
+                    {{ ((trace_end.created_at - trace_start.created_at).total_seconds()) | int }} secondi
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <th>Esito:</th>
                 <td>
-                    {% if elaborazione.esito == 'Successo' %}
-                    <span class="badge bg-success">{{ elaborazione.esito }}</span>
-                    {% elif elaborazione.esito == 'Errore' %}
-                    <span class="badge bg-danger">{{ elaborazione.esito }}</span>
-                    {% elif elaborazione.esito == 'Warning' %}
-                    <span class="badge bg-warning text-dark">{{ elaborazione.esito }}</span>
+                    {% if trace_end %}
+                        {% if trace_end.stato == 'OK' %}
+                        <span class="badge bg-success">Successo</span>
+                        {% elif trace_end.stato == 'KO' %}
+                        <span class="badge bg-danger">Errore</span>
+                        {% elif trace_end.stato == 'WARN' %}
+                        <span class="badge bg-warning text-dark">Warning</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ trace_end.stato }}</span>
+                        {% endif %}
                     {% else %}
-                    <span class="badge bg-secondary">{{ elaborazione.esito }}</span>
+                    <span class="badge bg-secondary">In corso</span>
                     {% endif %}
                 </td>
             </tr>
@@ -36,26 +46,31 @@
         <table class="table table-sm">
             <tr>
                 <th>Righe Totali:</th>
-                <td>{{ elaborazione.righe_totali or 0 }}</td>
+                <td>{{ trace_end.righe_totali if trace_end else 0 }}</td>
             </tr>
             <tr>
                 <th>Righe OK:</th>
-                <td><span class="badge bg-success">{{ elaborazione.righe_ok or 0 }}</span> ({{ elaborazione.percentuale_successo() }}%)</td>
+                <td>
+                    <span class="badge bg-success">{{ trace_end.righe_ok if trace_end else 0 }}</span>
+                    {% if trace_end and trace_end.righe_totali > 0 %}
+                    ({{ ((trace_end.righe_ok / trace_end.righe_totali) * 100) | round(1) }}%)
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <th>Righe con Errori:</th>
-                <td><span class="badge bg-danger">{{ elaborazione.righe_errore or 0 }}</span></td>
+                <td><span class="badge bg-danger">{{ trace_end.righe_errore if trace_end else 0 }}</span></td>
             </tr>
             <tr>
                 <th>Righe con Warning:</th>
-                <td><span class="badge bg-warning text-dark">{{ elaborazione.righe_warning or 0 }}</span></td>
+                <td><span class="badge bg-warning text-dark">{{ trace_end.righe_warning if trace_end else 0 }}</span></td>
             </tr>
         </table>
     </div>
 </div>
 
 <div class="alert alert-info">
-    <strong>Messaggio:</strong> {{ elaborazione.messaggio_globale or 'Nessun messaggio' }}
+    <strong>Messaggio:</strong> {{ trace_end.messaggio if trace_end else (trace_start.messaggio if trace_start else 'Nessun messaggio') }}
 </div>
 
 <hr>
@@ -65,10 +80,10 @@
 <!-- Filtri -->
 <div class="mb-3">
     <div class="btn-group" role="group">
-        <a href="?tipo=" class="btn btn-sm btn-outline-secondary {% if not tipo_filter %}active{% endif %}">Tutti</a>
-        <a href="?tipo=ERRORE" class="btn btn-sm btn-outline-danger {% if tipo_filter == 'ERRORE' %}active{% endif %}">Solo Errori</a>
-        <a href="?tipo=WARNING" class="btn btn-sm btn-outline-warning {% if tipo_filter == 'WARNING' %}active{% endif %}">Solo Warning</a>
-        <a href="?tipo=INFO" class="btn btn-sm btn-outline-info {% if tipo_filter == 'INFO' %}active{% endif %}">Solo Info</a>
+        <a href="?stato=" class="btn btn-sm btn-outline-secondary {% if not stato_filter %}active{% endif %}">Tutti</a>
+        <a href="?stato=KO" class="btn btn-sm btn-outline-danger {% if stato_filter == 'KO' %}active{% endif %}">Solo Errori</a>
+        <a href="?stato=WARN" class="btn btn-sm btn-outline-warning {% if stato_filter == 'WARN' %}active{% endif %}">Solo Warning</a>
+        <a href="?stato=OK" class="btn btn-sm btn-outline-success {% if stato_filter == 'OK' %}active{% endif %}">Solo OK</a>
     </div>
 </div>
 
@@ -88,20 +103,20 @@
         <tbody>
             {% for d in dettagli.items %}
             <tr>
-                <td>{{ d.riga_numero or '-' }}</td>
+                <td>{{ d.record_pos or '-' }}</td>
                 <td>
-                    {% if d.tipo_messaggio == 'ERRORE' %}
-                    <span class="badge bg-danger">{{ d.tipo_messaggio }}</span>
-                    {% elif d.tipo_messaggio == 'WARNING' %}
-                    <span class="badge bg-warning text-dark">{{ d.tipo_messaggio }}</span>
+                    {% if d.stato == 'KO' %}
+                    <span class="badge bg-danger">ERRORE</span>
+                    {% elif d.stato == 'WARN' %}
+                    <span class="badge bg-warning text-dark">WARNING</span>
                     {% else %}
-                    <span class="badge bg-info">{{ d.tipo_messaggio }}</span>
+                    <span class="badge bg-info">{{ d.stato }}</span>
                     {% endif %}
                 </td>
-                <td><code>{{ d.codice_errore or '-' }}</code></td>
-                <td><small>{{ d.campo or '-' }}</small></td>
+                <td><code>{{ d.record_data.get('key') if d.record_data else '-' }}</code></td>
+                <td><small>{{ d.record_data.get('campo') if d.record_data else '-' }}</small></td>
                 <td>{{ d.messaggio }}</td>
-                <td><small>{{ d.valore_originale or '-' }}</small></td>
+                <td><small>-</small></td>
             </tr>
             {% endfor %}
         </tbody>
@@ -114,7 +129,7 @@
     <ul class="pagination pagination-sm justify-content-center">
         {% if dettagli.has_prev %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ dettagli.prev_num }}{% if tipo_filter %}&tipo={{ tipo_filter }}{% endif %}">Precedente</a>
+            <a class="page-link" href="?page={{ dettagli.prev_num }}{% if stato_filter %}&stato={{ stato_filter }}{% endif %}">Precedente</a>
         </li>
         {% endif %}
 
@@ -124,7 +139,7 @@
 
         {% if dettagli.has_next %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ dettagli.next_num }}{% if tipo_filter %}&tipo={{ tipo_filter }}{% endif %}">Successiva</a>
+            <a class="page-link" href="?page={{ dettagli.next_num }}{% if stato_filter %}&stato={{ stato_filter }}{% endif %}">Successiva</a>
         </li>
         {% endif %}
     </ul>

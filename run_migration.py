@@ -3,7 +3,9 @@
 Script per eseguire la migration add_id_elab_and_metrics.sql
 """
 
-from app import app, db
+from app import create_app, db
+
+app = create_app()
 
 def run_migration():
     """Esegue la migration SQL"""

@@ -70,6 +70,139 @@ def normalize_code(code):
     return re.sub(r'[^a-z0-9]', '', str(code).lower())
 
 
+class _FakeModello:
+    """Modello fittizio per generare righe con modelli inesistenti"""
+    def __init__(self, cod_modello):
+        self.cod_modello = cod_modello
+        self.divisione = random.choice(['CLIMA', 'FREDDO', 'LAVAGGIO'])
+        self.marca = 'HISENSE'
+        self.desc_modello = f'Descrizione {cod_modello}'
+        self.produttore = 'HISENSE'
+        self.famiglia = 'FAM_A'
+        self.tipo = 'MONO'
+
+
+class _FakeComponente:
+    """Componente fittizio per generare righe con componenti inesistenti"""
+    def __init__(self, cod_componente):
+        self.cod_componente = cod_componente
+
+
+def _crea_riga_rottura(prot, modello, componente, pool_config):
+    """
+    Helper per creare una riga rottura con tutti i campi.
+
+    Args:
+        prot: codice protocollo
+        modello: oggetto Modello/_FakeModello o None
+        componente: oggetto Componente/_FakeComponente o None
+        pool_config: dizionario con pool utenti, rivenditori, etc.
+
+    Returns:
+        dict con tutti i campi della riga
+    """
+    data_acq = f'2023-{random.randint(1,12):02d}-{random.randint(1,28):02d}'
+    data_ap = f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}'
+
+    return {
+        # Campi principali
+        'prot': prot,
+        'piattaforma': random.choice(['WEB', 'CALL_CENTER', 'EMAIL', '']),
+        'cod_rivenditore': random.choice(pool_config['rivenditori']),
+        'pv_rivenditore': random.choice(pool_config['pv_rivend']),
+        'cod_utente': random.choice(pool_config['utenti']),
+        'comune_utente': random.choice(pool_config['comuni']),
+        'pv_utente': random.choice(pool_config['pv_utenti']),
+        'C.A.T.': f'CAT-{random.randint(1000, 9999)}',
+        'flag_consumer': random.choice(['S', 'N', '']),
+        'flag_da_fatturare': random.choice(['S', 'N', '']),
+        'data_competenza': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
+
+        # Modello
+        'divisione': modello.divisione if modello else random.choice(['CLIMA', 'FREDDO', 'LAVAGGIO']),
+        'marca': modello.marca if modello else random.choice(['HISENSE', 'HOMA', 'MIDEA']),
+        'desc_modello': modello.desc_modello if modello else '',
+        'cod_matricola': f'MAT-{random.randint(100000, 999999)}',
+        'produttore': modello.produttore if modello else 'HISENSE',
+        'cod_modello_fabbrica': f'FAB-{modello.cod_modello[:10]}-{random.randint(100, 999)}' if modello and modello.cod_modello else '',
+        'famiglia': modello.famiglia if modello else random.choice(['FAM_A', 'FAM_B', 'FAM_C']),
+        'tipo': modello.tipo if modello else random.choice(['MONO', 'DUAL', 'MULTI']),
+        'cod_modello': modello.cod_modello if modello else '',
+        'cod_componente': componente.cod_componente if componente else '',
+
+        # Date
+        'data_acquisto': data_acq,
+        'data_apertura': data_ap,
+        'data_1': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
+        'data_2': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
+
+        # Problema e riparazione
+        'difetto': random.choice(['Non si accende', 'Rumore anomalo', 'Display rotto', 'Non raffredda', 'Perdita acqua']),
+        'problema_segnalato': random.choice(['Malfunzionamento', 'Difetto estetico', 'Rumore', 'Altro']),
+        'riparazione': random.choice(['Sostituzione componente', 'Regolazione', 'Pulizia', 'Riparazione']),
+
+        # Attività e importi
+        'numero_attivita': random.randint(1, 3),
+        'importo_attitivita': round(random.uniform(20.0, 150.0), 2),
+        'causale_extra': random.choice(['', 'URGENZA', 'FESTIVO', 'NOTTURNO']),
+        'importo_extra': round(random.uniform(0.0, 50.0), 2),
+        'variaz_perc': random.randint(-20, 20),
+        'importo_variazione': round(random.uniform(-30.0, 30.0), 2),
+        'importo_totale': round(random.uniform(50.0, 250.0), 2),
+
+        # Contatori
+        'nr_ricambi': random.randint(0, 5),
+        'qtà': random.randint(1, 3),
+        'nr_ordini': random.randint(0, 2),
+        'nr_app': random.randint(0, 1),
+
+        # Stato
+        'stato': random.choice(['Fatturato', 'Chiuso', 'In Lavorazione']),
+        'data_stato': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
+        'soluzione': random.choice(['RIPARATO', 'SOSTITUITO', 'RIMBORSATO']),
+        'gg_vita_prodotto': random.randint(30, 1095),
+        'mesi_vita_prodotto': round(random.randint(30, 1095) / 30.0, 1),
+
+        # Ritorni
+        'ritorno': random.choice(['S', 'N', '']),
+        'ritorno_x_cat': random.choice(['', 'CAT1', 'CAT2']),
+        'ritorno_x_prod': random.choice(['', 'PROD1', 'PROD2']),
+
+        # Causali
+        'causale': random.choice(['', 'GARANZIA', 'ESTENSIONE', 'FUORI_GARANZIA']),
+        'triang': random.choice(['S', 'N', '']),
+        'riass': random.choice(['S', 'N', '']),
+
+        # Rimborsi
+        'rimb_prod': round(random.uniform(0.0, 100.0), 2),
+        'rimb_smalt': round(random.uniform(0.0, 20.0), 2),
+        'rimb_reinst': round(random.uniform(0.0, 30.0), 2),
+        'rimb_tot': round(random.uniform(0.0, 150.0), 2),
+
+        # FG
+        'fg': random.choice(['S', 'N', '']),
+        'fg_non_pagata': random.choice(['S', 'N', '']),
+        'valore_fg_non_pagata': round(random.uniform(0.0, 200.0), 2),
+
+        # Anno/Mese
+        'anno_acquisto': int(data_acq.split('-')[0]),
+        'mese_acquisto': int(data_acq.split('-')[1]),
+        'anno_apertura': int(data_ap.split('-')[0]),
+        'mese_apertura': int(data_ap.split('-')[1]),
+        'anno_assegnazione': 2024,
+        'mese_assegnazione': random.randint(1, 12),
+
+        # Altri
+        'giorni_riparazione': random.randint(1, 30),
+        'causale_sostituzione': random.choice(['', 'IRREPARABILE', 'CONVENIENZA', 'UPGRADE']),
+        'addebito': round(random.uniform(0.0, 100.0), 2),
+        'apertura_pv': random.choice(pool_config['pv_utenti']),
+        'km_richiesti': random.randint(0, 200),
+        'tipo_fatturazione': random.choice(['STANDARD', 'URGENTE', 'FORFAIT', '']),
+        'data_fine_cat': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}'
+    }
+
+
 def genera_tsv_simulato_rotture(file_rottura_id):
     """
     Genera un file TSV simulato per testing della pipeline rotture.
@@ -103,6 +236,14 @@ def genera_tsv_simulato_rotture(file_rottura_id):
     # Pool fisso di rivenditori (max 20)
     POOL_RIVENDITORI = [f'RIV-{i:02d}' for i in range(1, 21)]
     POOL_PV_RIVEND = ['MI', 'RM', 'TO', 'NA', 'FI']
+
+    pool_config = {
+        'utenti': POOL_UTENTI,
+        'pv_utenti': POOL_PV_UTENTI,
+        'comuni': POOL_COMUNI,
+        'rivenditori': POOL_RIVENDITORI,
+        'pv_rivend': POOL_PV_RIVEND
+    }
 
     # Prendi modelli e componenti esistenti dal DB
     modelli_esistenti = db.session.query(Modello).limit(20).all()
@@ -164,35 +305,7 @@ def genera_tsv_simulato_rotture(file_rottura_id):
             componenti = [None]
 
         for componente in componenti:
-            row = {
-                'prot': prot,
-                'cod_modello': modello.cod_modello if modello else '',
-                'cod_componente': componente.cod_componente if componente else '',
-                'cod_utente': random.choice(POOL_UTENTI),
-                'pv_utente': random.choice(POOL_PV_UTENTI),
-                'comune_utente': random.choice(POOL_COMUNI),
-                'cod_rivenditore': random.choice(POOL_RIVENDITORI),
-                'pv_rivenditore': random.choice(POOL_PV_RIVEND),
-                'C.A.T.': f'CAT-{random.randint(1000, 9999)}',
-                'flag_consumer': random.choice(['S', 'N', '']),
-                'flag_da_fatturare': random.choice(['S', 'N', '']),
-                'data_competenza': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'cod_matricola': f'MAT-{random.randint(100000, 999999)}',
-                'cod_modello_fabbrica': f'FAB-{modello.cod_modello[:10]}-{random.randint(100, 999)}' if modello else '',
-                'data_acquisto': f'2023-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'data_apertura': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'difetto': random.choice(['Non si accende', 'Rumore anomalo', 'Display rotto', 'Non raffredda', 'Perdita acqua']),
-                'problema_segnalato': random.choice(['Malfunzionamento', 'Difetto estetico', 'Rumore', 'Altro']),
-                'riparazione': random.choice(['Sostituzione componente', 'Regolazione', 'Pulizia', 'Riparazione']),
-                'qtà': random.randint(1, 3),
-                'gg_vita_prodotto': random.randint(30, 1095),
-                'divisione': modello.divisione if modello else random.choice(['CLIMA', 'FREDDO', 'LAVAGGIO']),
-                'marca': modello.marca if modello else random.choice(['HISENSE', 'HOMA', 'MIDEA']),
-                'desc_modello': modello.desc_modello if modello else '',
-                'produttore': modello.produttore if modello else 'HISENSE',
-                'famiglia': modello.famiglia if modello else random.choice(['FAM_A', 'FAM_B', 'FAM_C']),
-                'tipo': modello.tipo if modello else random.choice(['MONO', 'DUAL', 'MULTI'])
-            }
+            row = _crea_riga_rottura(prot, modello, componente, pool_config)
             rows.append(row)
 
     # ========== GENERA ROTTURE CON ERRORI (40-50%) ==========
@@ -208,178 +321,43 @@ def genera_tsv_simulato_rotture(file_rottura_id):
         tipo_errore = random.random()
 
         if tipo_errore < 0.30:
-            # ERRORE: Protocollo mancante
+            # ERRORE: Protocollo mancante (30%)
             modello = random.choice(modelli_esistenti)
             componente = random.choice(componenti_esistenti) if componenti_esistenti and random.random() > 0.5 else None
-            row = {
-                'prot': '',  # PROTOCOLLO VUOTO -> errore!
-                'cod_modello': modello.cod_modello,
-                'cod_componente': componente.cod_componente if componente else '',
-                'cod_utente': random.choice(POOL_UTENTI),
-                'pv_utente': random.choice(POOL_PV_UTENTI),
-                'comune_utente': random.choice(POOL_COMUNI),
-                'cod_rivenditore': random.choice(POOL_RIVENDITORI),
-                'pv_rivenditore': random.choice(POOL_PV_RIVEND),
-                'C.A.T.': f'CAT-{random.randint(1000, 9999)}',
-                'flag_consumer': random.choice(['S', 'N']),
-                'flag_da_fatturare': random.choice(['S', 'N']),
-                'data_competenza': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'cod_matricola': f'MAT-{random.randint(100000, 999999)}',
-                'cod_modello_fabbrica': f'FAB-{modello.cod_modello[:10]}-{random.randint(100, 999)}',
-                'data_acquisto': f'2023-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'data_apertura': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'difetto': random.choice(['Non si accende', 'Rumore anomalo', 'Display rotto']),
-                'problema_segnalato': 'Malfunzionamento',
-                'riparazione': 'Sostituzione componente',
-                'qtà': random.randint(1, 3),
-                'gg_vita_prodotto': random.randint(30, 1095),
-                'divisione': modello.divisione or 'CLIMA',
-                'marca': modello.marca or 'HISENSE',
-                'desc_modello': modello.desc_modello or '',
-                'produttore': modello.produttore or 'HISENSE',
-                'famiglia': modello.famiglia or 'FAM_A',
-                'tipo': modello.tipo or 'MONO'
-            }
+            # Usa helper con prot vuoto per generare errore
+            row = _crea_riga_rottura('', modello, componente, pool_config)
             rows.append(row)
             continue
         elif tipo_errore < 0.70:
-            # ERRORE: Modello NON esistente nel DB
-            modello_cod = f'MODELLO-INESISTENTE-{random.randint(1000, 9999)}'
+            # ERRORE: Modello NON esistente nel DB (40%)
+            modello_fake = _FakeModello(f'MODELLO-INESISTENTE-{random.randint(1000, 9999)}')
             componente = random.choice(componenti_esistenti) if componenti_esistenti and random.random() > 0.5 else None
-            row = {
-                'prot': prot,
-                'cod_modello': modello_cod,  # MODELLO INESISTENTE!
-                'cod_componente': componente.cod_componente if componente else '',
-                'cod_utente': random.choice(POOL_UTENTI),
-                'pv_utente': random.choice(POOL_PV_UTENTI),
-                'comune_utente': random.choice(POOL_COMUNI),
-                'cod_rivenditore': random.choice(POOL_RIVENDITORI),
-                'pv_rivenditore': random.choice(POOL_PV_RIVEND),
-                'C.A.T.': f'CAT-{random.randint(1000, 9999)}',
-                'flag_consumer': random.choice(['S', 'N']),
-                'flag_da_fatturare': random.choice(['S', 'N']),
-                'data_competenza': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'cod_matricola': f'MAT-{random.randint(100000, 999999)}',
-                'cod_modello_fabbrica': f'FAB-{random.randint(100, 999)}',
-                'data_acquisto': f'2023-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'data_apertura': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'difetto': random.choice(['Non si accende', 'Rumore anomalo', 'Display rotto']),
-                'problema_segnalato': 'Malfunzionamento',
-                'riparazione': 'Sostituzione componente',
-                'qtà': random.randint(1, 3),
-                'gg_vita_prodotto': random.randint(30, 1095),
-                'divisione': random.choice(['CLIMA', 'FREDDO', 'LAVAGGIO']),
-                'marca': 'HISENSE',
-                'desc_modello': f'Descrizione {modello_cod}',
-                'produttore': 'HISENSE',
-                'famiglia': 'FAM_A',
-                'tipo': 'MONO'
-            }
+            # Usa helper con modello fake per generare errore
+            row = _crea_riga_rottura(prot, modello_fake, componente, pool_config)
             rows.append(row)
             continue
         elif tipo_errore < 0.90:
-            # ERRORE: Componente NON esistente nel DB
+            # ERRORE: Componente NON esistente nel DB (20%)
             modello = random.choice(modelli_esistenti)
-            componente_cod = f'COMP-INESISTENTE-{random.randint(1000, 9999)}'
-            row = {
-                'prot': prot,
-                'cod_modello': modello.cod_modello,
-                'cod_componente': componente_cod,  # COMPONENTE INESISTENTE!
-                'cod_utente': random.choice(POOL_UTENTI),
-                'pv_utente': random.choice(POOL_PV_UTENTI),
-                'comune_utente': random.choice(POOL_COMUNI),
-                'cod_rivenditore': random.choice(POOL_RIVENDITORI),
-                'pv_rivenditore': random.choice(POOL_PV_RIVEND),
-                'C.A.T.': f'CAT-{random.randint(1000, 9999)}',
-                'flag_consumer': 'S',
-                'flag_da_fatturare': 'N',
-                'data_competenza': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'cod_matricola': f'MAT-{random.randint(100000, 999999)}',
-                'cod_modello_fabbrica': f'FAB-{modello.cod_modello[:10]}-{random.randint(100, 999)}',
-                'data_acquisto': f'2023-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'data_apertura': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'difetto': 'Non si accende',
-                'problema_segnalato': 'Malfunzionamento',
-                'riparazione': 'Sostituzione componente',
-                'qtà': 1,
-                'gg_vita_prodotto': random.randint(30, 1095),
-                'divisione': modello.divisione or 'CLIMA',
-                'marca': modello.marca or 'HISENSE',
-                'desc_modello': modello.desc_modello or '',
-                'produttore': modello.produttore or 'HISENSE',
-                'famiglia': modello.famiglia or 'FAM_A',
-                'tipo': modello.tipo or 'MONO'
-            }
+            componente_fake = _FakeComponente(f'COMP-INESISTENTE-{random.randint(1000, 9999)}')
+            # Usa helper con componente fake per generare errore
+            row = _crea_riga_rottura(prot, modello, componente_fake, pool_config)
             rows.append(row)
             continue
         else:
-            # ERRORE: Dati incompleti/invalidi (utente mancante, date invalide, etc.)
+            # ERRORE: Dati incompleti/invalidi (10%)
             modello = random.choice(modelli_esistenti)
-            row = {
-                'prot': prot,
-                'cod_modello': modello.cod_modello,
-                'cod_componente': '',
-                'cod_utente': '',  # UTENTE MANCANTE!
-                'pv_utente': '',
-                'comune_utente': '',
-                'cod_rivenditore': '',  # RIVENDITORE MANCANTE!
-                'pv_rivenditore': '',
-                'C.A.T.': '',
-                'flag_consumer': '',
-                'flag_da_fatturare': '',
-                'data_competenza': 'INVALID-DATE',  # DATA INVALIDA!
-                'cod_matricola': '',
-                'cod_modello_fabbrica': '',
-                'data_acquisto': '',
-                'data_apertura': '',
-                'difetto': '',
-                'problema_segnalato': '',
-                'riparazione': '',
-                'qtà': '',
-                'gg_vita_prodotto': '',
-                'divisione': modello.divisione or '',
-                'marca': modello.marca or '',
-                'desc_modello': modello.desc_modello or '',
-                'produttore': modello.produttore or '',
-                'famiglia': modello.famiglia or '',
-                'tipo': modello.tipo or ''
-            }
+            # Usa helper per creare riga base, poi sovrascrive con dati invalidi
+            row = _crea_riga_rottura(prot, modello, None, pool_config)
+            # Sovrascrive campi per generare errori di validazione
+            row['cod_utente'] = ''  # UTENTE MANCANTE!
+            row['pv_utente'] = ''
+            row['comune_utente'] = ''
+            row['cod_rivenditore'] = ''  # RIVENDITORE MANCANTE!
+            row['pv_rivenditore'] = ''
+            row['data_competenza'] = 'INVALID-DATE'  # DATA INVALIDA!
             rows.append(row)
             continue
-
-        # Per errori protocollo mancante
-        if not prot:
-            modello_sel = modello if modello else random.choice(modelli_esistenti)
-            row = {
-                'prot': prot,  # PROTOCOLLO VUOTO!
-                'cod_modello': modello_sel.cod_modello,
-                'cod_componente': componente.cod_componente if componente else '',
-                'cod_utente': random.choice(POOL_UTENTI),
-                'pv_utente': random.choice(POOL_PV_UTENTI),
-                'comune_utente': random.choice(POOL_COMUNI),
-                'cod_rivenditore': random.choice(POOL_RIVENDITORI),
-                'pv_rivenditore': random.choice(POOL_PV_RIVEND),
-                'C.A.T.': f'CAT-{random.randint(1000, 9999)}',
-                'flag_consumer': 'S',
-                'flag_da_fatturare': 'N',
-                'data_competenza': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'cod_matricola': f'MAT-{random.randint(100000, 999999)}',
-                'cod_modello_fabbrica': f'FAB-{modello_sel.cod_modello[:10]}-{random.randint(100, 999)}',
-                'data_acquisto': f'2023-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'data_apertura': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
-                'difetto': 'Non si accende',
-                'problema_segnalato': 'Malfunzionamento',
-                'riparazione': 'Sostituzione',
-                'qtà': 1,
-                'gg_vita_prodotto': random.randint(30, 500),
-                'divisione': modello_sel.divisione or 'CLIMA',
-                'marca': modello_sel.marca or 'HISENSE',
-                'desc_modello': modello_sel.desc_modello or '',
-                'produttore': modello_sel.produttore or 'HISENSE',
-                'famiglia': modello_sel.famiglia or 'FAM_A',
-                'tipo': modello_sel.tipo or 'MONO'
-            }
-            rows.append(row)
 
     # Scrivi TSV
     tsv_filename = f'rotture_{file_rottura_id}_parsed.tsv'

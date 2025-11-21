@@ -117,6 +117,9 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
         for idx, row in df.iterrows():
             riga_file = idx + 2  # +2 perché idx parte da 0 e c'è l'header
 
+            # Crea SAVEPOINT per questa riga (permette rollback parziale)
+            savepoint = db.session.begin_nested()
+
             try:
                 # Estrai dati dalla riga
                 prot = str(row.get('prot', '')).strip()
@@ -272,17 +275,17 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                     cod_modello=cod_modello if cod_modello else None,
                     cod_rivenditore=cod_rivenditore if cod_rivenditore else None,
                     cod_utente=cod_utente if cod_utente else None,
-                    cat=str(row.get('C.A.T.', '')).strip() if row.get('C.A.T.') else None,
-                    flag_consumer=str(row.get('flag_consumer', '')).strip() if row.get('flag_consumer') else None,
-                    flag_da_fatturare=str(row.get('flag_da_fatturare', '')).strip() if row.get('flag_da_fatturare') else None,
-                    cod_matricola=str(row.get('cod_matricola', '')).strip() if row.get('cod_matricola') else None,
-                    cod_modello_fabbrica=str(row.get('cod_modello_fabbrica', '')).strip() if row.get('cod_modello_fabbrica') else None,
+                    cat=str(row.get('C.A.T.', '')).strip() if pd.notna(row.get('C.A.T.')) and str(row.get('C.A.T.')).strip() else None,
+                    flag_consumer=str(row.get('flag_consumer', '')).strip() if pd.notna(row.get('flag_consumer')) and str(row.get('flag_consumer')).strip() else None,
+                    flag_da_fatturare=str(row.get('flag_da_fatturare', '')).strip() if pd.notna(row.get('flag_da_fatturare')) and str(row.get('flag_da_fatturare')).strip() else None,
+                    cod_matricola=str(row.get('cod_matricola', '')).strip() if pd.notna(row.get('cod_matricola')) and str(row.get('cod_matricola')).strip() else None,
+                    cod_modello_fabbrica=str(row.get('cod_modello_fabbrica', '')).strip() if pd.notna(row.get('cod_modello_fabbrica')) and str(row.get('cod_modello_fabbrica')).strip() else None,
                     data_competenza=parse_date(row.get('data_competenza')),
                     data_acquisto=parse_date(row.get('data_acquisto')),
                     data_apertura=parse_date(row.get('data_apertura')),
-                    difetto=str(row.get('difetto', '')).strip() if row.get('difetto') else None,
-                    problema_segnalato=str(row.get('problema_segnalato', '')).strip() if row.get('problema_segnalato') else None,
-                    riparazione=str(row.get('riparazione', '')).strip() if row.get('riparazione') else None,
+                    difetto=str(row.get('difetto', '')).strip() if pd.notna(row.get('difetto')) and str(row.get('difetto')).strip() else None,
+                    problema_segnalato=str(row.get('problema_segnalato', '')).strip() if pd.notna(row.get('problema_segnalato')) and str(row.get('problema_segnalato')).strip() else None,
+                    riparazione=str(row.get('riparazione', '')).strip() if pd.notna(row.get('riparazione')) and str(row.get('riparazione')).strip() else None,
                     gg_vita_prodotto=int(row.get('gg_vita_prodotto')) if pd.notna(row.get('gg_vita_prodotto')) else None,
                     qta=int(row.get('qtà')) if pd.notna(row.get('qtà')) else None,
                     created_by=user_id
@@ -332,7 +335,12 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
 
                 num_rotture += 1
 
+                # Commit del savepoint (conferma operazioni per questa riga)
+                savepoint.commit()
+
             except Exception as e:
+                # Rollback del savepoint (annulla operazioni per questa riga ma continua con le altre)
+                savepoint.rollback()
                 # Trace errore per singola riga
                 trace_rec = TraceElabDett(
                     id_trace=id_trace_start,

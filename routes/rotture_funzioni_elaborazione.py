@@ -269,7 +269,9 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                     componente.updated_by = user_id
 
                 # Crea Rottura
+                cod_rottura = f"{file_rottura.id}|{prot}"
                 rottura = Rottura(
+                    cod_rottura=cod_rottura,
                     id_file_rotture=file_rottura.id,
                     prot=prot,
                     cod_modello=cod_modello if cod_modello else None,
@@ -310,9 +312,9 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                 log_session.add(trace_rec)
 
                 # Crea relazione RotturaComponente
-                if cod_componente_norm:
+                if cod_componente_raw:
                     rottura_comp = RotturaComponente(
-                        id_rottura=rottura.id_rottura,
+                        cod_rottura=cod_rottura,
                         cod_componente=cod_componente_raw,
                         created_by=user_id
                     )
@@ -325,7 +327,7 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                         record_data={
                             'tipo': 'CREATE_ROTTURA_COMPONENTE',
                             'prot': prot,
-                            'id_rottura': rottura.id_rottura,
+                            'cod_rottura': cod_rottura,
                             'cod_componente': cod_componente_raw
                         },
                         stato='OK',

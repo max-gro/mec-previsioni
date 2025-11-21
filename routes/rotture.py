@@ -209,9 +209,39 @@ def genera_tsv_simulato_rotture(file_rottura_id):
 
         if tipo_errore < 0.30:
             # ERRORE: Protocollo mancante
-            prot = ''  # Protocollo vuoto -> errore!
             modello = random.choice(modelli_esistenti)
             componente = random.choice(componenti_esistenti) if componenti_esistenti and random.random() > 0.5 else None
+            row = {
+                'prot': '',  # PROTOCOLLO VUOTO -> errore!
+                'cod_modello': modello.cod_modello,
+                'cod_componente': componente.cod_componente if componente else '',
+                'cod_utente': random.choice(POOL_UTENTI),
+                'pv_utente': random.choice(POOL_PV_UTENTI),
+                'comune_utente': random.choice(POOL_COMUNI),
+                'cod_rivenditore': random.choice(POOL_RIVENDITORI),
+                'pv_rivenditore': random.choice(POOL_PV_RIVEND),
+                'C.A.T.': f'CAT-{random.randint(1000, 9999)}',
+                'flag_consumer': random.choice(['S', 'N']),
+                'flag_da_fatturare': random.choice(['S', 'N']),
+                'data_competenza': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
+                'cod_matricola': f'MAT-{random.randint(100000, 999999)}',
+                'cod_modello_fabbrica': f'FAB-{modello.cod_modello[:10]}-{random.randint(100, 999)}',
+                'data_acquisto': f'2023-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
+                'data_apertura': f'2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}',
+                'difetto': random.choice(['Non si accende', 'Rumore anomalo', 'Display rotto']),
+                'problema_segnalato': 'Malfunzionamento',
+                'riparazione': 'Sostituzione componente',
+                'qtà': random.randint(1, 3),
+                'gg_vita_prodotto': random.randint(30, 1095),
+                'divisione': modello.divisione or 'CLIMA',
+                'marca': modello.marca or 'HISENSE',
+                'desc_modello': modello.desc_modello or '',
+                'produttore': modello.produttore or 'HISENSE',
+                'famiglia': modello.famiglia or 'FAM_A',
+                'tipo': modello.tipo or 'MONO'
+            }
+            rows.append(row)
+            continue
         elif tipo_errore < 0.70:
             # ERRORE: Modello NON esistente nel DB
             modello_cod = f'MODELLO-INESISTENTE-{random.randint(1000, 9999)}'

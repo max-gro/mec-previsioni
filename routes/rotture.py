@@ -13,6 +13,9 @@ from werkzeug.utils import secure_filename
 from utils.db_log import log_session  # Sessione separata per log (AUTONOMOUS TRANSACTION)
 import os
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Import funzioni elaborazione
 from routes.rotture_funzioni_elaborazione import elabora_file_rottura_completo as _elabora_file_rottura_completo

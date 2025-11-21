@@ -14,6 +14,9 @@ import shutil
 import random
 import time
 from datetime import datetime, date
+import logging
+
+logger = logging.getLogger(__name__)
 
 anagrafiche_bp = Blueprint('anagrafiche', __name__)
 

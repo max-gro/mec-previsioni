@@ -134,13 +134,13 @@ def create_app(config_class=DevelopmentConfig):
             admin = User(username='admin', email='admin@example.com', role='admin', active=True)
             admin.set_password('admin123')  # CAMBIARE IN PRODUZIONE!
             db.session.add(admin)
-            
+
             demo = User(username='demo', email='demo@example.com', role='user', active=True)
             demo.set_password('demo123')
             db.session.add(demo)
-            
+
             db.session.commit()
-            print("✓ Utenti di default creati: admin/admin123 e demo/demo123")
+            app.logger.info("Utenti di default creati: admin/admin123 e demo/demo123")
     
     # Registra blueprints
     from routes.auth import auth_bp
@@ -202,12 +202,12 @@ def create_app(config_class=DevelopmentConfig):
 
 if __name__ == '__main__':
     app = create_app()
-    print("\n" + "="*60)
-    print("🚀 SERVER AVVIATO")
-    print("="*60)
-    print("\n📍 Vai su: http://localhost:5010")
-    print("\n🔐 Credenziali di accesso:")
-    print("   Admin: admin / admin123")
-    print("   Demo:  demo / demo123")
-    print("\n" + "="*60 + "\n")
+    app.logger.info("="*60)
+    app.logger.info("🚀 SERVER AVVIATO")
+    app.logger.info("="*60)
+    app.logger.info("📍 Vai su: http://localhost:5010")
+    app.logger.info("🔐 Credenziali di accesso:")
+    app.logger.info("   Admin: admin / admin123")
+    app.logger.info("   Demo:  demo / demo123")
+    app.logger.info("="*60)
     app.run(debug=True, host='0.0.0.0', port=5010)

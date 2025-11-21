@@ -1,4 +1,5 @@
 import os
+import secrets
 from dotenv import load_dotenv
 from datetime import timedelta
 
@@ -9,8 +10,9 @@ load_dotenv()
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
-    # Flask
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production-2024'
+    # Flask - Secret Key sicura
+    # In development genera una key casuale, in production DEVE essere impostata via env
+    SECRET_KEY = os.environ.get('SECRET_KEY')
     
     # Base directory
     BASE_DIR = BASE_DIR
@@ -41,10 +43,24 @@ class DevelopmentConfig(Config):
     DEBUG = True
     TESTING = False
 
+    # In development, se SECRET_KEY non è impostata, genera una casuale
+    # Nota: questo significa che le sessioni non persistono tra restart
+    if not Config.SECRET_KEY:
+        SECRET_KEY = secrets.token_urlsafe(32)
+        print(f"[WARNING] SECRET_KEY non impostata, generata casualmente per development")
+
 class ProductionConfig(Config):
     DEBUG = False
     TESTING = False
     SESSION_COOKIE_SECURE = True
+
+    # In production, SECRET_KEY DEVE essere impostata, altrimenti fallisce
+    if not Config.SECRET_KEY:
+        raise ValueError(
+            "SECRET_KEY must be set in production environment. "
+            "Please set the SECRET_KEY environment variable with a secure random value. "
+            "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+        )
 
 # Per debug: stampa il path del database quando il modulo viene importato
 if __name__ != '__main__':

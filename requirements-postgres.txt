@@ -11,7 +11,7 @@
 # PostgreSQL Driver
 # Nota: Su Windows potrebbe richiedere Visual C++ Build Tools
 # Alternativa: Usa SQLite (nessuna installazione aggiuntiva necessaria)
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.11
 
 # ============================================================================
 # Nota per utenti Windows:

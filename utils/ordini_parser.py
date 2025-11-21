@@ -8,6 +8,53 @@ import random
 from datetime import datetime, timedelta
 
 
+# ============================================================================
+# POOL FISSO DI MODELLI PER TEST
+# ============================================================================
+# 300 modelli predefiniti per facilitare test e verificare upsert
+# Ogni elaborazione sceglie un sottoinsieme casuale da questo pool
+# ============================================================================
+
+def get_pool_modelli_fissi():
+    """
+    Ritorna un pool fisso di 300 modelli predefiniti per test.
+
+    Returns:
+        list: lista di tuple (brand, model_no, item, ean, price_range)
+    """
+    brands_config = {
+        'HISENSE': {'prefix': 'HIS', 'suffixes': ['WM', 'DW', 'AC', 'TV', 'RF'], 'price_range': (200, 800)},
+        'HOMA': {'prefix': 'HOM', 'suffixes': ['WM', 'DW', 'AC', 'RF'], 'price_range': (180, 600)},
+        'MIDEA': {'prefix': 'MID', 'suffixes': ['WM', 'DW', 'AC', 'RF', 'FR'], 'price_range': (220, 900)},
+        'HAIER': {'prefix': 'HAI', 'suffixes': ['WM', 'DW', 'RF', 'FR'], 'price_range': (250, 1000)},
+        'SAMSUNG': {'prefix': 'SAM', 'suffixes': ['WM', 'DW', 'AC', 'TV', 'RF'], 'price_range': (300, 1500)},
+        'LG': {'prefix': 'LG', 'suffixes': ['WM', 'DW', 'AC', 'TV', 'RF'], 'price_range': (280, 1400)},
+        'CANDY': {'prefix': 'CAN', 'suffixes': ['WM', 'DW'], 'price_range': (180, 550)},
+        'HOOVER': {'prefix': 'HOO', 'suffixes': ['WM', 'DW'], 'price_range': (170, 500)},
+    }
+
+    pool = []
+    model_id = 1000
+
+    # Genera circa 37-38 modelli per brand per arrivare a ~300 totali
+    for brand, config in brands_config.items():
+        for _ in range(38):
+            suffix = random.choice(config['suffixes'])
+            model_no = f"{config['prefix']}-{suffix}{model_id}"
+            item = f"{brand[:2].upper()}{100000 + len(pool)}"
+            ean = f"80{10000000000 + len(pool):011d}"
+            price_range = config['price_range']
+
+            pool.append((brand, model_no, item, ean, price_range))
+            model_id += 1
+
+    return pool
+
+
+# Pool globale (creato una sola volta per sessione)
+_POOL_MODELLI = get_pool_modelli_fissi()
+
+
 def genera_tsv_ordine_simulato(pdf_filepath, output_dir):
     """
     Genera un file TSV simulato con dati di ordini estratti dal PDF.
@@ -71,30 +118,16 @@ def genera_tsv_ordine_simulato(pdf_filepath, output_dir):
     po_number = f"25{random.randint(10000, 99999):05d}"
     object_ordine = f"PO No. {po_number}"
 
-    # Brands realistici
-    brands = ['HISENSE', 'HOMA', 'MIDEA', 'HAIER', 'SAMSUNG', 'LG', 'CANDY', 'HOOVER']
-
-    # Genera righe ordine (tra 5 e 50 modelli)
+    # ✅ Usa pool fisso di modelli per test (200-300 modelli)
+    # Seleziona un sottoinsieme casuale di modelli dal pool
     num_righe = random.randint(5, 50)
+    modelli_selezionati = random.sample(_POOL_MODELLI, num_righe)
 
     righe = []
-    for i in range(num_righe):
-        brand = random.choice(brands)
-
-        # Codice modello realistico (es: HIS-WM8012, MID-AC7000)
-        model_prefix = brand[:3].upper()
-        model_suffix = random.choice(['WM', 'DW', 'AC', 'TV', 'RF', 'FR'])
-        model_number = random.randint(1000, 9999)
-        model_no = f"{model_prefix}-{model_suffix}{model_number}"
-
-        # Item code (SKU)
-        item = f"{brand[:2].upper()}{random.randint(100000, 999999)}"
-
-        # EAN (13 digit barcode)
-        ean = f"80{random.randint(10000000000, 99999999999)}"
-
-        # Prezzo e quantità realistici
-        price_eur = round(random.uniform(150.0, 1500.0), 2)
+    for brand, model_no, item, ean, price_range in modelli_selezionati:
+        # Prezzo dalla fascia del brand + variazione casuale
+        base_price = random.uniform(*price_range)
+        price_eur = round(base_price, 2)
         qty = random.randint(5, 200)
         amount_eur = round(price_eur * qty, 2)
 

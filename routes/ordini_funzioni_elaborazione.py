@@ -34,12 +34,15 @@ def upsert_controparte(cod_controparte, controparte_desc, current_user_id=0):
     controparte = Controparte.query.filter_by(cod_controparte=cod_norm).first()
 
     if controparte:
+        # Record esistente: SEMPRE aggiorna tracciatura (anche se dati non cambiano)
         # Aggiorna descrizione se cambiata
         if controparte.controparte != controparte_desc:
             controparte.controparte = controparte_desc
-            controparte.updated_at = datetime.utcnow()
-            controparte.updated_by = current_user_id
             logger.info(f"Controparte aggiornata: {cod_norm} -> {controparte_desc}")
+
+        # ✅ SEMPRE traccia l'update (anche se dati uguali)
+        controparte.updated_at = datetime.utcnow()
+        controparte.updated_by = current_user_id
     else:
         # Inserisci nuova controparte
         controparte = Controparte(
@@ -71,13 +74,16 @@ def upsert_modello(model_no, brand=None, current_user_id=0):
     modello = Modello.query.filter_by(cod_modello_norm=cod_norm).first()
 
     if modello:
+        # Record esistente: SEMPRE aggiorna tracciatura (anche se dati non cambiano)
         # Aggiorna marca se fornita e mancante
         if brand and not modello.marca:
             modello.marca = brand
-            modello.updated_at = datetime.utcnow()
-            modello.updated_by = current_user_id
-            modello.updated_from = 'ORD'
             logger.info(f"Modello aggiornato con marca: {model_no} -> {brand}")
+
+        # ✅ SEMPRE traccia l'update (anche se dati uguali)
+        modello.updated_at = datetime.utcnow()
+        modello.updated_by = current_user_id
+        modello.updated_from = 'ORD'
     else:
         # Inserisci nuovo modello
         modello = Modello(

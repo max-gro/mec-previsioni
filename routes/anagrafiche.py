@@ -5,7 +5,7 @@ Blueprint per la gestione Anagrafiche File Excel (CRUD + Upload)
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, FileAnagrafica, TraceElab, TraceElabDett
+from models import db, FileAnagrafica, Modello, Componente, ModelloComponente, TraceElab, TraceElabDett
 from forms import AnagraficaFileForm, AnagraficaFileEditForm, NuovaMarcaForm
 from utils.decorators import admin_required
 from utils.db_log import log_session  # Sessione separata per log (AUTONOMOUS TRANSACTION)
@@ -13,12 +13,123 @@ import os
 import shutil
 import random
 import time
+import logging
+import csv
+import re
 from datetime import datetime, date
+
+logger = logging.getLogger(__name__)
 
 anagrafiche_bp = Blueprint('anagrafiche', __name__)
 
 # Marche iniziali di default
 MARCHE_DEFAULT = ['HISENSE', 'HOMA', 'MIDEA']
+
+# ============================================================================
+# FUNZIONI HELPER PER ELABORAZIONE
+# ============================================================================
+
+def normalize_code(code):
+    """
+    Normalizza un codice rimuovendo spazi, punteggiatura e convertendo in minuscolo
+    Per confronti e matching robusti
+    """
+    if not code:
+        return ''
+    return re.sub(r'[^a-z0-9]', '', str(code).lower())
+
+
+def genera_tsv_simulato(anagrafica_id, marca):
+    """
+    Genera un file TSV simulato per testing della pipeline anagrafiche.
+    Usa modelli ESISTENTI dalla tabella modelli (generati dalla pipeline ordini).
+
+    Campi TSV:
+    - file
+    - anno
+    - modello (cod_modello)
+    - M&C code (cod_componente)
+    - modello fabbrica (cod_modello_fabbrica)
+    - qtà
+    - pos number
+    - part no
+    - alt code
+    - alt code 2
+    - ean code
+    - barcode
+    - part name
+    - chinese name
+    - descr ita
+    - unit price usd
+    - prezzo EURO al CAT NO trasporto - NO iva - NETTO
+    - prezzo EURO al CAT con trasporto - NO iva - NETTO
+    - prezzo EURO al PUBBLICO (suggerito) con IVA
+    - stat
+    - softech stat
+
+    Returns: filepath del TSV generato
+    """
+    base_dir = current_app.root_path
+    parsed_dir = os.path.join(base_dir, 'INPUT', 'anagrafiche_parsed')
+    os.makedirs(parsed_dir, exist_ok=True)
+
+    # Prendi modelli esistenti dalla marca specificata (o tutti se marca non specificata)
+    query = db.session.query(Modello)
+    if marca:
+        query = query.filter_by(marca=marca)
+
+    modelli_esistenti = query.limit(10).all()  # Max 10 modelli per file simulato
+
+    if not modelli_esistenti:
+        # Se non ci sono modelli per quella marca, prendi modelli random
+        modelli_esistenti = db.session.query(Modello).limit(10).all()
+
+    # Genera dati simulati
+    rows = []
+    for modello in modelli_esistenti:
+        # Ogni modello ha 3-8 componenti
+        num_componenti = random.randint(3, 8)
+        for i in range(num_componenti):
+            row = {
+                'file': f'anagrafica_{marca}_{anagrafica_id}.xlsx',
+                'anno': datetime.now().year,
+                'modello': modello.cod_modello,
+                'M&C code': f'COMP-{marca}-{random.randint(1000, 9999)}',
+                'modello fabbrica': f'FAB-{modello.cod_modello[:10]}-{random.randint(100, 999)}',
+                'qtà': random.randint(1, 5),
+                'pos number': f'POS-{random.randint(1, 100)}',
+                'part no': f'PN-{random.randint(10000, 99999)}',
+                'alt code': f'ALT-{random.randint(1000, 9999)}' if random.random() > 0.3 else '',
+                'alt code 2': f'ALT2-{random.randint(1000, 9999)}' if random.random() > 0.5 else '',
+                'ean code': f'{random.randint(1000000000000, 9999999999999)}',
+                'barcode': f'BC{random.randint(100000, 999999)}',
+                'part name': f'Component {i+1} for {modello.cod_modello}',
+                'chinese name': f'组件 {i+1}',
+                'descr ita': f'Componente {i+1} per modello {modello.cod_modello}',
+                'unit price usd': round(random.uniform(5.0, 150.0), 2),
+                'prezzo EURO al CAT NO trasporto - NO iva - NETTO': round(random.uniform(4.5, 135.0), 2),
+                'prezzo EURO al CAT con trasporto - NO iva - NETTO': round(random.uniform(5.0, 140.0), 2),
+                'prezzo EURO al PUBBLICO (suggerito) con IVA': round(random.uniform(6.0, 180.0), 2),
+                'stat': random.choice(['A', 'B', 'C', 'D', '']),
+                'softech stat': random.choice(['ACTIVE', 'OBSOLETE', 'DISCONTINUED', ''])
+            }
+            rows.append(row)
+
+    # Scrivi TSV
+    tsv_filename = f'anagrafica_{marca}_{anagrafica_id}_parsed.tsv'
+    tsv_path = os.path.join(parsed_dir, tsv_filename)
+
+    if rows:
+        with open(tsv_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=rows[0].keys(), delimiter='\t')
+            writer.writeheader()
+            writer.writerows(rows)
+
+        logger.info(f"[TSV SIMULATO] Generato: {tsv_path} ({len(rows)} righe)")
+    else:
+        logger.warning(f"[TSV SIMULATO] Nessun dato generato per anagrafica {anagrafica_id}")
+
+    return tsv_path if rows else None
 
 def get_marche_disponibili():
     """
@@ -250,10 +361,241 @@ def elabora_anagrafica(anagrafica_id):
         db.session.commit()
         return False, 'File non trovato sul filesystem'
     
-    # Simula elaborazione con esito random
-    esito_ok = random.random() < 0.7  # 70% successo
-    
-    if esito_ok:
+    # ✅ STEP 3: Genera TSV simulato (in futuro: lettura da Excel reale)
+    try:
+        tsv_path = genera_tsv_simulato(anagrafica_id, anagrafica.marca)
+        if not tsv_path:
+            raise Exception("Impossibile generare TSV simulato: nessun modello disponibile")
+    except Exception as e:
+        trace_end = TraceElab(
+            id_elab=id_elab,
+            id_file=anagrafica_id,
+            tipo_file='ANA',
+            step='END',
+            stato='KO',
+            messaggio=f'Errore generazione TSV: {str(e)}',
+            righe_totali=0,
+            righe_ok=0,
+            righe_errore=1,
+            righe_warning=0
+        )
+        log_session.add(trace_end)
+        log_session.commit()
+
+        anagrafica.esito = 'Errore'
+        anagrafica.data_elaborazione = date.today()
+        anagrafica.note = f'❌ Errore generazione TSV: {str(e)}'
+        anagrafica.updated_at = datetime.utcnow()
+        anagrafica.updated_by = current_user.id
+        db.session.commit()
+        return False, f'Errore generazione TSV: {str(e)}'
+
+    # ✅ STEP 4: Leggi TSV ed elabora dati
+    try:
+        righe_totali = 0
+        righe_ok = 0
+        righe_errore = 0
+        righe_warning = 0
+
+        modelli_aggiornati = set()
+        componenti_creati = set()
+        componenti_aggiornati = set()
+        relazioni_create = set()
+
+        with open(tsv_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f, delimiter='\t')
+
+            for idx, row in enumerate(reader, start=1):
+                righe_totali += 1
+
+                try:
+                    # Estrai dati dalla riga
+                    cod_modello = row.get('modello', '').strip()
+                    cod_componente = row.get('M&C code', '').strip()
+                    cod_modello_fabbrica = row.get('modello fabbrica', '').strip()
+                    qta = int(row.get('qtà', 1))
+
+                    if not cod_modello or not cod_componente:
+                        righe_warning += 1
+                        trace_dett = TraceElabDett(
+                            id_trace=trace_start.id_trace,
+                            record_pos=idx,
+                            record_data={'modello': cod_modello, 'componente': cod_componente},
+                            stato='WARN',
+                            messaggio='Modello o componente mancante'
+                        )
+                        log_session.add(trace_dett)
+                        continue
+
+                    # UPDATE modello (cod_modello_fabbrica)
+                    modello = Modello.query.filter_by(cod_modello=cod_modello).first()
+                    if modello:
+                        if cod_modello_fabbrica:
+                            modello.cod_modello_fabbrica = cod_modello_fabbrica
+                            modello.updated_at = datetime.utcnow()
+                            modello.updated_by = current_user.id
+                            modello.updated_from = 'ANA'
+                            modelli_aggiornati.add(cod_modello)
+                    else:
+                        righe_warning += 1
+                        trace_dett = TraceElabDett(
+                            id_trace=trace_start.id_trace,
+                            record_pos=idx,
+                            record_data={'modello': cod_modello},
+                            stato='WARN',
+                            messaggio=f'Modello {cod_modello} non trovato nel DB'
+                        )
+                        log_session.add(trace_dett)
+
+                    # CREATE/UPDATE componente
+                    cod_componente_norm = normalize_code(cod_componente)
+                    componente = Componente.query.filter_by(cod_componente_norm=cod_componente_norm).first()
+
+                    if componente:
+                        # UPDATE
+                        componente.cod_alt = row.get('alt code', '').strip() or componente.cod_alt
+                        componente.cod_alt_2 = row.get('alt code 2', '').strip() or componente.cod_alt_2
+                        componente.pos_no = row.get('pos number', '').strip() or componente.pos_no
+                        componente.part_no = row.get('part no', '').strip() or componente.part_no
+                        componente.part_name_en = row.get('part name', '').strip() or componente.part_name_en
+                        componente.part_name_cn = row.get('chinese name', '').strip() or componente.part_name_cn
+                        componente.part_name_it = row.get('descr ita', '').strip() or componente.part_name_it
+                        componente.cod_ean = row.get('ean code', '').strip() or componente.cod_ean
+                        componente.barcode = row.get('barcode', '').strip() or componente.barcode
+
+                        # Prezzi (se presenti)
+                        try:
+                            if row.get('unit price usd'):
+                                componente.unit_price_usd = float(row['unit price usd'])
+                            if row.get('prezzo EURO al CAT NO trasporto - NO iva - NETTO'):
+                                componente.unit_price_notra_noiva_netto_eur = float(row['prezzo EURO al CAT NO trasporto - NO iva - NETTO'])
+                            if row.get('prezzo EURO al CAT con trasporto - NO iva - NETTO'):
+                                componente.unit_price_tra_noiva_netto_eur = float(row['prezzo EURO al CAT con trasporto - NO iva - NETTO'])
+                            if row.get('prezzo EURO al PUBBLICO (suggerito) con IVA'):
+                                componente.unit_price_public_eur = float(row['prezzo EURO al PUBBLICO (suggerito) con IVA'])
+                        except ValueError:
+                            pass  # Ignora errori di conversione prezzi
+
+                        componente.stat = row.get('stat', '').strip() or componente.stat
+                        componente.softech_stat = row.get('softech stat', '').strip() or componente.softech_stat
+                        componente.updated_at = datetime.utcnow()
+                        componente.updated_by = current_user.id
+                        componenti_aggiornati.add(cod_componente)
+                    else:
+                        # CREATE
+                        try:
+                            componente = Componente(
+                                cod_componente=cod_componente,
+                                cod_componente_norm=cod_componente_norm,
+                                cod_alt=row.get('alt code', '').strip(),
+                                cod_alt_2=row.get('alt code 2', '').strip(),
+                                pos_no=row.get('pos number', '').strip(),
+                                part_no=row.get('part no', '').strip(),
+                                part_name_en=row.get('part name', '').strip(),
+                                part_name_cn=row.get('chinese name', '').strip(),
+                                part_name_it=row.get('descr ita', '').strip(),
+                                cod_ean=row.get('ean code', '').strip(),
+                                barcode=row.get('barcode', '').strip(),
+                                stat=row.get('stat', '').strip(),
+                                softech_stat=row.get('softech stat', '').strip(),
+                                created_by=current_user.id
+                            )
+
+                            # Prezzi
+                            try:
+                                if row.get('unit price usd'):
+                                    componente.unit_price_usd = float(row['unit price usd'])
+                                if row.get('prezzo EURO al CAT NO trasporto - NO iva - NETTO'):
+                                    componente.unit_price_notra_noiva_netto_eur = float(row['prezzo EURO al CAT NO trasporto - NO iva - NETTO'])
+                                if row.get('prezzo EURO al CAT con trasporto - NO iva - NETTO'):
+                                    componente.unit_price_tra_noiva_netto_eur = float(row['prezzo EURO al CAT con trasporto - NO iva - NETTO'])
+                                if row.get('prezzo EURO al PUBBLICO (suggerito) con IVA'):
+                                    componente.unit_price_public_eur = float(row['prezzo EURO al PUBBLICO (suggerito) con IVA'])
+                            except ValueError:
+                                pass
+
+                            db.session.add(componente)
+                            componenti_creati.add(cod_componente)
+                        except Exception as e:
+                            righe_errore += 1
+                            trace_dett = TraceElabDett(
+                                id_trace=trace_start.id_trace,
+                                record_pos=idx,
+                                record_data={'componente': cod_componente},
+                                stato='KO',
+                                messaggio=f'Errore creazione componente: {str(e)}'
+                            )
+                            log_session.add(trace_dett)
+                            continue
+
+                    # CREATE modello_componente (relazione)
+                    if modello and componente:
+                        cod_modello_componente = f"{cod_modello}|{cod_componente}"
+
+                        # Verifica se esiste già
+                        existing_rel = ModelloComponente.query.filter_by(
+                            cod_modello_componente=cod_modello_componente
+                        ).first()
+
+                        if not existing_rel:
+                            relazione = ModelloComponente(
+                                cod_modello_componente=cod_modello_componente,
+                                id_file_anagrafiche=anagrafica_id,
+                                cod_modello=cod_modello,
+                                cod_componente=cod_componente,
+                                qta=qta,
+                                created_by=current_user.id
+                            )
+                            db.session.add(relazione)
+                            relazioni_create.add(cod_modello_componente)
+
+                    righe_ok += 1
+
+                except Exception as e:
+                    righe_errore += 1
+                    trace_dett = TraceElabDett(
+                        id_trace=trace_start.id_trace,
+                        record_pos=idx,
+                        record_data={'row': str(row)[:100]},
+                        stato='KO',
+                        messaggio=f'Errore elaborazione riga: {str(e)}'
+                    )
+                    log_session.add(trace_dett)
+                    logger.error(f"[ELAB ANA] Errore riga {idx}: {str(e)}")
+
+        # Commit dati business
+        db.session.commit()
+        logger.info(f"[ELAB ANA] Dati committati: {len(modelli_aggiornati)} modelli aggiornati, "
+                   f"{len(componenti_creati)} componenti creati, {len(componenti_aggiornati)} componenti aggiornati, "
+                   f"{len(relazioni_create)} relazioni create")
+
+    except Exception as e:
+        db.session.rollback()
+        trace_end = TraceElab(
+            id_elab=id_elab,
+            id_file=anagrafica_id,
+            tipo_file='ANA',
+            step='END',
+            stato='KO',
+            messaggio=f'Errore elaborazione TSV: {str(e)}',
+            righe_totali=righe_totali,
+            righe_ok=righe_ok,
+            righe_errore=righe_errore + 1,
+            righe_warning=righe_warning
+        )
+        log_session.add(trace_end)
+        log_session.commit()
+
+        anagrafica.esito = 'Errore'
+        anagrafica.data_elaborazione = date.today()
+        anagrafica.note = f'❌ Errore elaborazione: {str(e)}'
+        anagrafica.updated_at = datetime.utcnow()
+        anagrafica.updated_by = current_user.id
+        db.session.commit()
+        return False, f'Errore elaborazione: {str(e)}'
+
+    # ✅ STEP 5: Se tutto OK, sposta file in OUTPUT
+    if righe_errore == 0:
         # ELABORAZIONE RIUSCITA
         
         # Path di destinazione OUTPUT
@@ -267,29 +609,8 @@ def elabora_anagrafica(anagrafica_id):
             # Sposta file da INPUT a OUTPUT
             shutil.move(anagrafica.filepath, new_filepath)
 
-            # Statistiche simulate
-            num_record = random.randint(50, 500)
-            num_componenti = random.randint(20, 200)
-            num_warnings = random.randint(0, 10)
-
-            # Crea alcuni record di dettaglio simulati per i warnings (LOG SESSION)
-            if num_warnings > 0:
-                warnings_simulati = [
-                    'Codice componente mancante',
-                    'Descrizione troppo lunga (troncata)',
-                    'Prezzo non valido (impostato a 0)',
-                    'Data non valida',
-                    'Marca sconosciuta'
-                ]
-                for i in range(min(num_warnings, 5)):  # Max 5 warning di esempio
-                    trace_dett = TraceElabDett(
-                        id_trace=trace_start.id_trace,
-                        record_pos=random.randint(1, num_record),
-                        record_data={'key': f'ANA-{random.randint(1000, 9999)}', 'campo': random.choice(['codice', 'descrizione', 'prezzo', 'data', 'marca'])},
-                        stato='WARN',
-                        messaggio=random.choice(warnings_simulati)
-                    )
-                    log_session.add(trace_dett)
+            # Commit warning log già creati durante elaborazione
+            if righe_warning > 0:
                 log_session.commit()  # ← AUTONOMOUS: Warning log persistiti
 
             # Crea trace END con successo (LOG SESSION)
@@ -298,12 +619,15 @@ def elabora_anagrafica(anagrafica_id):
                 id_file=anagrafica_id,
                 tipo_file='ANA',
                 step='END',
-                stato='WARN' if num_warnings > 0 else 'OK',
-                messaggio=f'Elaborazione completata. Record: {num_record}, Componenti: {num_componenti}',
-                righe_totali=num_record,
-                righe_ok=num_record - num_warnings,
-                righe_errore=0,
-                righe_warning=num_warnings
+                stato='WARN' if righe_warning > 0 else 'OK',
+                messaggio=f'Elaborazione completata. Modelli aggiornati: {len(modelli_aggiornati)}, '
+                         f'Componenti creati: {len(componenti_creati)}, '
+                         f'Componenti aggiornati: {len(componenti_aggiornati)}, '
+                         f'Relazioni create: {len(relazioni_create)}',
+                righe_totali=righe_totali,
+                righe_ok=righe_ok,
+                righe_errore=righe_errore,
+                righe_warning=righe_warning
             )
             log_session.add(trace_end)
             log_session.commit()  # ← AUTONOMOUS: Log END persistito
@@ -312,9 +636,12 @@ def elabora_anagrafica(anagrafica_id):
             anagrafica.filepath = new_filepath
             anagrafica.esito = 'Processato'
             anagrafica.data_elaborazione = date.today()
-            anagrafica.note = f'Elaborazione completata con successo.\n' \
-                            f'Record elaborati: {num_record}.\n' \
-                            f'Componenti aggiornati: {num_componenti}.'
+            anagrafica.note = f'✅ Elaborazione completata con successo.\n' \
+                            f'Righe elaborate: {righe_totali}\n' \
+                            f'Modelli aggiornati: {len(modelli_aggiornati)}\n' \
+                            f'Componenti creati: {len(componenti_creati)}\n' \
+                            f'Componenti aggiornati: {len(componenti_aggiornati)}\n' \
+                            f'Relazioni create: {len(relazioni_create)}'
             anagrafica.updated_at = datetime.utcnow()
             anagrafica.updated_by = current_user.id
             db.session.commit()  # ← Se fallisce, i log sono GIÀ salvati!
@@ -348,39 +675,9 @@ def elabora_anagrafica(anagrafica_id):
             return False, f'Errore durante lo spostamento: {str(e)}'
     
     else:
-        # ELABORAZIONE FALLITA
+        # ELABORAZIONE CON ERRORI - Non sposta il file, rimane in INPUT
 
-        # Messaggi di errore random realistici
-        errori_possibili = [
-            '❌ Formato file non valido: colonne mancanti',
-            '❌ Errore: duplicati trovati nelle righe 15-23',
-            '❌ Validazione fallita: codici componente non validi',
-            '❌ Errore di integrità : riferimenti a marche inesistenti',
-            '❌ File corrotto o incompleto',
-        ]
-
-        errore_msg = random.choice(errori_possibili)
-
-        # Simula numero errori
-        num_errori = random.randint(5, 50)
-
-        # Crea alcuni record di dettaglio simulati per gli errori (LOG SESSION)
-        errori_dettaglio = [
-            'Formato colonna non valido',
-            'Valore duplicato trovato',
-            'Riferimento a marca inesistente',
-            'Codice componente già esistente',
-            'Lunghezza campo superata'
-        ]
-        for i in range(min(num_errori, 8)):  # Max 8 errori di esempio
-            trace_dett = TraceElabDett(
-                id_trace=trace_start.id_trace,
-                record_pos=random.randint(1, 100),
-                record_data={'key': f'ANA-{random.randint(1000, 9999)}', 'campo': random.choice(['codice', 'descrizione', 'marca', 'categoria'])},
-                stato='KO',
-                messaggio=random.choice(errori_dettaglio)
-            )
-            log_session.add(trace_dett)
+        # Commit error/warning log già creati durante elaborazione
         log_session.commit()  # ← AUTONOMOUS: Error log persistiti
 
         # Crea trace END con errore (LOG SESSION)
@@ -390,24 +687,30 @@ def elabora_anagrafica(anagrafica_id):
             tipo_file='ANA',
             step='END',
             stato='KO',
-            messaggio=errore_msg,
-            righe_totali=num_errori,
-            righe_ok=0,
-            righe_errore=num_errori,
-            righe_warning=0
+            messaggio=f'❌ Elaborazione fallita con {righe_errore} errori',
+            righe_totali=righe_totali,
+            righe_ok=righe_ok,
+            righe_errore=righe_errore,
+            righe_warning=righe_warning
         )
         log_session.add(trace_end)
         log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
-        # Aggiorna tabella operativa (DB SESSION)
+        # Aggiorna tabella operativa (DB SESSION) - FILE RIMANE IN INPUT
         anagrafica.esito = 'Errore'
         anagrafica.data_elaborazione = date.today()
-        anagrafica.note = f'❌ {errore_msg}'
+        anagrafica.note = f'❌ Elaborazione fallita.\n' \
+                        f'Righe totali: {righe_totali}\n' \
+                        f'Righe OK: {righe_ok}\n' \
+                        f'Righe con errori: {righe_errore}\n' \
+                        f'Righe con warning: {righe_warning}\n' \
+                        f'File mantenuto in INPUT per revisione.'
         anagrafica.updated_at = datetime.utcnow()
         anagrafica.updated_by = current_user.id
         db.session.commit()
 
         return False, anagrafica.note
+
 
 
 @anagrafiche_bp.route('/')
@@ -591,24 +894,55 @@ def elabora(id):
 @anagrafiche_bp.route('/<int:id>/delete', methods=['POST'])
 @admin_required
 def delete(id):
-    """Elimina un'anagrafica"""
+    """
+    Elimina un'anagrafica.
+
+    Cancella:
+    - File_anagrafiche
+    - Modelli_componenti associati (relazioni BOM)
+
+    NON cancella:
+    - Modelli (rimangono nel DB)
+    - Componenti (rimangono nel DB)
+    """
     anagrafica = FileAnagrafica.query.get_or_404(id)
     filename = anagrafica.filename
     filepath = anagrafica.filepath
-    
-    # Elimina il file dal filesystem
-    if os.path.exists(filepath):
-        try:
-            os.remove(filepath)
-        except Exception as e:
-            flash(f'Errore nell\'eliminazione del file: {str(e)}', 'danger')
-            return redirect(url_for('anagrafiche.list'))
-    
-    # Elimina dal database
-    db.session.delete(anagrafica)
-    db.session.commit()
-    
-    flash(f'Anagrafica {filename} eliminata.', 'info')
+
+    try:
+        # ✅ STEP 1: Elimina modelli_componenti associati
+        relazioni = ModelloComponente.query.filter_by(id_file_anagrafiche=id).all()
+        num_relazioni = len(relazioni)
+
+        for relazione in relazioni:
+            db.session.delete(relazione)
+
+        logger.info(f"[DELETE ANA] Eliminate {num_relazioni} relazioni modelli_componenti per anagrafica {id}")
+
+        # ✅ STEP 2: Elimina file_anagrafiche dal database
+        db.session.delete(anagrafica)
+        db.session.commit()
+
+        logger.info(f"[DELETE ANA] Eliminato file_anagrafiche {id}")
+
+        # ✅ STEP 3: Elimina il file dal filesystem (se esiste)
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+                logger.info(f"[DELETE ANA] Eliminato file fisico: {filepath}")
+            except Exception as e:
+                logger.warning(f"[DELETE ANA] Errore eliminazione file fisico: {str(e)}")
+                flash(f'Anagrafica {filename} eliminata dal DB. Errore eliminazione file: {str(e)}', 'warning')
+                return redirect(url_for('anagrafiche.list'))
+
+        flash(f'✅ Anagrafica {filename} eliminata con successo. '
+              f'({num_relazioni} relazioni modelli-componenti rimosse)', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"[DELETE ANA] Errore durante eliminazione: {str(e)}")
+        flash(f'❌ Errore durante l\'eliminazione: {str(e)}', 'danger')
+
     return redirect(url_for('anagrafiche.list'))
 
 

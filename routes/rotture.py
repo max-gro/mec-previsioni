@@ -279,9 +279,6 @@ def genera_tsv_simulato_rotture(file_rottura):
 
     # ========== GENERA ROTTURE OK ==========
     for i in range(num_rotture_ok):
-        prot = str(prot_counter)  # Progressivo semplice: 1, 2, 3, ...
-        prot_counter += 1
-
         # Decide tipo di rottura OK:
         # 10% senza modello/componenti (riga vuota/incompleta ma valida)
         # 30% con modello ma senza componenti
@@ -309,8 +306,10 @@ def genera_tsv_simulato_rotture(file_rottura):
         if not componenti:
             componenti = [None]
 
+        # Ogni riga ha un prot univoco (progressivo per riga, non per rottura)
         for componente in componenti:
-            # Usa modelli/componenti esistenti + pool per utenti/rivenditori
+            prot = str(prot_counter)
+            prot_counter += 1
             row = _crea_riga_rottura(prot, modello, componente, pool_config)
             rows.append(row)
 

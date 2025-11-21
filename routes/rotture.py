@@ -748,7 +748,10 @@ def elabora(id):
         file_rottura.updated_by = current_user.id
         db.session.commit()
         return redirect(url_for('rotture.list'))
-    
+
+    # Genera TSV simulato (sostituisce temporaneamente la lettura Excel)
+    genera_tsv_simulato_rotture(file_rottura.id)
+
     # Elabora file
     success, message, num_rotture = elabora_file_rottura_completo(file_rottura)
     

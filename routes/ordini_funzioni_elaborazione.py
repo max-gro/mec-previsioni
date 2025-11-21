@@ -262,11 +262,6 @@ def elabora_tsv_ordine(file_ordine_id, tsv_filepath, current_user_id=0):
                 num_errori += 1
                 logger.exception(f"Errore processing riga {idx}: {e}")
 
-        # STEP 4: Commit finale (se almeno una riga OK)
-        if num_righe_ok > 0:
-            db.session.commit()
-            logger.info(f"Commit DB: {num_righe_ok} righe ordini inserite")
-
         # Statistiche finali
         stats = {
             'righe_processate': num_righe_processate,
@@ -277,14 +272,19 @@ def elabora_tsv_ordine(file_ordine_id, tsv_filepath, current_user_id=0):
             'warnings_dettaglio': warnings_dettaglio[:20]
         }
 
-        if num_errori > 0 and num_righe_ok == 0:
-            return False, f"Elaborazione fallita: {num_errori} errori, 0 righe valide", stats
+        # STEP 4: ALL OR NOTHING - Commit solo se TUTTE le righe sono OK
+        if num_errori > 0:
+            db.session.rollback()
+            logger.warning(f"[ELAB ORD] Rollback completo: {num_errori} righe con errori su {num_righe_processate} totali")
+            return False, f"Elaborazione fallita: {num_errori} righe con errori (rollback completo)", stats
+
+        # Tutte le righe OK - Commit
+        db.session.commit()
+        logger.info(f"[ELAB ORD] Commit DB: {num_righe_ok} righe ordini inserite (tutte OK)")
 
         success_msg = f"Elaborazione completata: {num_righe_ok} righe inserite"
         if num_warnings > 0:
             success_msg += f" ({num_warnings} warning)"
-        if num_errori > 0:
-            success_msg += f" ({num_errori} righe con errori ignorate)"
 
         return True, success_msg, stats
 

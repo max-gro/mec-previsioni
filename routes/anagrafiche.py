@@ -623,11 +623,9 @@ def elabora_anagrafica(anagrafica_id):
                     log_session.add(trace_dett)
                     logger.error(f"[ELAB ANA] Errore riga {idx}: {str(e)}")
 
-        # Commit dati business
-        db.session.commit()
-        logger.info(f"[ELAB ANA] Dati committati: {len(modelli_aggiornati)} modelli aggiornati, "
-                   f"{len(componenti_creati)} componenti creati, {len(componenti_aggiornati)} componenti aggiornati, "
-                   f"{len(relazioni_create)} relazioni create")
+        # ALL OR NOTHING: committa dati business SOLO se nessun errore
+        # Se ci sono errori, verrà fatto rollback più avanti
+        logger.info(f"[ELAB ANA] Fine elaborazione righe: {righe_ok} OK, {righe_errore} errori, {righe_warning} warning")
 
     except Exception as e:
         db.session.rollback()
@@ -654,10 +652,14 @@ def elabora_anagrafica(anagrafica_id):
         db.session.commit()
         return False, f'Errore elaborazione: {str(e)}'
 
-    # ✅ STEP 5: Se tutto OK, sposta file in OUTPUT
+    # ✅ STEP 5: Se tutto OK, committa e sposta file in OUTPUT
     if righe_errore == 0:
-        # ELABORAZIONE RIUSCITA
-        
+        # ELABORAZIONE RIUSCITA - Commit dati business
+        db.session.commit()
+        logger.info(f"[ELAB ANA] Dati committati: {len(modelli_aggiornati)} modelli aggiornati, "
+                   f"{len(componenti_creati)} componenti creati, {len(componenti_aggiornati)} componenti aggiornati, "
+                   f"{len(relazioni_create)} relazioni create")
+
         # Path di destinazione OUTPUT
         base_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
         output_dir = os.path.join(base_dir, 'OUTPUT', 'anagrafiche', anagrafica.marca)
@@ -735,7 +737,9 @@ def elabora_anagrafica(anagrafica_id):
             return False, f'Errore durante lo spostamento: {str(e)}'
     
     else:
-        # ELABORAZIONE CON ERRORI - Non sposta il file, rimane in INPUT
+        # ELABORAZIONE CON ERRORI - Rollback completo (ALL OR NOTHING)
+        db.session.rollback()
+        logger.warning(f"[ELAB ANA] Rollback dati business: {righe_errore} righe con errori")
 
         # Commit error/warning log già creati durante elaborazione
         log_session.commit()  # ← AUTONOMOUS: Error log persistiti
@@ -747,9 +751,9 @@ def elabora_anagrafica(anagrafica_id):
             tipo_file='ANA',
             step='END',
             stato='KO',
-            messaggio=f'❌ Elaborazione fallita con {righe_errore} errori',
+            messaggio=f'❌ Elaborazione fallita: {righe_errore} righe con errori su {righe_totali} totali (rollback completo)',
             righe_totali=righe_totali,
-            righe_ok=righe_ok,
+            righe_ok=0,  # ALL OR NOTHING: se ci sono errori, nessuna riga è stata committata
             righe_errore=righe_errore,
             righe_warning=righe_warning
         )
@@ -759,11 +763,11 @@ def elabora_anagrafica(anagrafica_id):
         # Aggiorna tabella operativa (DB SESSION) - FILE RIMANE IN INPUT
         anagrafica.esito = 'Errore'
         anagrafica.data_elaborazione = date.today()
-        anagrafica.note = f'❌ Elaborazione fallita.\n' \
+        anagrafica.note = f'❌ Elaborazione fallita (rollback completo).\n' \
                         f'Righe totali: {righe_totali}\n' \
-                        f'Righe OK: {righe_ok}\n' \
                         f'Righe con errori: {righe_errore}\n' \
                         f'Righe con warning: {righe_warning}\n' \
+                        f'Nessun dato inserito/aggiornato (all or nothing).\n' \
                         f'File mantenuto in INPUT per revisione.'
         anagrafica.updated_at = datetime.utcnow()
         anagrafica.updated_by = current_user.id

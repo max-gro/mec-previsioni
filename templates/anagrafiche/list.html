@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Gestione Anagrafiche (File Excel){% endblock %}
+{% block title %}File Anagrafiche{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
 
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>📄 Anagrafiche - File Excel</h2>
+    <h2>📄 File Anagrafiche</h2>
     <div class="d-flex gap-2">
       {% if current_user.is_admin() %}
       <a href="{{ url_for('anagrafiche.sync') }}" class="btn btn-secondary" title="Sincronizza con filesystem">

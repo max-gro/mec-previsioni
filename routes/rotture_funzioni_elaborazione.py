@@ -94,6 +94,42 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
         # STEP 1: Genera TSV da Excel
         df = pd.read_excel(file_rottura.filepath)
 
+        # Normalizza nomi colonne: rimuovi punti finali, trim, lowercase
+        # Mapping colonne Excel → colonne attese dal codice
+        column_mapping = {
+            'Prot.': 'prot',
+            'Piattaforma': 'piattaforma',
+            'Rivenditore': 'cod_rivenditore',
+            'Prov. Riv.': 'pv_rivenditore',
+            'Utente': 'cod_utente',
+            'Comune Utente': 'comune_utente',
+            'Prov. Ut.': 'pv_utente',
+            'C.A.T.': 'C.A.T.',  # Keep original
+            'Consumo': 'flag_consumer',
+            'Da fatturare': 'flag_da_fatturare',
+            'Data Competenza': 'data_competenza',
+            'Divisione': 'divisione',
+            'Marca': 'marca',
+            'Descrizione': 'desc_modello',
+            'Matricola': 'cod_matricola',
+            'Modello Fabbrica': 'cod_modello_fabbrica',
+            'Modello': 'cod_modello',
+            'Data Acquisto': 'data_acquisto',
+            'Data Apertura': 'data_apertura',
+            'Ricambio': 'cod_componente',
+            'Difetto': 'difetto',
+            'Problema Segnalato': 'problema_segnalato',
+            'Descrizione Riparazione': 'riparazione',
+            'Giorni Vita Prodotto': 'gg_vita_prodotto',
+            'Nr Pezzi': 'qtà',
+            'Produttore': 'produttore',
+            'Famiglia': 'famiglia',
+            'Tipo': 'tipo'
+        }
+
+        # Rinomina colonne presenti nel mapping
+        df.rename(columns=column_mapping, inplace=True)
+
         # Salva come TSV
         df.to_csv(tsv_filepath, sep='\t', index=False, encoding='utf-8')
 

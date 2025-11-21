@@ -97,6 +97,7 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
         # Normalizza nomi colonne: rimuovi punti finali, trim, lowercase
         # Mapping colonne Excel → colonne attese dal codice
         column_mapping = {
+            # Campi principali
             'Prot.': 'prot',
             'Piattaforma': 'piattaforma',
             'Rivenditore': 'cod_rivenditore',
@@ -104,27 +105,115 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
             'Utente': 'cod_utente',
             'Comune Utente': 'comune_utente',
             'Prov. Ut.': 'pv_utente',
-            'C.A.T.': 'C.A.T.',  # Keep original
+            'C.A.T.': 'C.A.T.',
             'Consumo': 'flag_consumer',
             'Da fatturare': 'flag_da_fatturare',
             'Data Competenza': 'data_competenza',
+            'Anno Competenza': 'anno_competenza',
+            'Mese Competenza': 'mese_competenza',
+
+            # Modello
             'Divisione': 'divisione',
             'Marca': 'marca',
             'Descrizione': 'desc_modello',
             'Matricola': 'cod_matricola',
+            'Produttore': 'produttore',
             'Modello Fabbrica': 'cod_modello_fabbrica',
+            'Famiglia': 'famiglia',
+            'Tipo': 'tipo',
             'Modello': 'cod_modello',
+
+            # Date
             'Data Acquisto': 'data_acquisto',
             'Data Apertura': 'data_apertura',
+            'Data Assegnazione': 'data_1',
+            'Data Accettazione': 'data_2',
+            'Data Appuntamento': 'data_3',
+            'Data Fine': 'data_4',
+            'Data Approvazione': 'data_5',
+            'Data Autorizzazione': 'data_6',
+            'Data Chiusura': 'data_7',
+            'Data Stato': 'data_stato',
+            'Data fine CAT': 'data_fine_cat',
+
+            # Ricambi (possono essere più colonne: Ricambio, Ricambio.1, Ricambio.2, etc.)
             'Ricambio': 'cod_componente',
+            'Ricambio.1': 'cod_componente_1',
+            'Ricambio.2': 'cod_componente_2',
+            'Ricambio.3': 'cod_componente_3',
+            'Ricambio.4': 'cod_componente_4',
+            'Ricambio.5': 'cod_componente_5',
+
+            # Attività
+            'Attivita\'': 'attivita',
+            'Attivita\'.1': 'attivita_1',
+            'Attivita\'.2': 'attivita_2',
+            'Attivita\'.3': 'attivita_3',
+            'Attivita\'.4': 'attivita_4',
+            'Attivita\'.5': 'attivita_5',
+            'Numero Attivita\'': 'numero_attivita',
+            'Importo Attitivita\'': 'importo_attitivita',
+
+            # Problemi e riparazione
             'Difetto': 'difetto',
             'Problema Segnalato': 'problema_segnalato',
             'Descrizione Riparazione': 'riparazione',
-            'Giorni Vita Prodotto': 'gg_vita_prodotto',
+
+            # Importi
+            'Causale Extra': 'causale_extra',
+            'Importo Extra': 'importo_extra',
+            'Variaz %': 'variaz_perc',
+            'Importo Variazione': 'importo_variazione',
+            'Importo Totale': 'importo_totale',
+
+            # Contatori
+            'Nr Ricambi': 'nr_ricambi',
             'Nr Pezzi': 'qtà',
-            'Produttore': 'produttore',
-            'Famiglia': 'famiglia',
-            'Tipo': 'tipo'
+            'Nr Ordini': 'nr_ordini',
+            'Nr App': 'nr_app',
+
+            # Stato e info
+            'Stato': 'stato',
+            'Soluzione': 'soluzione',
+            'Giorni Vita Prodotto': 'gg_vita_prodotto',
+            'Mesi Vita Prodotto': 'mesi_vita_prodotto',
+
+            # Ritorni
+            'Ritorno': 'ritorno',
+            'Ritorno x CAT': 'ritorno_x_cat',
+            'Ritorno x PROD': 'ritorno_x_prod',
+
+            # Causali e flags
+            'Causale': 'causale',
+            'Triang.': 'triang',
+            'Riass.': 'riass',
+
+            # Rimborsi
+            'Rimb Prod': 'rimb_prod',
+            'Rimb Smalt': 'rimb_smalt',
+            'Rimb Reinst': 'rimb_reinst',
+            'Rimb Tot': 'rimb_tot',
+
+            # FG
+            'FG': 'fg',
+            'FG Non Pagata': 'fg_non_pagata',
+            'Valore FG Non Pagata': 'valore_fg_non_pagata',
+
+            # Anno/Mese
+            'Anno Acquisto': 'anno_acquisto',
+            'Mese Acquisto': 'mese_acquisto',
+            'Anno Apertura': 'anno_apertura',
+            'Mese Apertura': 'mese_apertura',
+            'Anno Assegnazione': 'anno_assegnazione',
+            'Mese Assegnazione': 'mese_assegnazione',
+
+            # Altri campi
+            'Giorni Riparazione': 'giorni_riparazione',
+            'Causale Sostituzione': 'causale_sostituzione',
+            'Addebito': 'addebito',
+            'Apertura PV': 'apertura_pv',
+            'KM Richiesti': 'km_richiesti',
+            'Tipo Fatturazione': 'tipo_fatturazione'
         }
 
         # Rinomina colonne presenti nel mapping

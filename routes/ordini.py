@@ -5,10 +5,13 @@ Blueprint per la gestione Ordini di Acquisto (CRUD + Upload PDF + Elaborazione)
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, OrdineAcquisto, TraceElab, TraceElabDett
-from forms import OrdineAcquistoForm, OrdineAcquistoEditForm
+from models import db, FileOrdine, Ordine, TraceElab, TraceElabDett
+from forms import FileOrdineForm, FileOrdineEditForm
 from utils.decorators import admin_required
 from utils.pdf_parser import parse_purchase_order_pdf
+from utils.ordini_parser import genera_tsv_ordine_simulato, valida_riga_tsv
+from routes.ordini_funzioni_elaborazione import elabora_tsv_ordine
+from utils.db_log import log_session  # Sessione separata per log (AUTONOMOUS TRANSACTION)
 import os
 import re
 import shutil
@@ -58,18 +61,21 @@ def get_upload_path(anno, esito='Da processare'):
 
 def elabora_ordine(ordine_id):
     """
-    Elabora un ordine di acquisto effettuando il parsing del PDF.
+    Elabora un ordine di acquisto con flusso completo:
+
+    PDF → TSV simulato → Inserimento DB (controparti, modelli, ordini)
 
     Processo:
-    1. Verifica esistenza file
-    2. Parse PDF per estrarre metadati e righe prodotto
-    3. Salva dati estratti e crea trace dettagliata
-    4. Sposta file in OUTPUT se successo, lascia in INPUT se errore
+    1. Verifica esistenza file PDF
+    2. Genera TSV simulato (estrazione dati dal PDF)
+    3. Elabora TSV e popola database (controparti, modelli, ordini)
+    4. Sposta file PDF in OUTPUT se successo, lascia in INPUT se errore
+    5. Trace completo con autonomous transaction
 
     Returns:
         tuple: (success: bool, message: str)
     """
-    ordine = OrdineAcquisto.query.get(ordine_id)
+    ordine = FileOrdine.query.get(ordine_id)
     if not ordine:
         return False, "Ordine non trovato"
 
@@ -77,7 +83,7 @@ def elabora_ordine(ordine_id):
     result = db.session.execute(db.text("SELECT nextval('seq_id_elab')"))
     id_elab = result.scalar()
 
-    # ✅ STEP 1: Crea record elaborazione - START
+    # ✅ STEP 1: Crea record elaborazione - START (LOG SESSION - COMMIT IMMEDIATO)
     trace_start = TraceElab(
         id_elab=id_elab,
         id_file=ordine_id,
@@ -86,8 +92,8 @@ def elabora_ordine(ordine_id):
         stato='OK',
         messaggio='Inizio elaborazione ordine PDF'
     )
-    db.session.add(trace_start)
-    db.session.commit()  # Commit per avere l'ID
+    log_session.add(trace_start)
+    log_session.commit()  # ← AUTONOMOUS: Commit immediato, sempre persistito
     id_trace_start = trace_start.id_trace
 
     try:
@@ -95,7 +101,7 @@ def elabora_ordine(ordine_id):
         if not os.path.exists(ordine.filepath):
             logger.error(f"File not found: {ordine.filepath}")
 
-            # Logga errore critico
+            # Logga errore critico (LOG SESSION)
             dettaglio = TraceElabDett(
                 id_trace=id_trace_start,
                 record_pos=0,
@@ -103,9 +109,10 @@ def elabora_ordine(ordine_id):
                 stato='KO',
                 messaggio=f"File non trovato sul filesystem: {ordine.filepath}"
             )
-            db.session.add(dettaglio)
+            log_session.add(dettaglio)
+            log_session.commit()
 
-            # Finalizza elaborazione con errore
+            # Finalizza elaborazione con errore (LOG SESSION)
             trace_end = TraceElab(
                 id_elab=id_elab,
                 id_file=ordine_id,
@@ -118,56 +125,123 @@ def elabora_ordine(ordine_id):
                 righe_errore=1,
                 righe_warning=0
             )
-            db.session.add(trace_end)
+            log_session.add(trace_end)
+            log_session.commit()
 
+            # Aggiorna tabella operativa (DB SESSION)
             ordine.esito = 'Errore'
             ordine.data_elaborazione = datetime.utcnow()
             ordine.note = "File non trovato sul filesystem"
-
+            ordine.updated_at = datetime.utcnow()
+            ordine.updated_by = current_user.id
             db.session.commit()
+
             return False, "File non trovato sul filesystem"
 
-        # ✅ STEP 2: Parse PDF
-        logger.info(f"Parsing PDF: {ordine.filepath}")
-        parse_result = parse_purchase_order_pdf(ordine.filepath)
+        # ✅ STEP 2: Genera TSV simulato dal PDF
+        logger.info(f"Generazione TSV da PDF: {ordine.filepath}")
 
-        # ✅ STEP 3: Processa risultati del parsing
-        num_items = len(parse_result.get('items', []))
-        num_errors = len(parse_result.get('errors', []))
-        num_warnings = len(parse_result.get('warnings', []))
+        # Directory per TSV parsed
+        base_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+        parsed_dir = os.path.join(base_dir, 'INPUT', 'ordini_parsed')
+        os.makedirs(parsed_dir, exist_ok=True)
 
-        # Log warnings
-        for warning in parse_result.get('warnings', []):
+        try:
+            tsv_filepath, num_righe_tsv, metadati = genera_tsv_ordine_simulato(ordine.filepath, parsed_dir)
+            logger.info(f"TSV generato: {tsv_filepath} ({num_righe_tsv} righe)")
+
+            # Log TSV generato (LOG SESSION)
+            dettaglio_tsv = TraceElabDett(
+                id_trace=id_trace_start,
+                record_pos=0,
+                stato='OK',
+                messaggio=f'TSV generato: {num_righe_tsv} righe',
+                record_data={'key': 'TSV_GEN', 'tsv_file': os.path.basename(tsv_filepath)}
+            )
+            log_session.add(dettaglio_tsv)
+            log_session.commit()
+
+        except Exception as e:
+            logger.exception(f"Errore generazione TSV: {e}")
+
+            # Log errore (LOG SESSION)
+            dettaglio = TraceElabDett(
+                id_trace=id_trace_start,
+                record_pos=0,
+                stato='KO',
+                messaggio=f"Errore generazione TSV: {str(e)}",
+                record_data={'key': 'TSV_GEN_ERROR'}
+            )
+            log_session.add(dettaglio)
+            log_session.commit()
+
+            # Log END (LOG SESSION)
+            trace_end = TraceElab(
+                id_elab=id_elab,
+                id_file=ordine_id,
+                tipo_file='ORD',
+                step='END',
+                stato='KO',
+                messaggio=f'Errore generazione TSV: {str(e)}',
+                righe_totali=0,
+                righe_ok=0,
+                righe_errore=1,
+                righe_warning=0
+            )
+            log_session.add(trace_end)
+            log_session.commit()
+
+            # Aggiorna tabella operativa (DB SESSION)
+            ordine.esito = 'Errore'
+            ordine.data_elaborazione = datetime.utcnow()
+            ordine.note = f"Errore generazione TSV: {str(e)}"
+            ordine.updated_at = datetime.utcnow()
+            ordine.updated_by = current_user.id
+            db.session.commit()
+
+            return False, f"Errore generazione TSV: {str(e)}"
+
+        # ✅ STEP 3: Elabora TSV e popola database (controparti, modelli, ordini)
+        logger.info(f"Elaborazione TSV: {tsv_filepath}")
+        success_tsv, message_tsv, stats = elabora_tsv_ordine(ordine_id, tsv_filepath, current_user.id)
+
+        # Estrai statistiche
+        num_righe_ok = stats.get('righe_ok', 0)
+        num_errori = stats.get('errori', 0)
+        num_warnings = stats.get('warnings', 0)
+
+        # Log warning dettagliati (LOG SESSION)
+        for warning in stats.get('warnings_dettaglio', [])[:10]:  # Max 10
             dettaglio = TraceElabDett(
                 id_trace=id_trace_start,
                 record_pos=0,
                 stato='WARN',
                 messaggio=warning,
-                record_data={'key': 'PARSE_WARN'}
+                record_data={'key': 'TSV_WARN'}
             )
-            db.session.add(dettaglio)
+            log_session.add(dettaglio)
+        if num_warnings > 0:
+            log_session.commit()
 
-        # Log errors
-        for idx, error in enumerate(parse_result.get('errors', [])):
+        # Log errori dettagliati (LOG SESSION)
+        for errore in stats.get('errori_dettaglio', [])[:10]:  # Max 10
             dettaglio = TraceElabDett(
                 id_trace=id_trace_start,
-                record_pos=error.get('row_num', idx),
+                record_pos=0,
                 stato='KO',
-                messaggio=error.get('message', 'Unknown error'),
-                record_data={
-                    'key': 'PARSE_ERROR',
-                    'raw_data': str(error.get('raw_data')) if error.get('raw_data') else None
-                }
+                messaggio=errore,
+                record_data={'key': 'TSV_ERROR'}
             )
-            db.session.add(dettaglio)
+            log_session.add(dettaglio)
+        if num_errori > 0:
+            log_session.commit()
 
-        # Determina se l'elaborazione è un successo
-        has_critical_errors = num_errors > 0 and num_items == 0
-
-        if has_critical_errors:
+        # Verifica se elaborazione TSV è fallita
+        if not success_tsv:
             # ✅ STEP 4A: ERRORE CRITICO - file rimane in INPUT
-            messaggio_finale = f"Elaborazione fallita: trovati {num_errors} errori critici, 0 righe valide estratte."
+            messaggio_finale = f"Elaborazione TSV fallita: {message_tsv}"
 
+            # Log END con errore (LOG SESSION)
             trace_end = TraceElab(
                 id_elab=id_elab,
                 id_file=ordine_id,
@@ -175,128 +249,127 @@ def elabora_ordine(ordine_id):
                 step='END',
                 stato='KO',
                 messaggio=messaggio_finale,
-                righe_totali=num_items + num_errors,
-                righe_ok=num_items,
-                righe_errore=num_errors,
+                righe_totali=num_righe_ok + num_errori,
+                righe_ok=num_righe_ok,
+                righe_errore=num_errori,
                 righe_warning=num_warnings
             )
-            db.session.add(trace_end)
+            log_session.add(trace_end)
+            log_session.commit()
 
+            # Aggiorna tabella operativa (DB SESSION)
             ordine.esito = 'Errore'
             ordine.data_elaborazione = datetime.utcnow()
             ordine.note = messaggio_finale
-
+            ordine.updated_at = datetime.utcnow()
+            ordine.updated_by = current_user.id
             db.session.commit()
-            logger.error(f"Critical parsing errors for {ordine.filename}: {num_errors} errors")
-            return False, f"Elaborazione fallita: {num_errors} errori critici nel PDF"
 
-        else:
-            # ✅ STEP 4B: SUCCESSO (con o senza warning) - sposta file in OUTPUT
-            output_dir = get_upload_path(ordine.anno, esito='Processato')
-            new_filepath = os.path.join(output_dir, ordine.filename)
+            return False, messaggio_finale
 
-            try:
-                # Calcola totale ordine (se disponibili i prezzi)
-                total_amount = 0.0
-                for item in parse_result.get('items', []):
-                    if item.get('total'):
-                        try:
-                            # Il parser ritorna stringhe, convertiamo
-                            from utils.pdf_parser import PurchaseOrderParser
-                            parser_temp = PurchaseOrderParser('')
-                            total_amount += parser_temp._parse_number(item['total'])
-                        except:
-                            pass
+        # ✅ STEP 4B: SUCCESSO - sposta file PDF in OUTPUT
+        output_dir = get_upload_path(ordine.anno, esito='Processato')
+        new_filepath = os.path.join(output_dir, ordine.filename)
 
-                # Sposta il file
-                shutil.move(ordine.filepath, new_filepath)
-                logger.info(f"Moved file to OUTPUT: {new_filepath}")
+        try:
+            # Sposta il file PDF
+            shutil.move(ordine.filepath, new_filepath)
+            logger.info(f"Moved PDF to OUTPUT: {new_filepath}")
 
-                # ✅ STEP 5: Finalizza elaborazione con successo
-                # Messaggio globale con dettagli
-                msg_parts = [f"Elaborati {num_items} componenti"]
+            # Messaggio finale con dettagli
+            msg_parts = [f"Elaborati {num_righe_ok} righe ordine"]
 
-                if total_amount > 0:
-                    msg_parts.append(f"Importo totale: €{total_amount:,.2f}")
+            if metadati.get('num_modelli_unici'):
+                msg_parts.append(f"{metadati['num_modelli_unici']} modelli unici")
 
-                metadata = parse_result.get('metadata', {})
-                if metadata.get('po_number'):
-                    msg_parts.append(f"PO: {metadata['po_number']}")
+            if metadati.get('po_number'):
+                msg_parts.append(f"PO: {metadati['po_number']}")
 
-                if num_warnings > 0:
-                    msg_parts.append(f"{num_warnings} warning")
+            if num_warnings > 0:
+                msg_parts.append(f"{num_warnings} warning")
 
-                if num_errors > 0:
-                    msg_parts.append(f"{num_errors} righe con errori ignorate")
+            if num_errori > 0:
+                msg_parts.append(f"{num_errori} righe con errori ignorate")
 
-                messaggio_finale = ". ".join(msg_parts)
+            messaggio_finale = ". ".join(msg_parts)
 
-                trace_end = TraceElab(
-                    id_elab=id_elab,
-                    id_file=ordine_id,
-                    tipo_file='ORD',
-                    step='END',
-                    stato='WARN' if num_warnings > 0 else 'OK',
-                    messaggio=messaggio_finale,
-                    righe_totali=num_items + num_errors,
-                    righe_ok=num_items,
-                    righe_errore=num_errors,
-                    righe_warning=num_warnings
-                )
-                db.session.add(trace_end)
+            # ✅ STEP 5A: Log END con successo (LOG SESSION)
+            trace_end = TraceElab(
+                id_elab=id_elab,
+                id_file=ordine_id,
+                tipo_file='ORD',
+                step='END',
+                stato='WARN' if num_warnings > 0 else 'OK',
+                messaggio=messaggio_finale,
+                righe_totali=num_righe_ok + num_errori,
+                righe_ok=num_righe_ok,
+                righe_errore=num_errori,
+                righe_warning=num_warnings
+            )
+            log_session.add(trace_end)
+            log_session.commit()
 
-                # Aggiorna record file
-                ordine.filepath = new_filepath
-                ordine.esito = 'Processato'
-                ordine.data_elaborazione = datetime.utcnow()
-                ordine.note = messaggio_finale
+            # ✅ STEP 5B: Aggiorna tabella operativa (DB SESSION - TRANSAZIONALE)
+            ordine.filepath = new_filepath
+            ordine.esito = 'Processato'
+            ordine.data_elaborazione = datetime.utcnow()
+            ordine.note = messaggio_finale
+            ordine.updated_at = datetime.utcnow()
+            ordine.updated_by = current_user.id
+            db.session.commit()
 
-                db.session.commit()
+            success_msg = f"Ordine elaborato con successo! {num_righe_ok} righe inserite"
+            if num_warnings > 0:
+                success_msg += f" ({num_warnings} warning)"
 
-                success_msg = f"Ordine elaborato con successo! {num_items} righe estratte"
-                if num_warnings > 0:
-                    success_msg += f" ({num_warnings} warning)"
+            return True, success_msg
 
-                return True, success_msg
+        except Exception as e:
+            # Errore nello spostamento file
+            logger.exception(f"Error moving file: {str(e)}")
 
-            except Exception as e:
-                # Errore nello spostamento file o nel salvataggio
-                logger.exception(f"Error moving file or saving data: {str(e)}")
+            # Log dettaglio errore (LOG SESSION)
+            dettaglio = TraceElabDett(
+                id_trace=id_trace_start,
+                record_pos=0,
+                stato='KO',
+                messaggio=f"Errore spostamento file PDF: {str(e)}",
+                record_data={'key': 'FILE_MOVE_ERROR'}
+            )
+            log_session.add(dettaglio)
+            log_session.commit()
 
-                dettaglio = TraceElabDett(
-                    id_trace=id_trace_start,
-                    record_pos=0,
-                    stato='KO',
-                    messaggio=f"Errore post-parsing: {str(e)}",
-                    record_data={'key': 'FILE_MOVE_ERROR'}
-                )
-                db.session.add(dettaglio)
+            # Log END con errore (LOG SESSION)
+            trace_end = TraceElab(
+                id_elab=id_elab,
+                id_file=ordine_id,
+                tipo_file='ORD',
+                step='END',
+                stato='KO',
+                messaggio=f"TSV elaborato ma errore spostamento PDF: {str(e)}",
+                righe_totali=num_righe_ok,
+                righe_ok=num_righe_ok,
+                righe_errore=1,
+                righe_warning=num_warnings
+            )
+            log_session.add(trace_end)
+            log_session.commit()
 
-                trace_end = TraceElab(
-                    id_elab=id_elab,
-                    id_file=ordine_id,
-                    tipo_file='ORD',
-                    step='END',
-                    stato='KO',
-                    messaggio=f"Parsing completato ma errore nel salvataggio: {str(e)}",
-                    righe_totali=num_items + num_errors,
-                    righe_ok=0,
-                    righe_errore=num_errors + 1,
-                    righe_warning=num_warnings
-                )
-                db.session.add(trace_end)
+            # Aggiorna tabella operativa (DB SESSION)
+            ordine.esito = 'Errore'
+            ordine.data_elaborazione = datetime.utcnow()
+            ordine.note = f"TSV elaborato ma errore: {str(e)}"
+            ordine.updated_at = datetime.utcnow()
+            ordine.updated_by = current_user.id
+            db.session.commit()
 
-                ordine.esito = 'Errore'
-                ordine.data_elaborazione = datetime.utcnow()
-                ordine.note = str(e)
-
-                db.session.commit()
-                return False, f"Errore: {str(e)}"
+            return False, f"Errore: {str(e)}"
 
     except Exception as e:
         # Gestione errori imprevisti
         logger.exception(f"Unexpected error during elaboration: {str(e)}")
 
+        # Log dettaglio errore imprevisto (LOG SESSION)
         dettaglio = TraceElabDett(
             id_trace=id_trace_start,
             record_pos=0,
@@ -304,8 +377,10 @@ def elabora_ordine(ordine_id):
             messaggio=f"Errore imprevisto: {str(e)}",
             record_data={'key': 'UNEXPECTED_ERROR'}
         )
-        db.session.add(dettaglio)
+        log_session.add(dettaglio)
+        log_session.commit()
 
+        # Log END con errore imprevisto (LOG SESSION)
         trace_end = TraceElab(
             id_elab=id_elab,
             id_file=ordine_id,
@@ -318,15 +393,18 @@ def elabora_ordine(ordine_id):
             righe_errore=1,
             righe_warning=0
         )
-        db.session.add(trace_end)
+        log_session.add(trace_end)
+        log_session.commit()
 
+        # Aggiorna tabella operativa (DB SESSION)
         ordine.esito = 'Errore'
         ordine.data_elaborazione = datetime.utcnow()
         ordine.note = str(e)
-
+        ordine.updated_at = datetime.utcnow()
+        ordine.updated_by = current_user.id
         db.session.commit()
-        return False, f"Errore imprevisto: {str(e)}"
 
+        return False, f"Errore imprevisto: {str(e)}"
 def scan_po_folder():
     """
     Scansiona le cartelle INPUT/po/ e OUTPUT/po/ e sincronizza con il database
@@ -354,13 +432,15 @@ def scan_po_folder():
                 
                 filepath = os.path.join(anno_path, filename)
                 files_trovati.add(filepath)
-                
-                # Controlla se il file è già nel database
-                existing = OrdineAcquisto.query.filter_by(filepath=filepath).first()
-                
+
+                # Controlla se il file è già nel database (per filepath O filename)
+                existing = FileOrdine.query.filter(
+                    (FileOrdine.filepath == filepath) | (FileOrdine.filename == filename)
+                ).first()
+
                 if not existing:
                     # Aggiungi al database con stato Da processare
-                    nuovo_ordine = OrdineAcquisto(
+                    nuovo_ordine = FileOrdine(
                         anno=anno,
                         filename=filename,
                         filepath=filepath,
@@ -368,7 +448,9 @@ def scan_po_folder():
                         esito='Da processare'
                     )
                     db.session.add(nuovo_ordine)
-                    print(f"[SYNC INPUT] Aggiunto: {filepath}")
+                    logger.info(f"[SYNC INPUT] Aggiunto: {filepath}")
+                else:
+                    logger.info(f"[SYNC INPUT] Saltato (già presente): {filename}")
     
     # Scansiona OUTPUT/po/
     output_base_dir = os.path.join(base_dir, 'OUTPUT', 'po')
@@ -387,13 +469,15 @@ def scan_po_folder():
                 
                 filepath = os.path.join(anno_path, filename)
                 files_trovati.add(filepath)
-                
-                # Controlla se il file è già nel database
-                existing = OrdineAcquisto.query.filter_by(filepath=filepath).first()
-                
+
+                # Controlla se il file è già nel database (per filepath O filename)
+                existing = FileOrdine.query.filter(
+                    (FileOrdine.filepath == filepath) | (FileOrdine.filename == filename)
+                ).first()
+
                 if not existing:
                     # Aggiungi al database con stato Processato
-                    nuovo_ordine = OrdineAcquisto(
+                    nuovo_ordine = FileOrdine(
                         anno=anno,
                         filename=filename,
                         filepath=filepath,
@@ -403,16 +487,27 @@ def scan_po_folder():
                         note='File già processato, trovato in OUTPUT durante sincronizzazione'
                     )
                     db.session.add(nuovo_ordine)
-                    print(f"[SYNC OUTPUT] Aggiunto: {filepath}")
+                    logger.info(f"[SYNC OUTPUT] Aggiunto: {filepath}")
+                else:
+                    logger.info(f"[SYNC OUTPUT] Saltato (già presente): {filename}")
     
     # Rimuovi record orfani (file nel DB ma non nel filesystem)
-    tutti_ordini = OrdineAcquisto.query.all()
+    num_rimossi = 0
+    tutti_ordini = FileOrdine.query.all()
     for ordine in tutti_ordini:
         if ordine.filepath not in files_trovati:
-            print(f"[SYNC] Rimosso record orfano: {ordine.filepath}")
+            logger.info(f"[SYNC] Rimosso record orfano: {ordine.filepath}")
             db.session.delete(ordine)
-    
-    db.session.commit()
+            num_rimossi += 1
+
+    # Commit con gestione errori
+    try:
+        db.session.commit()
+        logger.info(f"[SYNC] Completata: {len(files_trovati)} file, {num_rimossi} orfani rimossi")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"[SYNC] Errore durante commit: {str(e)}")
+        raise
 
 @ordini_bp.route('/')
 @login_required
@@ -428,7 +523,7 @@ def list():
     sort_by = request.args.get('sort', 'anno')
     order = request.args.get('order', 'desc')
     
-    query = OrdineAcquisto.query
+    query = FileOrdine.query
     
     # Filtri
     if anno_filter:
@@ -436,24 +531,24 @@ def list():
     if esito_filter:
         query = query.filter_by(esito=esito_filter)
     if filename_filter:
-        query = query.filter(OrdineAcquisto.filename.ilike(f'%{filename_filter}%'))
+        query = query.filter(FileOrdine.filename.ilike(f'%{filename_filter}%'))
     
     # Ordinamento dinamico - validazione colonne permesse
     sortable_columns = ['anno', 'filename', 'data_acquisizione', 'data_elaborazione', 'esito', 'created_at']
-    if sort_by in sortable_columns and hasattr(OrdineAcquisto, sort_by):
-        column = getattr(OrdineAcquisto, sort_by)
+    if sort_by in sortable_columns and hasattr(FileOrdine, sort_by):
+        column = getattr(FileOrdine, sort_by)
         if order == 'desc':
             query = query.order_by(column.desc())
         else:
             query = query.order_by(column.asc())
     else:
         # Default: ordina per anno decrescente e data creazione
-        query = query.order_by(OrdineAcquisto.anno.desc(), OrdineAcquisto.created_at.desc())
+        query = query.order_by(FileOrdine.anno.desc(), FileOrdine.created_at.desc())
     
     ordini = query.paginate(page=page, per_page=20, error_out=False)
     
     # Lista anni disponibili per filtro
-    anni_disponibili = db.session.query(OrdineAcquisto.anno).distinct().order_by(OrdineAcquisto.anno.desc()).all()
+    anni_disponibili = db.session.query(FileOrdine.anno).distinct().order_by(FileOrdine.anno.desc()).all()
     anni_disponibili = [a[0] for a in anni_disponibili]
     
     return render_template('ordini/list.html', 
@@ -469,7 +564,7 @@ def list():
 @admin_required
 def create():
     """Crea un nuovo ordine di acquisto (upload PDF)"""
-    form = OrdineAcquistoForm()
+    form = FileOrdineForm()
     
     # Inizializza data acquisizione con data corrente al primo caricamento
     if request.method == 'GET':
@@ -502,7 +597,7 @@ def create():
         file.save(filepath)
         
         # Crea record nel database
-        ordine = OrdineAcquisto(
+        ordine = FileOrdine(
             anno=anno,
             filename=filename,
             filepath=filepath,
@@ -523,14 +618,16 @@ def create():
 @admin_required
 def edit(id):
     """Modifica un ordine di acquisto esistente"""
-    ordine = OrdineAcquisto.query.get_or_404(id)
-    form = OrdineAcquistoEditForm(obj=ordine)
+    ordine = FileOrdine.query.get_or_404(id)
+    form = FileOrdineEditForm(obj=ordine)
     
     if form.validate_on_submit():
         ordine.data_acquisizione = form.data_acquisizione.data
         ordine.esito = form.esito.data
         ordine.note = form.note.data
-        
+        ordine.updated_at = datetime.utcnow()
+        ordine.updated_by = current_user.id
+
         db.session.commit()
         flash(f'Ordine {ordine.filename} aggiornato!', 'success')
         return redirect(url_for('ordini.list'))
@@ -540,31 +637,64 @@ def edit(id):
 @ordini_bp.route('/<int:id>/delete', methods=['POST'])
 @admin_required
 def delete(id):
-    """Elimina un ordine di acquisto"""
-    ordine = OrdineAcquisto.query.get_or_404(id)
+    """
+    Elimina un ordine di acquisto.
+
+    Comportamento:
+    - Cancella righe ordini associate (tabella ordini)
+    - Cancella record FileOrdine
+    - Cancella file PDF dal filesystem
+    - NON tocca modelli e controparti (dati master)
+    - NON tocca trace_elab/trace_elab_dett (storico)
+    - Logga operazione in console/file
+    """
+    ordine = FileOrdine.query.get_or_404(id)
     filename = ordine.filename
     filepath = ordine.filepath
-    
-    # Elimina il file dal filesystem
+
+    # ✅ STEP 1: Conta righe ordini da cancellare
+    righe_ordini = Ordine.query.filter_by(id_file_ordine=id).all()
+    num_righe = len(righe_ordini)
+
+    logger.info(f"[DELETE] Inizio cancellazione FileOrdine ID={id}, file={filename}")
+    logger.info(f"[DELETE] Righe ordini associate: {num_righe}")
+
+    # ✅ STEP 2: Cancella righe ordini (NON tocca modelli/controparti)
+    if num_righe > 0:
+        for riga in righe_ordini:
+            db.session.delete(riga)
+        logger.info(f"[DELETE] Cancellate {num_righe} righe dalla tabella ordini")
+
+    # ✅ STEP 3: Cancella file PDF dal filesystem
     if os.path.exists(filepath):
         try:
             os.remove(filepath)
+            logger.info(f"[DELETE] File PDF rimosso: {filepath}")
         except Exception as e:
+            logger.error(f"[DELETE] Errore rimozione file PDF: {str(e)}")
             flash(f'Errore nell\'eliminazione del file: {str(e)}', 'danger')
+            db.session.rollback()
             return redirect(url_for('ordini.list'))
-    
-    # Elimina dal database
+    else:
+        logger.warning(f"[DELETE] File PDF non trovato: {filepath}")
+
+    # ✅ STEP 4: Cancella record FileOrdine dal database
     db.session.delete(ordine)
     db.session.commit()
-    
-    flash(f'Ordine {filename} eliminato.', 'info')
+
+    logger.info(f"[DELETE] FileOrdine ID={id} cancellato con successo")
+    logger.info(f"[DELETE] Riepilogo: {num_righe} righe ordini, 1 file_ordine, 1 PDF rimossi")
+    logger.info(f"[DELETE] Modelli e controparti: NON toccati (dati master)")
+    logger.info(f"[DELETE] Trace: NON toccate (storico elaborazioni)")
+
+    flash(f'Ordine {filename} eliminato ({num_righe} righe ordini rimosse).', 'info')
     return redirect(url_for('ordini.list'))
 
 @ordini_bp.route('/download/<int:id>')
 @login_required
 def download(id):
     """Download del file PDF"""
-    ordine = OrdineAcquisto.query.get_or_404(id)
+    ordine = FileOrdine.query.get_or_404(id)
     
     if not os.path.exists(ordine.filepath):
         flash('File non trovato sul server!', 'danger')
@@ -579,7 +709,7 @@ def download(id):
 @login_required
 def view(id):
     """Visualizza il PDF nel browser"""
-    ordine = OrdineAcquisto.query.get_or_404(id)
+    ordine = FileOrdine.query.get_or_404(id)
     
     if not os.path.exists(ordine.filepath):
         flash('File non trovato sul server!', 'danger')
@@ -593,9 +723,22 @@ def view(id):
 @ordini_bp.route('/sync')
 @admin_required
 def sync():
-    """Sincronizza manualmente il database con il filesystem"""
-    scan_po_folder()
-    flash('Sincronizzazione completata!', 'success')
+    """
+    Sincronizza manualmente il database con il filesystem.
+
+    Comportamento:
+    - Scansiona INPUT/po/ e OUTPUT/po/
+    - Aggiunge file nuovi (saltando duplicati)
+    - Rimuove record orfani (file eliminati dal filesystem)
+    - Logga tutte le operazioni
+    """
+    try:
+        scan_po_folder()
+        flash('Sincronizzazione completata! Controlla i log per i dettagli.', 'success')
+    except Exception as e:
+        logger.error(f"[SYNC] Errore sincronizzazione: {str(e)}")
+        flash(f'Errore durante sincronizzazione: {str(e)}', 'danger')
+
     return redirect(url_for('ordini.list'))
 
 @ordini_bp.route('/<int:id>/elabora', methods=['POST'])
@@ -605,7 +748,7 @@ def elabora(id):
     Elabora un ordine di acquisto (SINCRONO)
     Disponibile solo per ordini con stato 'Da processare' o 'Errore'
     """
-    ordine = OrdineAcquisto.query.get_or_404(id)
+    ordine = FileOrdine.query.get_or_404(id)
     
     # Verifica che l'ordine possa essere elaborato
     if ordine.esito not in ['Da processare', 'Errore']:
@@ -633,7 +776,7 @@ def elaborazioni_list(id):
     LIVELLO 2: Lista di tutte le elaborazioni per un ordine specifico
     Raggruppa per id_elab e mostra metriche aggregate
     """
-    ordine = OrdineAcquisto.query.get_or_404(id)
+    ordine = FileOrdine.query.get_or_404(id)
 
     # Recupera tutti i record END (contengono le metriche aggregate)
     elaborazioni_end = TraceElab.query.filter_by(
@@ -678,7 +821,7 @@ def elaborazione_dettaglio(id, id_elab):
     """
     LIVELLO 3: Dettaglio completo di un'elaborazione specifica (mostra tutti i trace_elab_dett)
     """
-    ordine = OrdineAcquisto.query.get_or_404(id)
+    ordine = FileOrdine.query.get_or_404(id)
 
     # Trova tutti i record trace_elab per questo id_elab
     traces = TraceElab.query.filter_by(
@@ -767,7 +910,7 @@ def elaborazione_export(id, id_elab):
     import csv
     from io import StringIO
 
-    ordine = OrdineAcquisto.query.get_or_404(id)
+    ordine = FileOrdine.query.get_or_404(id)
 
     # Trova tutti i record trace_elab per questo id_elab
     traces = TraceElab.query.filter_by(

@@ -31,13 +31,13 @@ def parse_date(date_value):
         return None
 
 
-def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, models_dict):
+def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, models_dict, log_session):
     """
     Elaborazione completa file rotture:
     1. Genera file TSV da Excel
     2. Legge TSV
     3. Inserisce/aggiorna database
-    4. Gestisce trace ed errori
+    4. Gestisce trace ed errori (AUTONOMOUS TRANSACTION per log)
 
     Args:
         file_rottura: oggetto FileRottura
@@ -45,6 +45,7 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
         current_user: utente corrente
         current_app: applicazione Flask
         models_dict: dizionario con modelli {Rottura, RotturaComponente, Modello, etc}
+        log_session: sessione separata per log (AUTONOMOUS TRANSACTION)
 
     Returns:
         tuple: (success: bool, message: str, num_rotture: int)
@@ -83,8 +84,8 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
         stato='OK',
         messaggio=f'Inizio elaborazione file {file_rottura.filename}'
     )
-    db.session.add(trace_start)
-    db.session.commit()
+    log_session.add(trace_start)
+    log_session.commit()  # ← AUTONOMOUS: Commit immediato
 
     # Usa trace_start.id_trace per i dettagli
     id_trace_start = trace_start.id_trace
@@ -103,8 +104,8 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
             messaggio=f'File TSV generato: {len(df)} righe',
             stato='OK'
         )
-        db.session.add(trace_rec)
-        db.session.flush()
+        log_session.add(trace_rec)
+        log_session.commit()  # ← AUTONOMOUS: Log record persistito
 
         # STEP 2: Leggi TSV e inserisci dati
 
@@ -140,7 +141,7 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                             stato='KO',
                             messaggio=f'Modello {cod_modello} non trovato in anagrafica'
                         )
-                        db.session.add(trace_rec)
+                        log_session.add(trace_rec)
                         num_errori += 1
                         continue
 
@@ -256,7 +257,7 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                     stato='KO',
                     messaggio=str(e)
                 )
-                db.session.add(trace_rec)
+                log_session.add(trace_rec)
                 num_errori += 1
                 continue
 
@@ -277,13 +278,13 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                 righe_errore=num_errori,
                 righe_warning=0
             )
-            db.session.add(trace_end)
-            db.session.commit()
+            log_session.add(trace_end)
+            log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
             return False, f'{num_errori} righe con errori. Vedere trace per dettagli.', 0
 
-        # Commit finale
-        db.session.commit()
+        # Commit finale tabelle operative (DB SESSION - TRANSAZIONALE)
+        db.session.commit()  # ← Se fallisce, i log sono GIÀ salvati!
 
         # Crea trace END con successo
         trace_end = TraceElab(
@@ -298,13 +299,13 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
             righe_errore=0,
             righe_warning=0
         )
-        db.session.add(trace_end)
-        db.session.commit()
+        log_session.add(trace_end)
+        log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
         return True, f'Elaborazione completata con successo', num_rotture
 
     except Exception as e:
-        db.session.rollback()
+        db.session.rollback()  # ← Rollback solo tabelle operative, log già salvati!
 
         # Crea trace END con errore critico
         trace_end = TraceElab(
@@ -319,7 +320,7 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
             righe_errore=1,
             righe_warning=0
         )
-        db.session.add(trace_end)
-        db.session.commit()
+        log_session.add(trace_end)
+        log_session.commit()  # ← AUTONOMOUS: Log END persistito anche su errore
 
         return False, f'Errore durante elaborazione: {str(e)}', 0

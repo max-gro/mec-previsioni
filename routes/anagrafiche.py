@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 from models import db, FileAnagrafica, TraceElab, TraceElabDett
 from forms import AnagraficaFileForm, AnagraficaFileEditForm, NuovaMarcaForm
 from utils.decorators import admin_required
+from utils.db_log import log_session  # Sessione separata per log (AUTONOMOUS TRANSACTION)
 import os
 import shutil
 import random
@@ -117,8 +118,11 @@ def scan_anagrafiche_folder():
                 files_trovati.add(filepath)
                 
                 # Controlla se già  nel DB
-                existing = FileAnagrafica.query.filter_by(filepath=filepath).first()
-                
+                # Controlla se già nel DB (per filepath O filename)
+                existing = FileAnagrafica.query.filter(
+                    (FileAnagrafica.filepath == filepath) | (FileAnagrafica.filename == filename)
+                ).first()
+
                 if not existing:
                     # Aggiungi al database
                     nuova_anagrafica = FileAnagrafica(
@@ -130,7 +134,9 @@ def scan_anagrafiche_folder():
                         esito='Da processare'
                     )
                     db.session.add(nuova_anagrafica)
-                    print(f"[SYNC] Aggiunto: {filepath}")
+                    logger.info(f"[SYNC INPUT] Aggiunto: {filepath}")
+                else:
+                    logger.info(f"[SYNC INPUT] Saltato (già presente): {filename}")
     
     # Scansiona OUTPUT
     if os.path.exists(output_base):
@@ -148,8 +154,11 @@ def scan_anagrafiche_folder():
                 files_trovati.add(filepath)
                 
                 # Controlla se già  nel DB
-                existing = FileAnagrafica.query.filter_by(filepath=filepath).first()
-                
+                # Controlla se già nel DB (per filepath O filename)
+                existing = FileAnagrafica.query.filter(
+                    (FileAnagrafica.filepath == filepath) | (FileAnagrafica.filename == filename)
+                ).first()
+
                 if not existing:
                     # Aggiungi al database
                     nuova_anagrafica = FileAnagrafica(
@@ -162,16 +171,27 @@ def scan_anagrafiche_folder():
                         data_elaborazione=date.today()
                     )
                     db.session.add(nuova_anagrafica)
-                    print(f"[SYNC] Aggiunto: {filepath}")
+                    logger.info(f"[SYNC OUTPUT] Aggiunto: {filepath}")
+                else:
+                    logger.info(f"[SYNC OUTPUT] Saltato (già presente): {filename}")
     
     # Rimuovi record orfani
+    num_rimossi = 0
     tutte_anagrafiche = FileAnagrafica.query.all()
     for anagrafica in tutte_anagrafiche:
         if anagrafica.filepath not in files_trovati:
-            print(f"[SYNC] Rimosso record orfano: {anagrafica.filepath}")
+            logger.info(f"[SYNC] Rimosso record orfano: {anagrafica.filepath}")
             db.session.delete(anagrafica)
-    
-    db.session.commit()
+            num_rimossi += 1
+
+    # Commit con gestione errori
+    try:
+        db.session.commit()
+        logger.info(f"[SYNC] Completata: {len(files_trovati)} file, {num_rimossi} orfani rimossi")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"[SYNC] Errore durante commit: {str(e)}")
+        raise
 
 
 def elabora_anagrafica(anagrafica_id):
@@ -190,7 +210,7 @@ def elabora_anagrafica(anagrafica_id):
     result = db.session.execute(db.text("SELECT nextval('seq_id_elab')"))
     id_elab = result.scalar()
 
-    # ✅ STEP 2: Crea record elaborazione START
+    # ✅ STEP 2: Crea record elaborazione START (LOG SESSION)
     ts_inizio = datetime.utcnow()
     trace_start = TraceElab(
         id_elab=id_elab,
@@ -200,8 +220,8 @@ def elabora_anagrafica(anagrafica_id):
         stato='OK',
         messaggio='Inizio elaborazione anagrafica'
     )
-    db.session.add(trace_start)
-    db.session.commit()
+    log_session.add(trace_start)
+    log_session.commit()  # ← AUTONOMOUS: Commit immediato
 
     # Verifica che il file esista
     if not os.path.exists(anagrafica.filepath):
@@ -218,11 +238,15 @@ def elabora_anagrafica(anagrafica_id):
             righe_errore=1,
             righe_warning=0
         )
-        db.session.add(trace_end)
+        log_session.add(trace_end)
+        log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
+        # Aggiorna tabella operativa (DB SESSION)
         anagrafica.esito = 'Errore'
         anagrafica.data_elaborazione = date.today()
         anagrafica.note = '❌ File non trovato sul filesystem'
+        anagrafica.updated_at = datetime.utcnow()
+        anagrafica.updated_by = current_user.id
         db.session.commit()
         return False, 'File non trovato sul filesystem'
     
@@ -248,7 +272,7 @@ def elabora_anagrafica(anagrafica_id):
             num_componenti = random.randint(20, 200)
             num_warnings = random.randint(0, 10)
 
-            # Crea alcuni record di dettaglio simulati per i warnings
+            # Crea alcuni record di dettaglio simulati per i warnings (LOG SESSION)
             if num_warnings > 0:
                 warnings_simulati = [
                     'Codice componente mancante',
@@ -265,9 +289,10 @@ def elabora_anagrafica(anagrafica_id):
                         stato='WARN',
                         messaggio=random.choice(warnings_simulati)
                     )
-                    db.session.add(trace_dett)
+                    log_session.add(trace_dett)
+                log_session.commit()  # ← AUTONOMOUS: Warning log persistiti
 
-            # Crea trace END con successo
+            # Crea trace END con successo (LOG SESSION)
             trace_end = TraceElab(
                 id_elab=id_elab,
                 id_file=anagrafica_id,
@@ -280,22 +305,24 @@ def elabora_anagrafica(anagrafica_id):
                 righe_errore=0,
                 righe_warning=num_warnings
             )
-            db.session.add(trace_end)
+            log_session.add(trace_end)
+            log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
-            # Aggiorna database
+            # Aggiorna tabella operativa (DB SESSION - TRANSAZIONALE)
             anagrafica.filepath = new_filepath
             anagrafica.esito = 'Processato'
             anagrafica.data_elaborazione = date.today()
             anagrafica.note = f'Elaborazione completata con successo.\n' \
                             f'Record elaborati: {num_record}.\n' \
                             f'Componenti aggiornati: {num_componenti}.'
-
-            db.session.commit()
+            anagrafica.updated_at = datetime.utcnow()
+            anagrafica.updated_by = current_user.id
+            db.session.commit()  # ← Se fallisce, i log sono GIÀ salvati!
 
             return True, 'Elaborazione completata con successo!'
 
         except Exception as e:
-            # Errore durante lo spostamento
+            # Errore durante lo spostamento (LOG SESSION)
             trace_end = TraceElab(
                 id_elab=id_elab,
                 id_file=anagrafica_id,
@@ -308,11 +335,15 @@ def elabora_anagrafica(anagrafica_id):
                 righe_errore=1,
                 righe_warning=0
             )
-            db.session.add(trace_end)
+            log_session.add(trace_end)
+            log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
+            # Aggiorna tabella operativa (DB SESSION)
             anagrafica.esito = 'Errore'
             anagrafica.data_elaborazione = date.today()
             anagrafica.note = f'Errore durante lo spostamento file: {str(e)}'
+            anagrafica.updated_at = datetime.utcnow()
+            anagrafica.updated_by = current_user.id
             db.session.commit()
             return False, f'Errore durante lo spostamento: {str(e)}'
     
@@ -333,7 +364,7 @@ def elabora_anagrafica(anagrafica_id):
         # Simula numero errori
         num_errori = random.randint(5, 50)
 
-        # Crea alcuni record di dettaglio simulati per gli errori
+        # Crea alcuni record di dettaglio simulati per gli errori (LOG SESSION)
         errori_dettaglio = [
             'Formato colonna non valido',
             'Valore duplicato trovato',
@@ -349,9 +380,10 @@ def elabora_anagrafica(anagrafica_id):
                 stato='KO',
                 messaggio=random.choice(errori_dettaglio)
             )
-            db.session.add(trace_dett)
+            log_session.add(trace_dett)
+        log_session.commit()  # ← AUTONOMOUS: Error log persistiti
 
-        # Crea trace END con errore
+        # Crea trace END con errore (LOG SESSION)
         trace_end = TraceElab(
             id_elab=id_elab,
             id_file=anagrafica_id,
@@ -364,11 +396,15 @@ def elabora_anagrafica(anagrafica_id):
             righe_errore=num_errori,
             righe_warning=0
         )
-        db.session.add(trace_end)
+        log_session.add(trace_end)
+        log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
+        # Aggiorna tabella operativa (DB SESSION)
         anagrafica.esito = 'Errore'
         anagrafica.data_elaborazione = date.today()
         anagrafica.note = f'❌ {errore_msg}'
+        anagrafica.updated_at = datetime.utcnow()
+        anagrafica.updated_by = current_user.id
         db.session.commit()
 
         return False, anagrafica.note
@@ -528,7 +564,9 @@ def edit(id):
         anagrafica.data_elaborazione = form.data_elaborazione.data
         anagrafica.esito = form.esito.data
         anagrafica.note = form.note.data
-        
+        anagrafica.updated_at = datetime.utcnow()
+        anagrafica.updated_by = current_user.id
+
         db.session.commit()
         flash(f'Anagrafica {anagrafica.filename} aggiornata!', 'success')
         return redirect(url_for('anagrafiche.list'))
@@ -610,9 +648,22 @@ def view(id):
 @anagrafiche_bp.route('/sync')
 @admin_required
 def sync():
-    """Sincronizza manualmente il database con il filesystem"""
-    scan_anagrafiche_folder()
-    flash('Sincronizzazione completata!', 'success')
+    """
+    Sincronizza manualmente il database con il filesystem.
+
+    Comportamento:
+    - Scansiona INPUT/anagrafiche/ e OUTPUT/anagrafiche/
+    - Aggiunge file nuovi (saltando duplicati)
+    - Rimuove record orfani (file eliminati dal filesystem)
+    - Logga tutte le operazioni
+    """
+    try:
+        scan_anagrafiche_folder()
+        flash('Sincronizzazione completata! Controlla i log per i dettagli.', 'success')
+    except Exception as e:
+        logger.error(f"[SYNC] Errore sincronizzazione: {str(e)}")
+        flash(f'Errore durante sincronizzazione: {str(e)}', 'danger')
+
     return redirect(url_for('anagrafiche.list'))
 
 

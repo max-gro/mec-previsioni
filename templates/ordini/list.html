@@ -141,9 +141,7 @@
                             <td>{{ ordine.data_acquisizione|datetime_format }}</td>
                             <td>
                                 {% if ordine.data_elaborazione %}
-                                <small class="text-muted">
                                     {{ ordine.data_elaborazione|datetime_format }}
-                                </small>
                                 {% else %}
                                 -
                                 {% endif %}

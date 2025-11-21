@@ -74,8 +74,53 @@ class RotturaEditForm(FlaskForm):
     note = TextAreaField('Note')
 
 
+# ✅ FORM PER FILE ORDINI PDF (NUOVO SCHEMA)
+class FileOrdineForm(FlaskForm):
+    """Form per upload File Ordine PDF"""
+    file = FileField('File PDF', validators=[
+        FileRequired(message='Seleziona un file PDF'),
+        FileAllowed(['pdf'], 'Solo file PDF sono permessi!')
+    ])
+    data_acquisizione = DateField(
+        'Data Acquisizione',
+        format='%d/%m/%Y',
+        default=date.today,
+        validators=[DataRequired()],
+        render_kw={'type': 'date'}
+    )
+    esito = SelectField('Esito', choices=[
+        ('Da processare', 'Da processare'),
+        ('Processato', 'Processato'),
+        ('Errore', 'Errore')
+    ], default='Da processare')
+    note = TextAreaField('Note')
+
+
+class FileOrdineEditForm(FlaskForm):
+    """Form per modifica File Ordine (senza upload file)"""
+    data_acquisizione = DateField(
+        'Data Acquisizione',
+        format='%d/%m/%Y',
+        validators=[DataRequired()],
+        render_kw={'type': 'date'}
+    )
+    data_elaborazione = DateTimeField(
+        'Data Elaborazione',
+        format='%d/%m/%Y %H:%M',
+        validators=[Optional()],
+        render_kw={'type': 'datetime-local'}
+    )
+    esito = SelectField('Esito', choices=[
+        ('Da processare', 'Da processare'),
+        ('Processato', 'Processato'),
+        ('Errore', 'Errore')
+    ])
+    note = TextAreaField('Note')
+
+
+# ⚠️ DEPRECATO - Mantenuto per compatibilità legacy
 class OrdineAcquistoForm(FlaskForm):
-    """Form per upload Ordine di Acquisto"""
+    """Form per upload Ordine di Acquisto (DEPRECATO - usa FileOrdineForm)"""
     file = FileField('File PDF', validators=[
         FileRequired(message='Seleziona un file PDF'),
         FileAllowed(['pdf'], 'Solo file PDF sono permessi!')
@@ -96,7 +141,7 @@ class OrdineAcquistoForm(FlaskForm):
 
 
 class OrdineAcquistoEditForm(FlaskForm):
-    """Form per modifica Ordine di Acquisto (senza upload file)"""
+    """Form per modifica Ordine di Acquisto (DEPRECATO - usa FileOrdineEditForm)"""
     data_acquisizione = DateField(
         'Data Acquisizione',
         format='%d/%m/%Y',

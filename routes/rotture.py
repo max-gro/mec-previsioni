@@ -10,6 +10,7 @@ from models import (
     TraceElab, TraceElabDett
 )
 from werkzeug.utils import secure_filename
+from utils.db_log import log_session  # Sessione separata per log (AUTONOMOUS TRANSACTION)
 import os
 from datetime import datetime
 
@@ -70,8 +71,10 @@ def scan_rotture_folder():
             filepath = os.path.join(input_dir, filename)
             files_trovati.add(filepath)
 
-            # Controlla se il file è già nel database
-            existing = FileRottura.query.filter_by(filepath=filepath).first()
+            # Controlla se il file è già nel database (per filepath O filename)
+            existing = FileRottura.query.filter(
+                (FileRottura.filepath == filepath) | (FileRottura.filename == filename)
+            ).first()
 
             if not existing:
                 # Estrai anno dal nome file (se possibile)
@@ -88,7 +91,9 @@ def scan_rotture_folder():
                     esito='Da processare'
                 )
                 db.session.add(nuova_rottura)
-                print(f"[SYNC INPUT] Aggiunto: {filepath}")
+                logger.info(f"[SYNC INPUT] Aggiunto: {filepath}")
+            else:
+                logger.info(f"[SYNC INPUT] Saltato (già presente): {filename}")
 
     # Scansiona OUTPUT/rotture/
     output_dir = os.path.join(base_dir, 'OUTPUT', 'rotture')
@@ -100,8 +105,10 @@ def scan_rotture_folder():
             filepath = os.path.join(output_dir, filename)
             files_trovati.add(filepath)
 
-            # Controlla se il file è già nel database
-            existing = FileRottura.query.filter_by(filepath=filepath).first()
+            # Controlla se il file è già nel database (per filepath O filename)
+            existing = FileRottura.query.filter(
+                (FileRottura.filepath == filepath) | (FileRottura.filename == filename)
+            ).first()
 
             if not existing:
                 # Estrai anno dal nome file (se possibile)
@@ -120,16 +127,27 @@ def scan_rotture_folder():
                     note='File già processato, trovato in OUTPUT durante sincronizzazione'
                 )
                 db.session.add(nuova_rottura)
-                print(f"[SYNC OUTPUT] Aggiunto: {filepath}")
+                logger.info(f"[SYNC OUTPUT] Aggiunto: {filepath}")
+            else:
+                logger.info(f"[SYNC OUTPUT] Saltato (già presente): {filename}")
 
     # Rimuovi record orfani (file nel DB ma non nel filesystem)
+    num_rimossi = 0
     tutte_rotture = FileRottura.query.all()
     for rottura in tutte_rotture:
         if rottura.filepath not in files_trovati:
-            print(f"[SYNC] Rimosso record orfano: {rottura.filepath}")
+            logger.info(f"[SYNC] Rimosso record orfano: {rottura.filepath}")
             db.session.delete(rottura)
+            num_rimossi += 1
 
-    db.session.commit()
+    # Commit con gestione errori
+    try:
+        db.session.commit()
+        logger.info(f"[SYNC] Completata: {len(files_trovati)} file, {num_rimossi} orfani rimossi")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"[SYNC] Errore durante commit: {str(e)}")
+        raise
 
         
 
@@ -224,13 +242,17 @@ def edit(id):
         # Permetti modifica solo note per file giÃ  processati
         if rottura.esito == 'Processato':
             rottura.note = form.note.data
+            rottura.updated_at = datetime.utcnow()
+            rottura.updated_by = current_user.id
         else:
             rottura.data_acquisizione = form.data_acquisizione.data
             if form.data_elaborazione.data:
                 rottura.data_elaborazione = datetime.combine(form.data_elaborazione.data, datetime.min.time())
             rottura.esito = form.esito.data
             rottura.note = form.note.data
-        
+            rottura.updated_at = datetime.utcnow()
+            rottura.updated_by = current_user.id
+
         db.session.commit()
         flash(f'File rottura aggiornato!', 'success')
         return redirect(url_for('rotture.list'))
@@ -354,6 +376,8 @@ def elabora(id):
         file_rottura.esito = 'Errore'
         file_rottura.note = f"File non trovato al path: {file_rottura.filepath}"
         file_rottura.data_elaborazione = datetime.now()
+        file_rottura.updated_at = datetime.utcnow()
+        file_rottura.updated_by = current_user.id
         db.session.commit()
         return redirect(url_for('rotture.list'))
     
@@ -378,6 +402,8 @@ def elabora(id):
             file_rottura.esito = 'Processato'
             file_rottura.data_elaborazione = datetime.now()
             file_rottura.note = f"Elaborate {num_rotture} rotture. {message}"
+            file_rottura.updated_at = datetime.utcnow()
+            file_rottura.updated_by = current_user.id
             db.session.commit()
             
             flash(f'File elaborato con successo! Elaborate {num_rotture} rotture.', 'success')
@@ -386,12 +412,16 @@ def elabora(id):
             file_rottura.esito = 'Errore'
             file_rottura.note = f"Elaborazione OK ma errore spostamento file: {str(e)}"
             file_rottura.data_elaborazione = datetime.now()
+            file_rottura.updated_at = datetime.utcnow()
+            file_rottura.updated_by = current_user.id
             db.session.commit()
     else:
         # Elaborazione fallita
         file_rottura.esito = 'Errore'
         file_rottura.note = message
         file_rottura.data_elaborazione = datetime.now()
+        file_rottura.updated_at = datetime.utcnow()
+        file_rottura.updated_by = current_user.id
         db.session.commit()
         
         flash(f'Errore durante elaborazione: {message}', 'error')
@@ -416,9 +446,22 @@ def download(id):
 @rotture_bp.route('/sync')
 @admin_required
 def sync():
-    """Sincronizza manualmente il database con il filesystem"""
-    scan_rotture_folder()
-    flash('Sincronizzazione completata!', 'success')
+    """
+    Sincronizza manualmente il database con il filesystem.
+
+    Comportamento:
+    - Scansiona INPUT/rotture/ e OUTPUT/rotture/
+    - Aggiunge file nuovi (saltando duplicati)
+    - Rimuove record orfani (file eliminati dal filesystem)
+    - Logga tutte le operazioni
+    """
+    try:
+        scan_rotture_folder()
+        flash('Sincronizzazione completata! Controlla i log per i dettagli.', 'success')
+    except Exception as e:
+        logger.error(f"[SYNC] Errore sincronizzazione: {str(e)}")
+        flash(f'Errore durante sincronizzazione: {str(e)}', 'danger')
+
     return redirect(url_for('rotture.list'))
 
 
@@ -575,4 +618,4 @@ def elabora_file_rottura_completo(file_rottura):
         'TraceElab': TraceElab,
         'TraceElabDett': TraceElabDett
     }
-    return _elabora_file_rottura_completo(file_rottura, db, current_user, current_app, models_dict)
+    return _elabora_file_rottura_completo(file_rottura, db, current_user, current_app, models_dict, log_session)

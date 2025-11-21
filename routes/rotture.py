@@ -279,7 +279,7 @@ def genera_tsv_simulato_rotture(file_rottura):
 
     # ========== GENERA ROTTURE OK ==========
     for i in range(num_rotture_ok):
-        prot = f'PROT-{file_rottura_id}-OK-{prot_counter:03d}'
+        prot = str(prot_counter)  # Progressivo semplice: 1, 2, 3, ...
         prot_counter += 1
 
         # Decide tipo di rottura OK:
@@ -316,7 +316,7 @@ def genera_tsv_simulato_rotture(file_rottura):
 
     # ========== GENERA ROTTURE CON ERRORI (40-50%) ==========
     for i in range(num_rotture_errori):
-        prot = f'PROT-{file_rottura_id}-ERR-{prot_counter:03d}'
+        prot = str(prot_counter)  # Progressivo semplice: continua da righe OK
         prot_counter += 1
 
         # Decide tipo di errore:

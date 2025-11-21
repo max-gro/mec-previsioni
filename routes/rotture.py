@@ -319,31 +319,22 @@ def genera_tsv_simulato_rotture(file_rottura):
         prot = str(prot_counter)  # Progressivo semplice: continua da righe OK
         prot_counter += 1
 
-        # Decide tipo di errore:
-        # 30% protocollo mancante
-        # 40% modello non esistente
-        # 20% componente non esistente
-        # 10% dati incompleti/invalidi
+        # Decide tipo di errore (prot è sempre valorizzato):
+        # 50% modello non esistente
+        # 30% componente non esistente
+        # 20% dati incompleti/invalidi
         tipo_errore = random.random()
 
-        if tipo_errore < 0.30:
-            # ERRORE: Protocollo mancante (30%)
-            modello = random.choice(modelli_esistenti)
-            componente = random.choice(componenti_esistenti) if componenti_esistenti and random.random() > 0.5 else None
-            # Usa helper con prot vuoto per generare errore
-            row = _crea_riga_rottura('', modello, componente, pool_config)
-            rows.append(row)
-            continue
-        elif tipo_errore < 0.70:
-            # ERRORE: Modello NON esistente nel DB (40%)
+        if tipo_errore < 0.50:
+            # ERRORE: Modello NON esistente nel DB (50%)
             modello_fake = _FakeModello(f'MODELLO-INESISTENTE-{random.randint(1000, 9999)}')
             componente = random.choice(componenti_esistenti) if componenti_esistenti and random.random() > 0.5 else None
             # Usa helper con modello fake per generare errore
             row = _crea_riga_rottura(prot, modello_fake, componente, pool_config)
             rows.append(row)
             continue
-        elif tipo_errore < 0.90:
-            # ERRORE: Componente NON esistente nel DB (20%)
+        elif tipo_errore < 0.80:
+            # ERRORE: Componente NON esistente nel DB (30%)
             modello = random.choice(modelli_esistenti)
             componente_fake = _FakeComponente(f'COMP-INESISTENTE-{random.randint(1000, 9999)}')
             # Usa helper con componente fake per generare errore
@@ -351,7 +342,7 @@ def genera_tsv_simulato_rotture(file_rottura):
             rows.append(row)
             continue
         else:
-            # ERRORE: Dati incompleti/invalidi (10%)
+            # ERRORE: Dati incompleti/invalidi (20%)
             modello = random.choice(modelli_esistenti)
             # Usa helper per creare riga base, poi sovrascrive con dati invalidi
             row = _crea_riga_rottura(prot, modello, None, pool_config)

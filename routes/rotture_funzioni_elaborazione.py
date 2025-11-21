@@ -121,10 +121,15 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
             savepoint = db.session.begin_nested()
 
             try:
-                # Estrai dati dalla riga
-                prot = str(row.get('prot', '')).strip()
-                cod_modello = str(row.get('cod_modello', '')).strip()
-                cod_componente_raw = str(row.get('cod_componente', '')).strip()
+                # Estrai dati dalla riga (gestisci NaN di pandas)
+                prot_raw = row.get('prot', '')
+                prot = str(prot_raw).strip() if pd.notna(prot_raw) else ''
+
+                cod_modello_raw = row.get('cod_modello', '')
+                cod_modello = str(cod_modello_raw).strip() if pd.notna(cod_modello_raw) else ''
+
+                cod_componente_raw_val = row.get('cod_componente', '')
+                cod_componente_raw = str(cod_componente_raw_val).strip() if pd.notna(cod_componente_raw_val) else ''
 
                 if not prot:
                     raise ValueError("Protocollo mancante")

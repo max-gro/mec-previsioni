@@ -1,29 +1,14 @@
+# ============================================================================
+# MEC Previsioni - Production Dependencies
+# ============================================================================
+# Versioni pinned per garantire build riproducibili
+# Aggiornare con: pip install --upgrade <package>
+# Generare da ambiente: pip freeze > requirements-freeze.txt
+# ============================================================================
+
 # Framework Web
-#Flask==3.1.0
-Flask
-
-# Data Processing
-#pandas==2.2.3
-pandas>=2.3,<3
-#numpy==2.1.3
-numpy>=2.0,<3
-openpyxl==3.1.5
-
-# PDF Processing
-pdfplumber>=0.11.0
-
-# Survival Analysis
-#lifelines==0.29.0
-lifelines
-
-# Scientific Computing e Ottimizzazione
-scipy>=1.15.0,<2
-
-# Plotting
-matplotlib==3.9.2
-
-# Server WSGI (opzionale, per produzione)
-gunicorn==23.0.0
+Flask==3.1.0
+Werkzeug==3.0.1
 
 # Autenticazione e Forms
 Flask-Login==0.6.3
@@ -34,12 +19,34 @@ email-validator==2.1.0
 # Database
 Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.0.5
+python-dotenv==1.0.1
 
-# Security
-Werkzeug==3.0.1
+# PostgreSQL Driver (opzionale, solo se si usa PostgreSQL)
+psycopg2-binary==2.9.9
 
-# postgres
-psycopg2-binary>=2.9,<3
-Flask-SQLAlchemy>=3.1
-python-dotenv>=1.0.0
+# Data Processing
+pandas==2.2.3
+numpy==2.1.3
+openpyxl==3.1.5
 
+# PDF Processing
+pdfplumber==0.11.4
+
+# Survival Analysis
+lifelines==0.29.0
+
+# Scientific Computing
+scipy==1.15.0
+
+# Plotting
+matplotlib==3.9.2
+
+# Server WSGI (production)
+gunicorn==23.0.0
+
+# ============================================================================
+# Note di compatibilità:
+# - Flask 3.1.x richiede Python >= 3.8
+# - pandas 2.x richiede Python >= 3.9
+# - numpy 2.x richiede Python >= 3.9
+# ============================================================================

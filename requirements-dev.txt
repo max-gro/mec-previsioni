@@ -1,0 +1,84 @@
+# ============================================================================
+# MEC Previsioni - Development Dependencies
+# ============================================================================
+# Dipendenze aggiuntive per sviluppo, testing e quality assurance
+# Installare con: pip install -r requirements.txt -r requirements-dev.txt
+# ============================================================================
+
+# Production dependencies (include tutto da requirements.txt)
+-r requirements.txt
+
+# ============================================================================
+# Testing
+# ============================================================================
+pytest==8.3.4
+pytest-cov==6.0.0
+pytest-flask==1.3.0
+pytest-mock==3.14.0
+coverage==7.6.9
+
+# ============================================================================
+# Code Quality & Linting
+# ============================================================================
+# Formatter automatico (opinionated)
+black==24.10.0
+
+# Linting e controllo stile
+flake8==7.1.1
+flake8-docstrings==1.7.0
+flake8-bugbear==24.10.31
+pylint==3.3.2
+
+# Type checking
+mypy==1.13.0
+
+# Security checks
+bandit==1.8.0
+
+# Import sorting
+isort==5.13.2
+
+# ============================================================================
+# Development Tools
+# ============================================================================
+# Auto-reload e debugging
+flask-debugtoolbar==0.15.1
+
+# Database inspection
+flask-shell-ipython==0.4.1
+ipython==8.31.0
+
+# Pre-commit hooks (opzionale)
+pre-commit==4.0.1
+
+# ============================================================================
+# Documentation
+# ============================================================================
+# Sphinx per documentazione (opzionale)
+# sphinx==8.1.3
+# sphinx-rtd-theme==3.0.2
+
+# ============================================================================
+# Utilizzo:
+#
+# 1. Installazione ambiente di sviluppo:
+#    pip install -r requirements-dev.txt
+#
+# 2. Formattazione codice:
+#    black .
+#    isort .
+#
+# 3. Linting:
+#    flake8 .
+#    pylint app.py routes/ utils/
+#    mypy .
+#
+# 4. Security check:
+#    bandit -r . -ll
+#
+# 5. Test:
+#    pytest --cov=. --cov-report=html
+#
+# 6. Pre-commit hooks (setup una tantum):
+#    pre-commit install
+# ============================================================================

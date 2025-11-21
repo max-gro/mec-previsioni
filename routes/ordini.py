@@ -432,10 +432,12 @@ def scan_po_folder():
                 
                 filepath = os.path.join(anno_path, filename)
                 files_trovati.add(filepath)
-                
-                # Controlla se il file è già nel database
-                existing = FileOrdine.query.filter_by(filepath=filepath).first()
-                
+
+                # Controlla se il file è già nel database (per filepath O filename)
+                existing = FileOrdine.query.filter(
+                    (FileOrdine.filepath == filepath) | (FileOrdine.filename == filename)
+                ).first()
+
                 if not existing:
                     # Aggiungi al database con stato Da processare
                     nuovo_ordine = FileOrdine(
@@ -446,7 +448,9 @@ def scan_po_folder():
                         esito='Da processare'
                     )
                     db.session.add(nuovo_ordine)
-                    print(f"[SYNC INPUT] Aggiunto: {filepath}")
+                    logger.info(f"[SYNC INPUT] Aggiunto: {filepath}")
+                else:
+                    logger.info(f"[SYNC INPUT] Saltato (già presente): {filename}")
     
     # Scansiona OUTPUT/po/
     output_base_dir = os.path.join(base_dir, 'OUTPUT', 'po')
@@ -465,10 +469,12 @@ def scan_po_folder():
                 
                 filepath = os.path.join(anno_path, filename)
                 files_trovati.add(filepath)
-                
-                # Controlla se il file è già nel database
-                existing = FileOrdine.query.filter_by(filepath=filepath).first()
-                
+
+                # Controlla se il file è già nel database (per filepath O filename)
+                existing = FileOrdine.query.filter(
+                    (FileOrdine.filepath == filepath) | (FileOrdine.filename == filename)
+                ).first()
+
                 if not existing:
                     # Aggiungi al database con stato Processato
                     nuovo_ordine = FileOrdine(
@@ -481,16 +487,27 @@ def scan_po_folder():
                         note='File già processato, trovato in OUTPUT durante sincronizzazione'
                     )
                     db.session.add(nuovo_ordine)
-                    print(f"[SYNC OUTPUT] Aggiunto: {filepath}")
+                    logger.info(f"[SYNC OUTPUT] Aggiunto: {filepath}")
+                else:
+                    logger.info(f"[SYNC OUTPUT] Saltato (già presente): {filename}")
     
     # Rimuovi record orfani (file nel DB ma non nel filesystem)
+    num_rimossi = 0
     tutti_ordini = FileOrdine.query.all()
     for ordine in tutti_ordini:
         if ordine.filepath not in files_trovati:
-            print(f"[SYNC] Rimosso record orfano: {ordine.filepath}")
+            logger.info(f"[SYNC] Rimosso record orfano: {ordine.filepath}")
             db.session.delete(ordine)
-    
-    db.session.commit()
+            num_rimossi += 1
+
+    # Commit con gestione errori
+    try:
+        db.session.commit()
+        logger.info(f"[SYNC] Completata: {len(files_trovati)} file, {num_rimossi} orfani rimossi")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"[SYNC] Errore durante commit: {str(e)}")
+        raise
 
 @ordini_bp.route('/')
 @login_required
@@ -706,9 +723,22 @@ def view(id):
 @ordini_bp.route('/sync')
 @admin_required
 def sync():
-    """Sincronizza manualmente il database con il filesystem"""
-    scan_po_folder()
-    flash('Sincronizzazione completata!', 'success')
+    """
+    Sincronizza manualmente il database con il filesystem.
+
+    Comportamento:
+    - Scansiona INPUT/po/ e OUTPUT/po/
+    - Aggiunge file nuovi (saltando duplicati)
+    - Rimuove record orfani (file eliminati dal filesystem)
+    - Logga tutte le operazioni
+    """
+    try:
+        scan_po_folder()
+        flash('Sincronizzazione completata! Controlla i log per i dettagli.', 'success')
+    except Exception as e:
+        logger.error(f"[SYNC] Errore sincronizzazione: {str(e)}")
+        flash(f'Errore durante sincronizzazione: {str(e)}', 'danger')
+
     return redirect(url_for('ordini.list'))
 
 @ordini_bp.route('/<int:id>/elabora', methods=['POST'])

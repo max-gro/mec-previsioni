@@ -238,9 +238,14 @@ def genera_tsv_simulato_rotture(file_rottura):
 
     # Prendi SOLO modelli e componenti dal DB (tabelle di riferimento che NON vengono create)
     modelli_esistenti = db.session.query(Modello).limit(20).all()
+
     if not modelli_esistenti:
         logger.warning(f"[TSV SIMULATO ROT] Nessun modello disponibile nel DB")
         return None
+
+    logger.info(f"[TSV SIMULATO ROT] Trovati {len(modelli_esistenti)} modelli nel DB")
+    if len(modelli_esistenti) > 0:
+        logger.info(f"[TSV SIMULATO ROT] Primi 5 modelli: {[m.cod_modello for m in modelli_esistenti[:min(5, len(modelli_esistenti))]]}")
 
     componenti_esistenti = db.session.query(Componente).limit(30).all()
 

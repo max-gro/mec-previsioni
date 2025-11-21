@@ -5,7 +5,7 @@ Blueprint per la gestione Ordini di Acquisto (CRUD + Upload PDF + Elaborazione)
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, FileOrdine, TraceElab, TraceElabDett
+from models import db, FileOrdine, Ordine, TraceElab, TraceElabDett
 from forms import FileOrdineForm, FileOrdineEditForm
 from utils.decorators import admin_required
 from utils.pdf_parser import parse_purchase_order_pdf
@@ -620,24 +620,57 @@ def edit(id):
 @ordini_bp.route('/<int:id>/delete', methods=['POST'])
 @admin_required
 def delete(id):
-    """Elimina un ordine di acquisto"""
+    """
+    Elimina un ordine di acquisto.
+
+    Comportamento:
+    - Cancella righe ordini associate (tabella ordini)
+    - Cancella record FileOrdine
+    - Cancella file PDF dal filesystem
+    - NON tocca modelli e controparti (dati master)
+    - NON tocca trace_elab/trace_elab_dett (storico)
+    - Logga operazione in console/file
+    """
     ordine = FileOrdine.query.get_or_404(id)
     filename = ordine.filename
     filepath = ordine.filepath
-    
-    # Elimina il file dal filesystem
+
+    # ✅ STEP 1: Conta righe ordini da cancellare
+    righe_ordini = Ordine.query.filter_by(id_file_ordine=id).all()
+    num_righe = len(righe_ordini)
+
+    logger.info(f"[DELETE] Inizio cancellazione FileOrdine ID={id}, file={filename}")
+    logger.info(f"[DELETE] Righe ordini associate: {num_righe}")
+
+    # ✅ STEP 2: Cancella righe ordini (NON tocca modelli/controparti)
+    if num_righe > 0:
+        for riga in righe_ordini:
+            db.session.delete(riga)
+        logger.info(f"[DELETE] Cancellate {num_righe} righe dalla tabella ordini")
+
+    # ✅ STEP 3: Cancella file PDF dal filesystem
     if os.path.exists(filepath):
         try:
             os.remove(filepath)
+            logger.info(f"[DELETE] File PDF rimosso: {filepath}")
         except Exception as e:
+            logger.error(f"[DELETE] Errore rimozione file PDF: {str(e)}")
             flash(f'Errore nell\'eliminazione del file: {str(e)}', 'danger')
+            db.session.rollback()
             return redirect(url_for('ordini.list'))
-    
-    # Elimina dal database
+    else:
+        logger.warning(f"[DELETE] File PDF non trovato: {filepath}")
+
+    # ✅ STEP 4: Cancella record FileOrdine dal database
     db.session.delete(ordine)
     db.session.commit()
-    
-    flash(f'Ordine {filename} eliminato.', 'info')
+
+    logger.info(f"[DELETE] FileOrdine ID={id} cancellato con successo")
+    logger.info(f"[DELETE] Riepilogo: {num_righe} righe ordini, 1 file_ordine, 1 PDF rimossi")
+    logger.info(f"[DELETE] Modelli e controparti: NON toccati (dati master)")
+    logger.info(f"[DELETE] Trace: NON toccate (storico elaborazioni)")
+
+    flash(f'Ordine {filename} eliminato ({num_righe} righe ordini rimosse).', 'info')
     return redirect(url_for('ordini.list'))
 
 @ordini_bp.route('/download/<int:id>')

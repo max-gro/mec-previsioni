@@ -130,9 +130,9 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                 cod_modello_norm = normalizza_codice(cod_modello)
                 cod_componente_norm = normalizza_codice(cod_componente_raw)
 
-                # Verifica modello
-                if cod_modello_norm:
-                    modello = Modello.query.filter_by(cod_modello_norm=cod_modello_norm).first()
+                # Verifica modello usando cod_modello (FK)
+                if cod_modello:
+                    modello = Modello.query.filter_by(cod_modello=cod_modello).first()
                     if not modello:
                         # Modello non trovato - segnala e skippa
                         trace_rec = TraceElabDett(
@@ -237,9 +237,9 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                     )
                     log_session.add(trace_rec)
 
-                # Gestisci Componente (READ only - no trace, solo READ)
-                if cod_componente_norm:
-                    componente = Componente.query.filter_by(cod_componente_norm=cod_componente_norm).first()
+                # Gestisci Componente usando cod_componente (FK)
+                if cod_componente_raw:
+                    componente = Componente.query.filter_by(cod_componente=cod_componente_raw).first()
                     if not componente:
                         # Nota: secondo le specifiche, i componenti dovrebbero essere READ only
                         # Ma il codice esistente li crea se non esistono - mantengo comportamento

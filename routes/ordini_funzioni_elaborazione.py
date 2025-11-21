@@ -175,8 +175,12 @@ def elabora_tsv_ordine(file_ordine_id, tsv_filepath, current_user_id=0):
         for idx, riga in enumerate(righe_dati, start=2):  # +2 per contare dall'header
             num_righe_processate += 1
 
+            # Crea SAVEPOINT per questa riga (permette rollback parziale)
+            savepoint = db.session.begin_nested()
+
             try:
                 if len(riga) != 15:
+                    savepoint.rollback()
                     errore = f"Riga {idx}: numero colonne errato (atteso 15, trovato {len(riga)})"
                     errori_dettaglio.append(errore)
                     num_errori += 1
@@ -187,12 +191,14 @@ def elabora_tsv_ordine(file_ordine_id, tsv_filepath, current_user_id=0):
 
                 # Validazioni
                 if not model_no:
+                    savepoint.rollback()
                     errore = f"Riga {idx}: model_no mancante"
                     errori_dettaglio.append(errore)
                     num_errori += 1
                     continue
 
                 if not po:
+                    savepoint.rollback()
                     errore = f"Riga {idx}: numero PO mancante"
                     errori_dettaglio.append(errore)
                     num_errori += 1
@@ -204,6 +210,7 @@ def elabora_tsv_ordine(file_ordine_id, tsv_filepath, current_user_id=0):
                     qty = int(qty_str) if qty_str else None
                     amount_eur = float(amount_str) if amount_str else None
                 except ValueError as e:
+                    savepoint.rollback()
                     errore = f"Riga {idx}: errore parsing numeri ({str(e)})"
                     errori_dettaglio.append(errore)
                     num_errori += 1
@@ -256,7 +263,12 @@ def elabora_tsv_ordine(file_ordine_id, tsv_filepath, current_user_id=0):
                 db.session.add(ordine)
                 num_righe_ok += 1
 
+                # Commit del savepoint (conferma operazioni per questa riga)
+                savepoint.commit()
+
             except Exception as e:
+                # Rollback del savepoint (annulla operazioni per questa riga ma continua con le altre)
+                savepoint.rollback()
                 errore = f"Riga {idx}: errore imprevisto ({str(e)})"
                 errori_dettaglio.append(errore)
                 num_errori += 1

@@ -411,6 +411,9 @@ def elabora_anagrafica(anagrafica_id):
             for idx, row in enumerate(reader, start=1):
                 righe_totali += 1
 
+                # Crea SAVEPOINT per questa riga (permette rollback parziale)
+                savepoint = db.session.begin_nested()
+
                 try:
                     # Estrai dati dalla riga
                     cod_modello = row.get('modello', '').strip()
@@ -419,6 +422,7 @@ def elabora_anagrafica(anagrafica_id):
                     qta = int(row.get('qtà', 1))
 
                     if not cod_modello or not cod_componente:
+                        savepoint.rollback()
                         righe_warning += 1
                         trace_dett = TraceElabDett(
                             id_trace=trace_start.id_trace,
@@ -611,7 +615,12 @@ def elabora_anagrafica(anagrafica_id):
 
                     righe_ok += 1
 
+                    # Commit del savepoint (conferma operazioni per questa riga)
+                    savepoint.commit()
+
                 except Exception as e:
+                    # Rollback del savepoint (annulla operazioni per questa riga ma continua con le altre)
+                    savepoint.rollback()
                     righe_errore += 1
                     trace_dett = TraceElabDett(
                         id_trace=trace_start.id_trace,

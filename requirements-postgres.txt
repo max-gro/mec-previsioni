@@ -1,0 +1,34 @@
+# ============================================================================
+# PostgreSQL Support - MEC Previsioni
+# ============================================================================
+# Dipendenze aggiuntive per PostgreSQL
+# Installa con: pip install -r requirements-postgres.txt
+# ============================================================================
+
+# Include dipendenze base
+-r requirements.txt
+
+# PostgreSQL Driver
+# Nota: Su Windows potrebbe richiedere Visual C++ Build Tools
+# Alternativa: Usa SQLite (nessuna installazione aggiuntiva necessaria)
+psycopg2-binary==2.9.9
+
+# ============================================================================
+# Nota per utenti Windows:
+# ============================================================================
+# Se l'installazione di psycopg2-binary fallisce, hai due opzioni:
+#
+# 1. CONSIGLIATO: Usa SQLite (default in development)
+#    - Nessuna installazione aggiuntiva richiesta
+#    - Configura DATABASE_URL=sqlite:///mec.db nel .env
+#
+# 2. Installa Visual C++ Build Tools:
+#    - Scarica da: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+#    - Seleziona "Desktop development with C++"
+#    - Riprova: pip install psycopg2-binary
+#
+# 3. Usa un wheel pre-compilato:
+#    - Visita: https://www.lfd.uci.edu/~gohlke/pythonlibs/#psycopg
+#    - Scarica il file .whl appropriato
+#    - Installa: pip install downloaded_file.whl
+# ============================================================================

@@ -21,8 +21,10 @@ Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.0.5
 python-dotenv==1.0.1
 
-# PostgreSQL Driver (opzionale, solo se si usa PostgreSQL)
-psycopg2-binary==2.9.9
+# PostgreSQL Driver - OPZIONALE
+# ⚠️  IMPORTANTE: psycopg2-binary è richiesto SOLO per PostgreSQL
+# Se usi SQLite (default in development), NON serve installarlo
+# Per PostgreSQL, installa con: pip install -r requirements-postgres.txt
 
 # Data Processing
 pandas==2.2.3
@@ -49,4 +51,8 @@ gunicorn==23.0.0
 # - Flask 3.1.x richiede Python >= 3.8
 # - pandas 2.x richiede Python >= 3.9
 # - numpy 2.x richiede Python >= 3.9
+#
+# Database:
+# - SQLite: Incluso in Python, nessuna dipendenza aggiuntiva (DEFAULT)
+# - PostgreSQL: Richiede psycopg2-binary (vedi requirements-postgres.txt)
 # ============================================================================

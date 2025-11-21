@@ -136,14 +136,51 @@ venv\Scripts\activate
 
 ### 3. Installa Dipendenze
 
-**Production:**
+#### Opzione A: SQLite (Consigliato per Development/Windows)
+
+**Nessuna dipendenza aggiuntiva richiesta!** SQLite è incluso in Python.
+
 ```bash
+# Production
 pip install -r requirements.txt
+
+# Development (include testing e linting)
+pip install -r requirements-dev.txt
 ```
 
-**Development (include testing e linting):**
+#### Opzione B: PostgreSQL (Production)
+
+**Linux/macOS:**
 ```bash
-pip install -r requirements-dev.txt
+# Installa dipendenze base + PostgreSQL driver
+pip install -r requirements-postgres.txt
+```
+
+**Windows:**
+
+⚠️ **NOTA**: Su Windows, psycopg2-binary richiede Visual C++ Build Tools.
+
+**Consigliato**: Usa SQLite (opzione A sopra) per evitare problemi di compilazione.
+
+Se hai bisogno di PostgreSQL:
+
+1. **Installa Visual C++ Build Tools**
+   - Scarica da: [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+   - Seleziona "Desktop development with C++"
+   - Installa (può richiedere 3-7 GB)
+
+2. **Installa dipendenze PostgreSQL**
+   ```bash
+   pip install -r requirements-postgres.txt
+   ```
+
+**Alternativa Windows**: Usa wheel pre-compilato
+```bash
+# 1. Scarica wheel da: https://www.lfd.uci.edu/~gohlke/pythonlibs/#psycopg
+# 2. Installa wheel
+pip install psycopg2‑2.9.9‑cp39‑cp39‑win_amd64.whl
+# 3. Installa resto dipendenze
+pip install -r requirements.txt
 ```
 
 ### 4. Configurazione

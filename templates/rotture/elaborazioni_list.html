@@ -136,7 +136,10 @@
 </div>
 
 <script>
-function showDettaglio(elabId) {
+let currentElabId = null;
+
+function showDettaglio(elabId, stato = '', page = 1) {
+    currentElabId = elabId;
     const modal = new bootstrap.Modal(document.getElementById('dettaglioModal'));
     const content = document.getElementById('dettaglioContent');
 
@@ -144,15 +147,39 @@ function showDettaglio(elabId) {
     content.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div><p>Caricamento...</p></div>';
     modal.show();
 
+    // Costruisci URL con parametri
+    let url = `{{ url_for('rotture.elaborazione_dettaglio', id=file_rottura.id, id_elab=0) }}`.replace('/0/', '/' + elabId + '/');
+    const params = new URLSearchParams();
+    if (stato) params.append('stato', stato);
+    if (page > 1) params.append('page', page);
+    if (params.toString()) url += '?' + params.toString();
+
     // Carica contenuto
-    fetch(`{{ url_for('rotture.elaborazione_dettaglio', id=file_rottura.id, id_elab=0) }}`.replace('/0/', '/' + elabId + '/'))
+    fetch(url)
         .then(response => response.text())
         .then(html => {
             content.innerHTML = html;
+            // Aggiungi event listeners ai filtri e paginazione
+            attachModalEventListeners();
         })
         .catch(error => {
             content.innerHTML = '<div class="alert alert-danger">Errore nel caricamento dei dettagli</div>';
         });
+}
+
+function attachModalEventListeners() {
+    const content = document.getElementById('dettaglioContent');
+
+    // Intercetta click sui link di filtro e paginazione
+    content.querySelectorAll('a[href^="?"]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = new URL(this.href, window.location.origin);
+            const stato = url.searchParams.get('stato') || '';
+            const page = url.searchParams.get('page') || 1;
+            showDettaglio(currentElabId, stato, page);
+        });
+    });
 }
 </script>
 {% endblock %}

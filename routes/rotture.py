@@ -236,30 +236,22 @@ def genera_tsv_simulato_rotture(file_rottura):
     tsv_filename = f"{name_without_ext}_parsed.tsv"
     file_rottura_id = file_rottura.id
 
-    # Pool fisso di utenti (max 100)
-    POOL_UTENTI = [f'USER-{i:03d}' for i in range(1, 101)]
-    POOL_PV_UTENTI = ['MI', 'RM', 'TO', 'NA', 'FI', 'BO', 'FI', 'BA', 'PA', 'GE']
-    POOL_COMUNI = ['Milano', 'Roma', 'Torino', 'Napoli', 'Firenze', 'Bologna', 'Palermo', 'Bari', 'Genova']
-
-    # Pool fisso di rivenditori (max 20)
-    POOL_RIVENDITORI = [f'RIV-{i:02d}' for i in range(1, 21)]
-    POOL_PV_RIVEND = ['MI', 'RM', 'TO', 'NA', 'FI']
-
-    pool_config = {
-        'utenti': POOL_UTENTI,
-        'pv_utenti': POOL_PV_UTENTI,
-        'comuni': POOL_COMUNI,
-        'rivenditori': POOL_RIVENDITORI,
-        'pv_rivend': POOL_PV_RIVEND
-    }
-
-    # Prendi modelli e componenti esistenti dal DB
+    # Prendi SOLO modelli e componenti dal DB (tabelle di riferimento che NON vengono create)
     modelli_esistenti = db.session.query(Modello).limit(20).all()
     if not modelli_esistenti:
         logger.warning(f"[TSV SIMULATO ROT] Nessun modello disponibile nel DB")
         return None
 
     componenti_esistenti = db.session.query(Componente).limit(30).all()
+
+    # Pool utenti/rivenditori (possono essere generati, vengono creati/aggiornati durante elaborazione)
+    pool_config = {
+        'utenti': [f'USER-{i:03d}' for i in range(1, 101)],
+        'pv_utenti': ['MI', 'RM', 'TO', 'NA', 'FI', 'BO', 'BA', 'PA', 'GE'],
+        'comuni': ['Milano', 'Roma', 'Torino', 'Napoli', 'Firenze', 'Bologna', 'Palermo', 'Bari', 'Genova'],
+        'rivenditori': [f'RIV-{i:02d}' for i in range(1, 21)],
+        'pv_rivend': ['MI', 'RM', 'TO', 'NA', 'FI']
+    }
 
     # ALL OR NOTHING: decide se QUESTO FILE deve essere OK o con errori
     # 50-60% probabilità → file completamente OK (tutte righe OK)
@@ -313,6 +305,7 @@ def genera_tsv_simulato_rotture(file_rottura):
             componenti = [None]
 
         for componente in componenti:
+            # Usa modelli/componenti esistenti + pool per utenti/rivenditori
             row = _crea_riga_rottura(prot, modello, componente, pool_config)
             rows.append(row)
 

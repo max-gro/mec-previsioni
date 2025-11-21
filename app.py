@@ -3,12 +3,13 @@ Flask App - Sistema MEC Previsioni
 Applicazione multi-pagina con autenticazione
 """
 
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, render_template, redirect, url_for, request
 from flask_login import LoginManager, login_required, current_user
 from models import db, User
 from config import DevelopmentConfig, ProductionConfig
 from utils.db_log import init_log_session, cleanup_log_session
 import os
+import secrets
 import logging
 from logging.handlers import RotatingFileHandler
 from sqlalchemy import text
@@ -131,16 +132,40 @@ def create_app(config_class=DevelopmentConfig):
         db.create_all()
         # Crea utente admin di default se non esiste
         if User.query.count() == 0:
+            # Leggi password da variabili d'ambiente o genera password casuali sicure
+            admin_password = os.environ.get('ADMIN_DEFAULT_PASSWORD')
+            demo_password = os.environ.get('DEMO_DEFAULT_PASSWORD')
+
+            # Se le password non sono impostate, generale casuali
+            if not admin_password:
+                admin_password = secrets.token_urlsafe(16)
+                app.logger.warning("ADMIN_DEFAULT_PASSWORD non impostata, generata password casuale")
+
+            if not demo_password:
+                demo_password = secrets.token_urlsafe(16)
+                app.logger.warning("DEMO_DEFAULT_PASSWORD non impostata, generata password casuale")
+
+            # Crea utenti
             admin = User(username='admin', email='admin@example.com', role='admin', active=True)
-            admin.set_password('admin123')  # CAMBIARE IN PRODUZIONE!
+            admin.set_password(admin_password)
             db.session.add(admin)
 
             demo = User(username='demo', email='demo@example.com', role='user', active=True)
-            demo.set_password('demo123')
+            demo.set_password(demo_password)
             db.session.add(demo)
 
             db.session.commit()
-            app.logger.info("Utenti di default creati: admin/admin123 e demo/demo123")
+
+            # Log delle credenziali (ATTENZIONE: solo al primo avvio!)
+            app.logger.info("="*60)
+            app.logger.info("UTENTI DI DEFAULT CREATI - SALVARE QUESTE CREDENZIALI!")
+            app.logger.info("="*60)
+            app.logger.info(f"Admin: admin / {admin_password}")
+            app.logger.info(f"Demo:  demo / {demo_password}")
+            app.logger.info("="*60)
+            app.logger.warning("IMPORTANTE: Cambiare queste password dopo il primo login!")
+            app.logger.warning("Le credenziali sono salvate anche in logs/app.log")
+            app.logger.info("="*60)
     
     # Registra blueprints
     from routes.auth import auth_bp
@@ -198,6 +223,39 @@ def create_app(config_class=DevelopmentConfig):
     def inject_user():
         return dict(current_user=current_user)
 
+    # =========================================================================
+    # ERROR HANDLERS
+    # =========================================================================
+
+    @app.errorhandler(404)
+    def not_found_error(error):
+        """Gestisce errori 404 - Pagina non trovata"""
+        app.logger.warning(f"404 error: {request.url}")
+        return render_template('errors/404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        """Gestisce errori 500 - Errore interno del server"""
+        db.session.rollback()  # Rollback di eventuali transazioni pendenti
+        app.logger.error(f"500 error: {error}", exc_info=True)
+        return render_template('errors/500.html'), 500
+
+    @app.errorhandler(403)
+    def forbidden_error(error):
+        """Gestisce errori 403 - Accesso negato"""
+        app.logger.warning(f"403 error: {request.url} - User: {current_user.username if current_user.is_authenticated else 'Anonymous'}")
+        return render_template('errors/403.html'), 403
+
+    @app.errorhandler(Exception)
+    def unhandled_exception(error):
+        """Gestisce eccezioni non gestite"""
+        db.session.rollback()
+        app.logger.error(f"Unhandled exception: {error}", exc_info=True)
+        # In production, non mostrare dettagli dell'errore
+        if app.config['DEBUG']:
+            raise error
+        return render_template('errors/500.html'), 500
+
     return app
 
 if __name__ == '__main__':
@@ -207,7 +265,10 @@ if __name__ == '__main__':
     app.logger.info("="*60)
     app.logger.info("📍 Vai su: http://localhost:5010")
     app.logger.info("🔐 Credenziali di accesso:")
-    app.logger.info("   Admin: admin / admin123")
-    app.logger.info("   Demo:  demo / demo123")
+    app.logger.info("   Username: admin (role: admin)")
+    app.logger.info("   Username: demo (role: user)")
+    app.logger.info("")
+    app.logger.info("   Password: controllare logs/app.log al primo avvio")
+    app.logger.info("   oppure impostare ADMIN_DEFAULT_PASSWORD e DEMO_DEFAULT_PASSWORD in .env")
     app.logger.info("="*60)
     app.run(debug=True, host='0.0.0.0', port=5010)

@@ -38,14 +38,47 @@ _data_cache = {
     'precomputed_predictions_stat': None
 }
 
-# Percorsi dei file
+# Percorsi dei file (configurabili via variabili d'ambiente)
 BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-ROTTURE_PATH = os.path.join(BASE_DIR, "output_rotture_filtrate_completate.xlsx")
-ANAGRAFICA_PATH = os.path.join(BASE_DIR, "OUTPUT", "output_anagrafica.xlsx")
-JSON_PATH = os.path.join(BASE_DIR, "output_modelli.json")
-JSON_PERDATA_PATH = os.path.join(BASE_DIR, "output_modelli_per_data.json")
+ROTTURE_PATH = os.environ.get('ROTTURE_FILE_PATH') or os.path.join(BASE_DIR, "output_rotture_filtrate_completate.xlsx")
+ANAGRAFICA_PATH = os.environ.get('ANAGRAFICA_FILE_PATH') or os.path.join(BASE_DIR, "OUTPUT", "output_anagrafica.xlsx")
+JSON_PATH = os.environ.get('MODELLI_JSON_PATH') or os.path.join(BASE_DIR, "output_modelli.json")
+JSON_PERDATA_PATH = os.environ.get('MODELLI_PERDATA_JSON_PATH') or os.path.join(BASE_DIR, "output_modelli_per_data.json")
 PREDICTIONS_PATH = os.path.join(BASE_DIR, "precomputed_predictions.json")
 PREDICTIONS_STAT_PATH = os.path.join(BASE_DIR, "precomputed_predictions_stat.json")
+
+# File richiesti per il funzionamento del modulo previsioni
+REQUIRED_FILES = {
+    'File Rotture': ROTTURE_PATH,
+    'File Anagrafica': ANAGRAFICA_PATH,
+    'JSON Modelli': JSON_PATH,
+    'JSON Modelli per Data': JSON_PERDATA_PATH
+}
+
+
+def validate_required_files():
+    """
+    Valida che tutti i file richiesti esistano.
+    Ritorna (True, None) se tutto OK, (False, messaggio_errore) altrimenti.
+    """
+    missing_files = []
+
+    for nome, path in REQUIRED_FILES.items():
+        if not os.path.exists(path):
+            missing_files.append(f"  - {nome}: {path}")
+            logger.error(f"File mancante: {nome} - {path}")
+
+    if missing_files:
+        error_msg = (
+            "⚠️ ERRORE: File richiesti mancanti per il modulo Previsioni:\n"
+            + "\n".join(missing_files) +
+            "\n\nVericare la configurazione e assicurarsi che tutti i file necessari siano presenti.\n"
+            "I path possono essere configurati tramite variabili d'ambiente (vedi .env.example)"
+        )
+        return False, error_msg
+
+    logger.info("✓ Tutti i file richiesti sono presenti")
+    return True, None
 
 # =============================================================================
 # FUNZIONE DI CARICAMENTO LAZY
@@ -61,9 +94,19 @@ def load_data_if_needed():
 
     logger.info("🔄 [PREVISIONI] Caricamento dati in corso...")
 
+    # Valida che tutti i file richiesti esistano
+    files_ok, error_msg = validate_required_files()
+    if not files_ok:
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
+
     # Caricamento dati grezzi
-    _data_cache['df_rotture'] = pd.read_excel(ROTTURE_PATH)
-    _data_cache['df_anagrafica'] = pd.read_excel(ANAGRAFICA_PATH)
+    try:
+        _data_cache['df_rotture'] = pd.read_excel(ROTTURE_PATH)
+        _data_cache['df_anagrafica'] = pd.read_excel(ANAGRAFICA_PATH)
+    except Exception as e:
+        logger.error(f"Errore durante lettura file Excel: {e}", exc_info=True)
+        raise
 
     with open(JSON_PATH, "r") as f:
         _data_cache['json_data'] = json.load(f)

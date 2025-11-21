@@ -27,6 +27,26 @@ OUTPUT/rotture/
 # Env file
 .env
 
+# Testing e Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+.tox/
+.hypothesis/
+
+# Linting e Type Checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+
+# Build e distribuzione
+build/
+dist/
+*.egg-info/
+.eggs/
+
 # Altri file temporanei
 .DS_Store
 Thumbs.db

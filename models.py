@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timezone
 
 db = SQLAlchemy()
 
@@ -19,7 +19,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), default='Utente')
     active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, default=0, nullable=False)
 
     def set_password(self, password):
@@ -44,11 +44,11 @@ class FileRottura(db.Model):
     anno = db.Column(db.Integer, nullable=False)
     filename = db.Column(db.String(255), nullable=False)
     filepath = db.Column(db.String(500), nullable=False)
-    data_acquisizione = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    data_acquisizione = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     data_elaborazione = db.Column(db.DateTime)
     esito = db.Column(db.String(50), default='Da processare')
     note = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
@@ -70,7 +70,7 @@ class FileOrdine(db.Model):
     marca = db.Column(db.String(100))
     filename = db.Column(db.String(255), nullable=False, unique=True)
     filepath = db.Column(db.String(500), nullable=False)
-    data_acquisizione = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    data_acquisizione = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     data_elaborazione = db.Column(db.DateTime)
     esito = db.Column(db.String(50), default='Da processare')
     note = db.Column(db.Text)
@@ -78,7 +78,7 @@ class FileOrdine(db.Model):
     cod_buyer = db.Column(db.String(100), db.ForeignKey('controparti.cod_controparte'))
     data_ordine = db.Column(db.Date)
     oggetto_ordine = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
@@ -102,11 +102,11 @@ class FileAnagrafica(db.Model):
     marca = db.Column(db.String(100), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
     filepath = db.Column(db.String(500), nullable=False)
-    data_acquisizione = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    data_acquisizione = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     data_elaborazione = db.Column(db.DateTime)
     esito = db.Column(db.String(50), default='Da processare')
     note = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
@@ -129,7 +129,7 @@ class Controparte(db.Model):
 
     cod_controparte = db.Column(db.String(100), primary_key=True)
     controparte = db.Column(db.String(200), nullable=False, unique=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
@@ -157,7 +157,7 @@ class Modello(db.Model):
     produttore = db.Column(db.String(200))
     famiglia = db.Column(db.String(100))
     tipo = db.Column(db.String(100))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
@@ -193,7 +193,7 @@ class Componente(db.Model):
     unit_price_public_eur = db.Column(db.Numeric(10, 2))
     stat = db.Column(db.String(50))
     softech_stat = db.Column(db.String(50))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
@@ -224,7 +224,7 @@ class Ordine(db.Model):
     prezzo_eur = db.Column(db.Numeric(10, 2))
     qta = db.Column('qtà', db.Integer)
     importo_eur = db.Column(db.Numeric(12, 2))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
@@ -257,7 +257,7 @@ class ModelloComponente(db.Model):
     cod_modello = db.Column(db.String(100), db.ForeignKey('modelli.cod_modello'), nullable=False)
     cod_componente = db.Column(db.String(100), db.ForeignKey('componenti.cod_componente'), nullable=False)
     qta = db.Column('qtà', db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
@@ -284,7 +284,7 @@ class UtenteRottura(db.Model):
     cod_utente_rottura = db.Column(db.String(100), primary_key=True)
     pv_utente_rottura = db.Column(db.String(100))
     comune_utente_rottura = db.Column(db.String(100))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
@@ -303,7 +303,7 @@ class Rivenditore(db.Model):
 
     cod_rivenditore = db.Column(db.String(100), primary_key=True)
     pv_rivenditore = db.Column(db.String(100))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
@@ -339,7 +339,7 @@ class Rottura(db.Model):
     riparazione = db.Column(db.String(200))
     qta = db.Column('qtà', db.Integer)
     gg_vita_prodotto = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
@@ -362,7 +362,7 @@ class RotturaComponente(db.Model):
 
     cod_rottura = db.Column(db.String(100), db.ForeignKey('rotture.cod_rottura'), primary_key=True)
     cod_componente = db.Column(db.String(100), db.ForeignKey('componenti.cod_componente'), primary_key=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
@@ -399,7 +399,7 @@ class TraceElab(db.Model):
     righe_errore = db.Column(db.Integer, default=0)
     righe_warning = db.Column(db.Integer, default=0)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationship con i dettagli
     dettagli = db.relationship('TraceElabDett', backref='elaborazione', lazy='dynamic', cascade='all, delete-orphan')
@@ -418,7 +418,7 @@ class TraceElabDett(db.Model):
     record_data = db.Column(db.JSON)  # Dati del record
     messaggio = db.Column(db.Text)
     stato = db.Column(db.String(20), nullable=False, default='OK')  # 'OK', 'KO'
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     def __repr__(self):
         return f'<TraceElabDett Trace:{self.id_trace} Record:{self.record_pos} - {self.stato}>'

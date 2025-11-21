@@ -1,0 +1,50 @@
+# ============================================================================
+# Flake8 Configuration
+# ============================================================================
+# Documentazione: https://flake8.pycqa.org/en/latest/user/configuration.html
+# ============================================================================
+
+[flake8]
+# Lunghezza massima riga (88 per compatibilità con Black)
+max-line-length = 88
+
+# Complessità ciclomatica massima (numero di path in una funzione)
+max-complexity = 10
+
+# File e directory da escludere
+exclude =
+    .git,
+    __pycache__,
+    venv,
+    env,
+    .venv,
+    instance,
+    migrations,
+    .tox,
+    build,
+    dist,
+    *.egg-info,
+    INPUT,
+    OUTPUT,
+    logs
+
+# Ignora alcuni errori specifici
+ignore =
+    # E203: whitespace before ':' (incompatibile con Black)
+    E203,
+    # W503: line break before binary operator (stile preferito)
+    W503,
+    # E501: line too long (già gestito da max-line-length)
+    # Nota: decommentare se Black gestisce la lunghezza riga
+    # E501,
+
+# Plugin e estensioni
+# Docstrings (richiede flake8-docstrings)
+docstring-convention = google
+
+# Mostra il codice sorgente dell'errore
+show-source = True
+
+# Statistiche
+statistics = True
+count = True

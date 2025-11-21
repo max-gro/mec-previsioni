@@ -1,0 +1,138 @@
+# ============================================================================
+# Pylint Configuration
+# ============================================================================
+# Documentazione: https://pylint.pycqa.org/en/latest/user_guide/configuration/index.html
+# ============================================================================
+
+[MAIN]
+
+# Python version
+py-version=3.9
+
+# Files or directories to be skipped
+ignore=migrations,venv,env,.venv,instance,INPUT,OUTPUT,logs,preprocessing_PO
+
+# Pickle collected data for later comparisons
+persistent=yes
+
+# Use multiple processes to speed up Pylint
+jobs=1
+
+# Allow loading of arbitrary C extensions
+unsafe-load-any-extension=no
+
+[MESSAGES CONTROL]
+
+# Disable specifici messaggi
+disable=
+    # Design
+    too-few-public-methods,
+    too-many-arguments,
+    too-many-instance-attributes,
+    too-many-locals,
+    too-many-branches,
+    too-many-statements,
+    # Imports
+    import-error,
+    # Formatting (gestito da Black)
+    line-too-long,
+    bad-continuation,
+    # Docstrings (gestito da flake8-docstrings)
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    # Flask patterns
+    no-member,
+    # Other
+    fixme,
+    invalid-name,
+    redefined-outer-name,
+
+[REPORTS]
+
+# Set the output format
+output-format=colorized
+
+# Include message's id in output
+include-ids=yes
+
+# Tells whether to display a full report or only the messages
+reports=no
+
+[BASIC]
+
+# Good variable names
+good-names=i,j,k,ex,Run,_,db,id,app,bp
+
+# Regular expression matching correct argument names
+argument-rgx=[a-z_][a-z0-9_]{0,30}$
+
+# Regular expression matching correct variable names
+variable-rgx=[a-z_][a-z0-9_]{0,30}$
+
+# Regular expression matching correct constant names
+const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
+
+# Regular expression matching correct attribute names
+attr-rgx=[a-z_][a-z0-9_]{0,30}$
+
+[FORMAT]
+
+# Maximum number of characters on a single line (compatibile con Black)
+max-line-length=88
+
+# Maximum number of lines in a module
+max-module-lines=1000
+
+# String used as indentation unit (compatibile con Black)
+indent-string='    '
+
+[DESIGN]
+
+# Maximum number of arguments for function/method
+max-args=7
+
+# Maximum number of locals for function/method body
+max-locals=20
+
+# Maximum number of return/yield for function/method body
+max-returns=6
+
+# Maximum number of branch for function/method body
+max-branches=15
+
+# Maximum number of statements in function/method body
+max-statements=60
+
+# Maximum number of attributes for a class
+max-attributes=10
+
+[SIMILARITIES]
+
+# Minimum lines number of a similarity
+min-similarity-lines=4
+
+# Ignore comments when computing similarities
+ignore-comments=yes
+
+# Ignore docstrings when computing similarities
+ignore-docstrings=yes
+
+# Ignore imports when computing similarities
+ignore-imports=yes
+
+[TYPECHECK]
+
+# List of members which are set dynamically and missed by pylint inference
+generated-members=REQUEST,acl_users,aq_parent,db.*,query.*
+
+[CLASSES]
+
+# List of method names used to declare instance attributes
+defining-attr-methods=__init__,__new__,setUp
+
+# List of valid names for the first argument in a class method
+valid-classmethod-first-arg=cls
+
+# List of valid names for the first argument in a metaclass class method
+valid-metaclass-classmethod-first-arg=mcs

@@ -1,0 +1,100 @@
+# ============================================================================
+# Pre-commit Hooks Configuration
+# ============================================================================
+# Installazione:
+#   pip install pre-commit
+#   pre-commit install
+#
+# Uso:
+#   Automatico: I hook vengono eseguiti automaticamente ad ogni commit
+#   Manuale: pre-commit run --all-files
+#
+# Aggiornamento hook:
+#   pre-commit autoupdate
+# ============================================================================
+
+repos:
+  # =========================================================================
+  # Pre-commit hooks standard
+  # =========================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # Controlla sintassi YAML
+      - id: check-yaml
+      # Controlla sintassi JSON
+      - id: check-json
+      # Controlla sintassi TOML
+      - id: check-toml
+      # Previene commit su branch main/master
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'master']
+      # Rimuove spazi bianchi trailing
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      # Assicura newline finale
+      - id: end-of-file-fixer
+      # Controlla file grandi (>500KB)
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      # Controlla merge conflict markers
+      - id: check-merge-conflict
+      # Controlla sintassi Python
+      - id: check-ast
+      # Rileva credenziali hardcoded
+      - id: detect-private-key
+
+  # =========================================================================
+  # Black - Code Formatter
+  # =========================================================================
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3.9
+
+  # =========================================================================
+  # isort - Import Sorting
+  # =========================================================================
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (python)
+
+  # =========================================================================
+  # flake8 - Linting
+  # =========================================================================
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-docstrings
+          - flake8-bugbear
+
+  # =========================================================================
+  # bandit - Security Checks
+  # =========================================================================
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.0
+    hooks:
+      - id: bandit
+        args: ['-ll']  # Solo severity medium/high
+        exclude: ^tests/
+
+  # =========================================================================
+  # mypy - Type Checking (opzionale, decommentare quando si aggiungono type hints)
+  # =========================================================================
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.13.0
+  #   hooks:
+  #     - id: mypy
+  #       additional_dependencies: [types-all]
+
+# ============================================================================
+# Note:
+# - I hook sono eseguiti nell'ordine specificato
+# - Per saltare i hook: git commit --no-verify
+# - Per eseguire manualmente: pre-commit run --all-files
+# ============================================================================

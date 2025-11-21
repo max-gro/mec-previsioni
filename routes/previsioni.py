@@ -7,12 +7,16 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_required
 import os
 import json
+import logging
 import pandas as pd
 import numpy as np
 
 # Importa le funzioni dal tuo codice esistente
 from preprocessing import build_df_componenti, build_df_affid, tronca_affidabilita
 from functions import precompute_all_predictions, precompute_all_predictions_by_stat
+
+# Logger per questo modulo
+logger = logging.getLogger(__name__)
 
 # Crea il Blueprint
 previsioni_bp = Blueprint('previsioni', __name__)
@@ -34,14 +38,47 @@ _data_cache = {
     'precomputed_predictions_stat': None
 }
 
-# Percorsi dei file
+# Percorsi dei file (configurabili via variabili d'ambiente)
 BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-ROTTURE_PATH = os.path.join(BASE_DIR, "output_rotture_filtrate_completate.xlsx")
-ANAGRAFICA_PATH = os.path.join(BASE_DIR, "OUTPUT", "output_anagrafica.xlsx")
-JSON_PATH = os.path.join(BASE_DIR, "output_modelli.json")
-JSON_PERDATA_PATH = os.path.join(BASE_DIR, "output_modelli_per_data.json")
+ROTTURE_PATH = os.environ.get('ROTTURE_FILE_PATH') or os.path.join(BASE_DIR, "output_rotture_filtrate_completate.xlsx")
+ANAGRAFICA_PATH = os.environ.get('ANAGRAFICA_FILE_PATH') or os.path.join(BASE_DIR, "OUTPUT", "output_anagrafica.xlsx")
+JSON_PATH = os.environ.get('MODELLI_JSON_PATH') or os.path.join(BASE_DIR, "output_modelli.json")
+JSON_PERDATA_PATH = os.environ.get('MODELLI_PERDATA_JSON_PATH') or os.path.join(BASE_DIR, "output_modelli_per_data.json")
 PREDICTIONS_PATH = os.path.join(BASE_DIR, "precomputed_predictions.json")
 PREDICTIONS_STAT_PATH = os.path.join(BASE_DIR, "precomputed_predictions_stat.json")
+
+# File richiesti per il funzionamento del modulo previsioni
+REQUIRED_FILES = {
+    'File Rotture': ROTTURE_PATH,
+    'File Anagrafica': ANAGRAFICA_PATH,
+    'JSON Modelli': JSON_PATH,
+    'JSON Modelli per Data': JSON_PERDATA_PATH
+}
+
+
+def validate_required_files():
+    """
+    Valida che tutti i file richiesti esistano.
+    Ritorna (True, None) se tutto OK, (False, messaggio_errore) altrimenti.
+    """
+    missing_files = []
+
+    for nome, path in REQUIRED_FILES.items():
+        if not os.path.exists(path):
+            missing_files.append(f"  - {nome}: {path}")
+            logger.error(f"File mancante: {nome} - {path}")
+
+    if missing_files:
+        error_msg = (
+            "⚠️ ERRORE: File richiesti mancanti per il modulo Previsioni:\n"
+            + "\n".join(missing_files) +
+            "\n\nVericare la configurazione e assicurarsi che tutti i file necessari siano presenti.\n"
+            "I path possono essere configurati tramite variabili d'ambiente (vedi .env.example)"
+        )
+        return False, error_msg
+
+    logger.info("✓ Tutti i file richiesti sono presenti")
+    return True, None
 
 # =============================================================================
 # FUNZIONE DI CARICAMENTO LAZY
@@ -54,38 +91,48 @@ def load_data_if_needed():
     """
     if _data_cache['loaded']:
         return  # Dati già caricati, skip
-    
-    print("🔄 [PREVISIONI] Caricamento dati in corso...")
-    
+
+    logger.info("🔄 [PREVISIONI] Caricamento dati in corso...")
+
+    # Valida che tutti i file richiesti esistano
+    files_ok, error_msg = validate_required_files()
+    if not files_ok:
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
+
     # Caricamento dati grezzi
-    _data_cache['df_rotture'] = pd.read_excel(ROTTURE_PATH)
-    _data_cache['df_anagrafica'] = pd.read_excel(ANAGRAFICA_PATH)
-    
+    try:
+        _data_cache['df_rotture'] = pd.read_excel(ROTTURE_PATH)
+        _data_cache['df_anagrafica'] = pd.read_excel(ANAGRAFICA_PATH)
+    except Exception as e:
+        logger.error(f"Errore durante lettura file Excel: {e}", exc_info=True)
+        raise
+
     with open(JSON_PATH, "r") as f:
         _data_cache['json_data'] = json.load(f)
     with open(JSON_PERDATA_PATH, "r") as f:
         _data_cache['json_per_data'] = json.load(f)
-    
-    print("✓ [PREVISIONI] Dati grezzi caricati")
-    
+
+    logger.info("✓ [PREVISIONI] Dati grezzi caricati")
+
     # Preparazione DataFrame di affidabilità
     rotture_per_modello = _data_cache['df_rotture'].groupby("Modello").size().sort_values(ascending=False)
     _data_cache['modelli_topN'] = rotture_per_modello.head(2).index.tolist()
-    print(f"✓ [PREVISIONI] Modelli selezionati: {_data_cache['modelli_topN']}")
-    
+    logger.info(f"✓ [PREVISIONI] Modelli selezionati: {_data_cache['modelli_topN']}")
+
     df_componenti_full = build_df_componenti(_data_cache['modelli_topN'], _data_cache['json_per_data'])
     _data_cache['df_affid_full'] = build_df_affid(df_componenti_full, _data_cache['df_rotture'])
-    
+
     # Aggiungi colonna 'stat'
     codice_to_stat_map = _data_cache['df_anagrafica'].drop_duplicates(subset=['codice']).set_index('codice')['stat'].to_dict()
     _data_cache['df_affid_full']['stat'] = _data_cache['df_affid_full']['Codice Componente'].map(codice_to_stat_map)
     _data_cache['df_affid_troncato_full'] = tronca_affidabilita(_data_cache['df_affid_full'], max_mesi=36)
-    
-    print("✓ [PREVISIONI] Preparazione dati completata")
-    
+
+    logger.info("✓ [PREVISIONI] Preparazione dati completata")
+
     # Caricamento o calcolo previsioni
     if not os.path.exists(PREDICTIONS_PATH):
-        print("⚙️ [PREVISIONI] Calcolo previsioni per COMPONENTE...")
+        logger.info("⚙️ [PREVISIONI] Calcolo previsioni per COMPONENTE...")
         predizioni_json = precompute_all_predictions(
             df_affid=_data_cache['df_affid_troncato_full'],
             modelli_topN=_data_cache['modelli_topN'],
@@ -93,13 +140,13 @@ def load_data_if_needed():
         )
         with open(PREDICTIONS_PATH, "w") as f:
             json.dump(predizioni_json, f, indent=2)
-        print("✓ [PREVISIONI] Predizioni per componente salvate")
-    
+        logger.info("✓ [PREVISIONI] Predizioni per componente salvate")
+
     with open(PREDICTIONS_PATH, "r") as f:
         _data_cache['precomputed_predictions'] = json.load(f)
-    
+
     if not os.path.exists(PREDICTIONS_STAT_PATH):
-        print("⚙️ [PREVISIONI] Calcolo previsioni per GRUPPO STAT...")
+        logger.info("⚙️ [PREVISIONI] Calcolo previsioni per GRUPPO STAT...")
         predizioni_stat_json = precompute_all_predictions_by_stat(
             df_affid_with_stat=_data_cache['df_affid_troncato_full'],
             modelli_topN=_data_cache['modelli_topN'],
@@ -107,13 +154,13 @@ def load_data_if_needed():
         )
         with open(PREDICTIONS_STAT_PATH, "w") as f:
             json.dump(predizioni_stat_json, f, indent=2)
-        print("✓ [PREVISIONI] Predizioni per STAT salvate")
-    
+        logger.info("✓ [PREVISIONI] Predizioni per STAT salvate")
+
     with open(PREDICTIONS_STAT_PATH, "r") as f:
         _data_cache['precomputed_predictions_stat'] = json.load(f)
-    
+
     _data_cache['loaded'] = True
-    print("✅ [PREVISIONI] Setup completato e cachato in memoria\n")
+    logger.info("✅ [PREVISIONI] Setup completato e cachato in memoria")
 
 # =============================================================================
 # FUNZIONI HELPER

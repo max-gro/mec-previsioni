@@ -146,25 +146,49 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                         continue
 
                     # Aggiorna dati modello se presenti
+                    modello_aggiornato = False
                     if row.get('divisione'):
                         modello.divisione = str(row['divisione']).strip()
+                        modello_aggiornato = True
                     if row.get('marca'):
                         modello.marca = str(row['marca']).strip()
+                        modello_aggiornato = True
                     if row.get('desc_modello'):
                         modello.desc_modello = str(row['desc_modello']).strip()
+                        modello_aggiornato = True
                     if row.get('produttore'):
                         modello.produttore = str(row['produttore']).strip()
+                        modello_aggiornato = True
                     if row.get('famiglia'):
                         modello.famiglia = str(row['famiglia']).strip()
+                        modello_aggiornato = True
                     if row.get('tipo'):
                         modello.tipo = str(row['tipo']).strip()
+                        modello_aggiornato = True
                     modello.updated_by = user_id
                     modello.updated_from = 'rotture'
+
+                    # Trace UPDATE modello
+                    if modello_aggiornato:
+                        trace_rec = TraceElabDett(
+                            id_trace=id_trace_start,
+                            record_pos=riga_file,
+                            record_data={
+                                'tipo': 'UPDATE_MODELLO',
+                                'cod_modello': cod_modello,
+                                'divisione': modello.divisione,
+                                'marca': modello.marca
+                            },
+                            stato='OK',
+                            messaggio=f'Aggiornato modello {cod_modello} da rotture'
+                        )
+                        log_session.add(trace_rec)
 
                 # Gestisci UtenteRottura (insert/update)
                 cod_utente = str(row.get('cod_utente', '')).strip()
                 if cod_utente:
                     utente = UtenteRottura.query.get(cod_utente)
+                    utente_is_new = (utente is None)
                     if not utente:
                         utente = UtenteRottura(cod_utente_rottura=cod_utente, created_by=user_id)
                         db.session.add(utente)
@@ -172,26 +196,71 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                     utente.comune_utente_rottura = str(row.get('comune_utente', '')).strip() if row.get('comune_utente') else None
                     utente.updated_by = user_id
 
+                    # Trace CREATE/UPDATE utente
+                    trace_rec = TraceElabDett(
+                        id_trace=id_trace_start,
+                        record_pos=riga_file,
+                        record_data={
+                            'tipo': 'CREATE_UTENTE' if utente_is_new else 'UPDATE_UTENTE',
+                            'cod_utente': cod_utente,
+                            'pv': utente.pv_utente_rottura,
+                            'comune': utente.comune_utente_rottura
+                        },
+                        stato='OK',
+                        messaggio=f'{"Creato" if utente_is_new else "Aggiornato"} utente {cod_utente}'
+                    )
+                    log_session.add(trace_rec)
+
                 # Gestisci Rivenditore (insert/update)
                 cod_rivenditore = str(row.get('cod_rivenditore', '')).strip()
                 if cod_rivenditore:
                     rivenditore = Rivenditore.query.get(cod_rivenditore)
+                    rivenditore_is_new = (rivenditore is None)
                     if not rivenditore:
                         rivenditore = Rivenditore(cod_rivenditore=cod_rivenditore, created_by=user_id)
                         db.session.add(rivenditore)
                     rivenditore.pv_rivenditore = str(row.get('pv_rivenditore', '')).strip() if row.get('pv_rivenditore') else None
                     rivenditore.updated_by = user_id
 
-                # Gestisci Componente (insert/update)
+                    # Trace CREATE/UPDATE rivenditore
+                    trace_rec = TraceElabDett(
+                        id_trace=id_trace_start,
+                        record_pos=riga_file,
+                        record_data={
+                            'tipo': 'CREATE_RIVENDITORE' if rivenditore_is_new else 'UPDATE_RIVENDITORE',
+                            'cod_rivenditore': cod_rivenditore,
+                            'pv': rivenditore.pv_rivenditore
+                        },
+                        stato='OK',
+                        messaggio=f'{"Creato" if rivenditore_is_new else "Aggiornato"} rivenditore {cod_rivenditore}'
+                    )
+                    log_session.add(trace_rec)
+
+                # Gestisci Componente (READ only - no trace, solo READ)
                 if cod_componente_norm:
                     componente = Componente.query.filter_by(cod_componente_norm=cod_componente_norm).first()
                     if not componente:
+                        # Nota: secondo le specifiche, i componenti dovrebbero essere READ only
+                        # Ma il codice esistente li crea se non esistono - mantengo comportamento
                         componente = Componente(
                             cod_componente=cod_componente_raw,
                             cod_componente_norm=cod_componente_norm,
                             created_by=user_id
                         )
                         db.session.add(componente)
+
+                        # Trace CREATE componente (anche se non nelle specifiche originali)
+                        trace_rec = TraceElabDett(
+                            id_trace=id_trace_start,
+                            record_pos=riga_file,
+                            record_data={
+                                'tipo': 'CREATE_COMPONENTE',
+                                'cod_componente': cod_componente_raw
+                            },
+                            stato='WARN',
+                            messaggio=f'Creato componente {cod_componente_raw} (non presente in anagrafiche)'
+                        )
+                        log_session.add(trace_rec)
                     # Aggiorna campi non chiave (qui puoi aggiungere logica per altri campi)
                     componente.updated_by = user_id
 
@@ -237,6 +306,22 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                 db.session.add(rottura)
                 db.session.flush()  # Per ottenere id_rottura
 
+                # Trace CREATE rottura
+                trace_rec = TraceElabDett(
+                    id_trace=id_trace_start,
+                    record_pos=riga_file,
+                    record_data={
+                        'tipo': 'CREATE_ROTTURA',
+                        'prot': prot,
+                        'cod_modello': cod_modello,
+                        'cod_matricola': rottura.cod_matricola,
+                        'difetto': rottura.difetto
+                    },
+                    stato='OK',
+                    messaggio=f'Creata rottura {prot} per modello {cod_modello}'
+                )
+                log_session.add(trace_rec)
+
                 # Crea relazione RotturaComponente
                 if cod_componente_norm:
                     rottura_comp = RotturaComponente(
@@ -245,6 +330,21 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                         created_by=user_id
                     )
                     db.session.add(rottura_comp)
+
+                    # Trace CREATE rottura_componente
+                    trace_rec = TraceElabDett(
+                        id_trace=id_trace_start,
+                        record_pos=riga_file,
+                        record_data={
+                            'tipo': 'CREATE_ROTTURA_COMPONENTE',
+                            'prot': prot,
+                            'id_rottura': rottura.id_rottura,
+                            'cod_componente': cod_componente_raw
+                        },
+                        stato='OK',
+                        messaggio=f'Associato componente {cod_componente_raw} a rottura {prot}'
+                    )
+                    log_session.add(trace_rec)
 
                 num_rotture += 1
 

@@ -436,6 +436,20 @@ def elabora_anagrafica(anagrafica_id):
                             modello.updated_by = current_user.id
                             modello.updated_from = 'ANA'
                             modelli_aggiornati.add(cod_modello)
+
+                            # Trace UPDATE modello
+                            trace_dett = TraceElabDett(
+                                id_trace=trace_start.id_trace,
+                                record_pos=idx,
+                                record_data={
+                                    'tipo': 'UPDATE_MODELLO',
+                                    'cod_modello': cod_modello,
+                                    'cod_modello_fabbrica': cod_modello_fabbrica
+                                },
+                                stato='OK',
+                                messaggio=f'Aggiornato modello {cod_modello} con cod_modello_fabbrica'
+                            )
+                            log_session.add(trace_dett)
                     else:
                         righe_warning += 1
                         trace_dett = TraceElabDett(
@@ -481,6 +495,20 @@ def elabora_anagrafica(anagrafica_id):
                         componente.updated_at = datetime.utcnow()
                         componente.updated_by = current_user.id
                         componenti_aggiornati.add(cod_componente)
+
+                        # Trace UPDATE componente
+                        trace_dett = TraceElabDett(
+                            id_trace=trace_start.id_trace,
+                            record_pos=idx,
+                            record_data={
+                                'tipo': 'UPDATE_COMPONENTE',
+                                'cod_componente': cod_componente,
+                                'part_name': row.get('part name', '')[:50]
+                            },
+                            stato='OK',
+                            messaggio=f'Aggiornato componente {cod_componente}'
+                        )
+                        log_session.add(trace_dett)
                     else:
                         # CREATE
                         try:
@@ -516,6 +544,20 @@ def elabora_anagrafica(anagrafica_id):
 
                             db.session.add(componente)
                             componenti_creati.add(cod_componente)
+
+                            # Trace CREATE componente
+                            trace_dett = TraceElabDett(
+                                id_trace=trace_start.id_trace,
+                                record_pos=idx,
+                                record_data={
+                                    'tipo': 'CREATE_COMPONENTE',
+                                    'cod_componente': cod_componente,
+                                    'part_name': row.get('part name', '')[:50]
+                                },
+                                stato='OK',
+                                messaggio=f'Creato nuovo componente {cod_componente}'
+                            )
+                            log_session.add(trace_dett)
                         except Exception as e:
                             righe_errore += 1
                             trace_dett = TraceElabDett(
@@ -548,6 +590,21 @@ def elabora_anagrafica(anagrafica_id):
                             )
                             db.session.add(relazione)
                             relazioni_create.add(cod_modello_componente)
+
+                            # Trace CREATE relazione modello-componente
+                            trace_dett = TraceElabDett(
+                                id_trace=trace_start.id_trace,
+                                record_pos=idx,
+                                record_data={
+                                    'tipo': 'CREATE_RELAZIONE',
+                                    'cod_modello': cod_modello,
+                                    'cod_componente': cod_componente,
+                                    'qta': qta
+                                },
+                                stato='OK',
+                                messaggio=f'Creata relazione {cod_modello}|{cod_componente} (qtà: {qta})'
+                            )
+                            log_session.add(trace_dett)
 
                     righe_ok += 1
 

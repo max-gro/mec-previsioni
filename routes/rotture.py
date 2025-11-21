@@ -112,18 +112,26 @@ def genera_tsv_simulato_rotture(file_rottura_id):
 
     componenti_esistenti = db.session.query(Componente).limit(30).all()
 
-    # Decide percentuale OK vs Errori (50-60% OK, 40-50% errori)
-    perc_ok = random.uniform(0.50, 0.60)
-    num_rotture_totali = random.randint(30, 50)  # Numero totale rotture da generare
-    num_rotture_ok = int(num_rotture_totali * perc_ok)
-    num_rotture_errori = num_rotture_totali - num_rotture_ok
+    # ALL OR NOTHING: decide se QUESTO FILE deve essere OK o con errori
+    # 50-60% probabilità → file completamente OK (tutte righe OK)
+    # 40-50% probabilità → file con errori (tutte/quasi tutte righe con errori)
+    file_ok = random.random() < random.uniform(0.50, 0.60)
 
-    logger.info(f"[TSV SIMULATO ROT] Generazione {num_rotture_totali} rotture: {num_rotture_ok} OK, {num_rotture_errori} con errori")
+    num_rotture_totali = random.randint(30, 50)  # Numero totale rotture da generare
+
+    if file_ok:
+        num_rotture_ok = num_rotture_totali
+        num_rotture_errori = 0
+        logger.info(f"[TSV SIMULATO ROT] Generazione file OK: {num_rotture_totali} rotture tutte corrette")
+    else:
+        num_rotture_ok = 0
+        num_rotture_errori = num_rotture_totali
+        logger.info(f"[TSV SIMULATO ROT] Generazione file con errori: {num_rotture_totali} rotture con errori")
 
     rows = []
     prot_counter = 1
 
-    # ========== GENERA ROTTURE OK (50-60%) ==========
+    # ========== GENERA ROTTURE OK ==========
     for i in range(num_rotture_ok):
         prot = f'PROT-{file_rottura_id}-OK-{prot_counter:03d}'
         prot_counter += 1

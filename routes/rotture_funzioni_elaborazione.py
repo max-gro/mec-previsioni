@@ -361,8 +361,8 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                 num_errori += 1
                 continue
 
+        # ALL OR NOTHING: se anche una sola riga ha errori, rollback completo
         if num_errori > 0:
-            # Rollback se ci sono errori
             db.session.rollback()
 
             # Crea trace END con errore
@@ -372,7 +372,7 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
                 tipo_file='ROT',
                 step='END',
                 stato='KO',
-                messaggio=f'Errori durante elaborazione: {num_errori} righe con errori',
+                messaggio=f'Elaborazione fallita: {num_errori} righe con errori su {len(df)} totali',
                 righe_totali=len(df),
                 righe_ok=0,
                 righe_errore=num_errori,
@@ -381,20 +381,20 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
             log_session.add(trace_end)
             log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
-            return False, f'{num_errori} righe con errori. Vedere trace per dettagli.', 0
+            return False, f'Elaborazione fallita: {num_errori} righe con errori. Vedere trace per dettagli.', 0
 
         # Commit finale tabelle operative (DB SESSION - TRANSAZIONALE)
         db.session.commit()  # ← Se fallisce, i log sono GIÀ salvati!
 
-        # Crea trace END con successo
+        # Crea trace END con successo (tutte le righe OK)
         trace_end = TraceElab(
             id_elab=id_elab,
             id_file=file_rottura.id,
             tipo_file='ROT',
             step='END',
             stato='OK',
-            messaggio=f'Elaborazione completata: {num_rotture} rotture inserite',
-            righe_totali=num_rotture,
+            messaggio=f'Elaborazione completata: {num_rotture} rotture inserite su {len(df)} righe',
+            righe_totali=len(df),
             righe_ok=num_rotture,
             righe_errore=0,
             righe_warning=0
@@ -402,7 +402,7 @@ def elabora_file_rottura_completo(file_rottura, db, current_user, current_app, m
         log_session.add(trace_end)
         log_session.commit()  # ← AUTONOMOUS: Log END persistito
 
-        return True, f'Elaborazione completata con successo', num_rotture
+        return True, f'Elaborazione completata con successo: {num_rotture} rotture inserite', num_rotture
 
     except Exception as e:
         db.session.rollback()  # ← Rollback solo tabelle operative, log già salvati!

@@ -203,7 +203,7 @@ def _crea_riga_rottura(prot, modello, componente, pool_config):
     }
 
 
-def genera_tsv_simulato_rotture(file_rottura_id):
+def genera_tsv_simulato_rotture(file_rottura):
     """
     Genera un file TSV simulato per testing della pipeline rotture.
 
@@ -222,11 +222,19 @@ def genera_tsv_simulato_rotture(file_rottura_id):
     - Max 100 utenti (pool fisso)
     - Max 20 rivenditori (pool fisso)
 
+    Args:
+        file_rottura: oggetto FileRottura
+
     Returns: filepath del TSV generato
     """
     base_dir = current_app.root_path
     parsed_dir = os.path.join(base_dir, 'INPUT', 'rotture_parsed')
     os.makedirs(parsed_dir, exist_ok=True)
+
+    # Usa lo stesso naming dell'elaborazione
+    name_without_ext = os.path.splitext(file_rottura.filename)[0]
+    tsv_filename = f"{name_without_ext}_parsed.tsv"
+    file_rottura_id = file_rottura.id
 
     # Pool fisso di utenti (max 100)
     POOL_UTENTI = [f'USER-{i:03d}' for i in range(1, 101)]
@@ -360,7 +368,6 @@ def genera_tsv_simulato_rotture(file_rottura_id):
             continue
 
     # Scrivi TSV
-    tsv_filename = f'rotture_{file_rottura_id}_parsed.tsv'
     tsv_path = os.path.join(parsed_dir, tsv_filename)
 
     if rows:
@@ -750,7 +757,7 @@ def elabora(id):
         return redirect(url_for('rotture.list'))
 
     # Genera TSV simulato (sostituisce temporaneamente la lettura Excel)
-    genera_tsv_simulato_rotture(file_rottura.id)
+    genera_tsv_simulato_rotture(file_rottura)
 
     # Elabora file
     success, message, num_rotture = elabora_file_rottura_completo(file_rottura)

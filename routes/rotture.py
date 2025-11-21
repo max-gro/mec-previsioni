@@ -279,30 +279,25 @@ def genera_tsv_simulato_rotture(file_rottura):
 
     # ========== GENERA ROTTURE OK ==========
     for i in range(num_rotture_ok):
-        # Decide tipo di rottura OK:
-        # 10% senza modello/componenti (riga vuota/incompleta ma valida)
-        # 30% con modello ma senza componenti
+        # Decide tipo di rottura OK (modello è SEMPRE obbligatorio):
+        # 40% con modello ma senza componenti
         # 60% con modello e 1-6 componenti
         tipo_rottura = random.random()
 
-        if tipo_rottura < 0.10:
-            # Rottura senza modello/componenti (caso raro ma valido)
-            modello = None
-            componenti = []
-        elif tipo_rottura < 0.40:
+        modello = random.choice(modelli_esistenti)  # Modello sempre presente (FK obbligatoria)
+
+        if tipo_rottura < 0.40:
             # Rottura con modello ma SENZA componenti sostituiti
-            modello = random.choice(modelli_esistenti)
             componenti = []
         else:
             # Rottura con modello E componenti (1-6)
-            modello = random.choice(modelli_esistenti)
             if componenti_esistenti:
                 num_comp = random.randint(1, min(6, len(componenti_esistenti)))
                 componenti = random.sample(componenti_esistenti, num_comp)
             else:
                 componenti = []
 
-        # Se nessun componente, crea una sola riga
+        # Se nessun componente, crea una sola riga (ma sempre con modello)
         if not componenti:
             componenti = [None]
 

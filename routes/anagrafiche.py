@@ -118,8 +118,11 @@ def scan_anagrafiche_folder():
                 files_trovati.add(filepath)
                 
                 # Controlla se già  nel DB
-                existing = FileAnagrafica.query.filter_by(filepath=filepath).first()
-                
+                # Controlla se già nel DB (per filepath O filename)
+                existing = FileAnagrafica.query.filter(
+                    (FileAnagrafica.filepath == filepath) | (FileAnagrafica.filename == filename)
+                ).first()
+
                 if not existing:
                     # Aggiungi al database
                     nuova_anagrafica = FileAnagrafica(
@@ -131,7 +134,9 @@ def scan_anagrafiche_folder():
                         esito='Da processare'
                     )
                     db.session.add(nuova_anagrafica)
-                    print(f"[SYNC] Aggiunto: {filepath}")
+                    logger.info(f"[SYNC INPUT] Aggiunto: {filepath}")
+                else:
+                    logger.info(f"[SYNC INPUT] Saltato (già presente): {filename}")
     
     # Scansiona OUTPUT
     if os.path.exists(output_base):
@@ -149,8 +154,11 @@ def scan_anagrafiche_folder():
                 files_trovati.add(filepath)
                 
                 # Controlla se già  nel DB
-                existing = FileAnagrafica.query.filter_by(filepath=filepath).first()
-                
+                # Controlla se già nel DB (per filepath O filename)
+                existing = FileAnagrafica.query.filter(
+                    (FileAnagrafica.filepath == filepath) | (FileAnagrafica.filename == filename)
+                ).first()
+
                 if not existing:
                     # Aggiungi al database
                     nuova_anagrafica = FileAnagrafica(
@@ -163,16 +171,27 @@ def scan_anagrafiche_folder():
                         data_elaborazione=date.today()
                     )
                     db.session.add(nuova_anagrafica)
-                    print(f"[SYNC] Aggiunto: {filepath}")
+                    logger.info(f"[SYNC OUTPUT] Aggiunto: {filepath}")
+                else:
+                    logger.info(f"[SYNC OUTPUT] Saltato (già presente): {filename}")
     
     # Rimuovi record orfani
+    num_rimossi = 0
     tutte_anagrafiche = FileAnagrafica.query.all()
     for anagrafica in tutte_anagrafiche:
         if anagrafica.filepath not in files_trovati:
-            print(f"[SYNC] Rimosso record orfano: {anagrafica.filepath}")
+            logger.info(f"[SYNC] Rimosso record orfano: {anagrafica.filepath}")
             db.session.delete(anagrafica)
-    
-    db.session.commit()
+            num_rimossi += 1
+
+    # Commit con gestione errori
+    try:
+        db.session.commit()
+        logger.info(f"[SYNC] Completata: {len(files_trovati)} file, {num_rimossi} orfani rimossi")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"[SYNC] Errore durante commit: {str(e)}")
+        raise
 
 
 def elabora_anagrafica(anagrafica_id):
@@ -629,9 +648,22 @@ def view(id):
 @anagrafiche_bp.route('/sync')
 @admin_required
 def sync():
-    """Sincronizza manualmente il database con il filesystem"""
-    scan_anagrafiche_folder()
-    flash('Sincronizzazione completata!', 'success')
+    """
+    Sincronizza manualmente il database con il filesystem.
+
+    Comportamento:
+    - Scansiona INPUT/anagrafiche/ e OUTPUT/anagrafiche/
+    - Aggiunge file nuovi (saltando duplicati)
+    - Rimuove record orfani (file eliminati dal filesystem)
+    - Logga tutte le operazioni
+    """
+    try:
+        scan_anagrafiche_folder()
+        flash('Sincronizzazione completata! Controlla i log per i dettagli.', 'success')
+    except Exception as e:
+        logger.error(f"[SYNC] Errore sincronizzazione: {str(e)}")
+        flash(f'Errore durante sincronizzazione: {str(e)}', 'danger')
+
     return redirect(url_for('anagrafiche.list'))
 
 

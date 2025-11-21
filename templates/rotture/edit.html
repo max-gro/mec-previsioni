@@ -37,54 +37,39 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.data_acquisizione.label }}</label>
-                                <input type="text" 
-                                       name="data_acquisizione" 
+                                <input type="text"
+                                       name="data_acquisizione"
                                        id="data_acquisizione"
-                                       class="form-control" 
+                                       class="form-control"
                                        placeholder="gg/mm/aaaa"
-                                       value="{% if rottura.data_acquisizione %}{{ rottura.data_acquisizione.strftime('%d/%m/%Y') }}{% endif %}"
-                                       {% if rottura.esito == 'Processato' %}disabled{% endif %}>
+                                       value="{% if rottura.data_acquisizione %}{{ rottura.data_acquisizione.strftime('%d/%m/%Y') }}{% endif %}">
                             </div>
                         </div>
 
-                        {% if rottura.esito != 'Processato' %}
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.data_elaborazione.label }}</label>
-                                <input type="text" 
-                                       name="data_elaborazione" 
+                                <input type="text"
+                                       name="data_elaborazione"
                                        id="data_elaborazione"
-                                       class="form-control" 
+                                       class="form-control"
                                        placeholder="gg/mm/aaaa"
-                                       value="{% if rottura.data_elaborazione %}{{ rottura.data_elaborazione.strftime('%d/%m/%Y') }}{% endif %}"
-									   >
+                                       value="{% if rottura.data_elaborazione %}{{ rottura.data_elaborazione.strftime('%d/%m/%Y') }}{% endif %}">
                                 <small class="form-text text-muted">Opzionale - lascia vuoto se non elaborato</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.esito.label }}</label>
                                 {{ form.esito(class="form-select") }}
+                                <small class="form-text text-muted">Modificabile anche per file processati</small>
                             </div>
                         </div>
-                        {% else %}
-                        <div class="mb-3">
-                            <label class="form-label">Stato</label>
-                            <input type="text" class="form-control" value="{{ rottura.esito }}" disabled>
-                            <small class="form-text text-muted">I file processati non possono cambiare stato</small>
-                        </div>
-                        {% endif %}
+
 
                         <div class="mb-4">
                             <label class="form-label">{{ form.note.label }}</label>
                             {{ form.note(class="form-control", rows="4") }}
                             <small class="form-text text-muted">Le note sono sempre modificabili</small>
                         </div>
-
-                        {% if rottura.esito == 'Processato' %}
-                        <div class="alert alert-success" role="alert">
-                            <strong>✅ File Processato</strong><br>
-                            Questo file è stato elaborato con successo. È possibile modificare solo le note.
-                        </div>
-                        {% endif %}
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>

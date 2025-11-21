@@ -110,18 +110,11 @@
 						
 
 
-						{% if anagrafica.esito != 'Processato' %}
-                        <div class="mb-3">
+						<div class="mb-3">
                             <label class="form-label">{{ form.esito.label }}</label>
                             {{ form.esito(class="form-select") }}
+                            <small class="form-text text-muted">Modificabile anche per file processati</small>
                         </div>
-                        {% else %}
-                        <div class="mb-3">
-                            <label class="form-label">Stato</label>
-                            <input type="text" class="form-control" value="{{ anagrafica.esito }}" disabled>
-                            <small class="form-text text-muted">I file processati non possono cambiare stato</small>
-                        </div>						
-						{% endif %}
 						
 						
                         <div class="mb-4">

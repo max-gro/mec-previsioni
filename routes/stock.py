@@ -610,11 +610,11 @@ def elaborazioni_list(id):
             'id_elab': elab_end.id_elab,
             'start_time': elab_start.created_at if elab_start else None,
             'end_time': elab_end.created_at,
-            'esito': elab_end.esito,
-            'n_righe_elaborate': elab_end.n_righe_elaborate,
-            'n_righe_ok': elab_end.n_righe_ok,
-            'n_righe_ko': elab_end.n_righe_ko,
-            'note': elab_end.note
+            'esito': elab_end.stato,  # Model field: stato
+            'n_righe_elaborate': elab_end.righe_totali,  # Model field: righe_totali
+            'n_righe_ok': elab_end.righe_ok,  # Model field: righe_ok
+            'n_righe_ko': elab_end.righe_errore,  # Model field: righe_errore
+            'note': elab_end.messaggio  # Model field: messaggio
         })
 
     return render_template(

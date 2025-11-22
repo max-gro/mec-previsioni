@@ -14,7 +14,18 @@
   </div>
 
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>📄 File Anagrafiche</h2>
+    <div>
+      <h2>📄 File Anagrafiche</h2>
+      <p class="text-muted mb-0">
+        {% if total_count is defined and filtered_count is defined %}
+          {% if filtered_count < total_count %}
+            <span class="badge bg-info">{{ filtered_count }} di {{ total_count }} risultati</span>
+          {% else %}
+            <span class="badge bg-secondary">{{ total_count }} risultati</span>
+          {% endif %}
+        {% endif %}
+      </p>
+    </div>
     <div class="d-flex gap-2">
       {% if current_user.is_admin() %}
       <a href="{{ url_for('anagrafiche.sync') }}" class="btn btn-secondary" title="Sincronizza con filesystem">

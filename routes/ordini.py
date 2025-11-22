@@ -24,6 +24,23 @@ logger = logging.getLogger(__name__)
 
 ordini_bp = Blueprint('ordini', __name__)
 
+def preserve_list_params():
+    """Preserva i parametri di filtro/ordinamento/paginazione della lista"""
+    params = {}
+    if request.args.get('anno'):
+        params['anno'] = request.args.get('anno')
+    if request.args.get('esito'):
+        params['esito'] = request.args.get('esito')
+    if request.args.get('filename'):
+        params['filename'] = request.args.get('filename')
+    if request.args.get('sort'):
+        params['sort'] = request.args.get('sort')
+    if request.args.get('order'):
+        params['order'] = request.args.get('order')
+    if request.args.get('page'):
+        params['page'] = request.args.get('page')
+    return params
+
 def extract_year_from_filename(filename):
     """
     Estrae l'anno dal nome del file
@@ -515,16 +532,19 @@ def list():
     """Lista tutti gli ordini di acquisto con paginazione, filtri e ordinamento"""
     # Sincronizza con il filesystem
     scan_po_folder()
-    
+
     page = request.args.get('page', 1, type=int)
     anno_filter = request.args.get('anno', type=int)
     esito_filter = request.args.get('esito', '')
     filename_filter = request.args.get('filename', '').strip()
     sort_by = request.args.get('sort', 'anno')
     order = request.args.get('order', 'desc')
-    
+
+    # Conteggio totale prima dei filtri
+    total_count = FileOrdine.query.count()
+
     query = FileOrdine.query
-    
+
     # Filtri
     if anno_filter:
         query = query.filter_by(anno=anno_filter)
@@ -532,7 +552,10 @@ def list():
         query = query.filter_by(esito=esito_filter)
     if filename_filter:
         query = query.filter(FileOrdine.filename.ilike(f'%{filename_filter}%'))
-    
+
+    # Conteggio dopo filtri
+    filtered_count = query.count()
+
     # Ordinamento dinamico - validazione colonne permesse
     sortable_columns = ['anno', 'filename', 'data_acquisizione', 'data_elaborazione', 'esito', 'created_at']
     if sort_by in sortable_columns and hasattr(FileOrdine, sort_by):
@@ -544,21 +567,23 @@ def list():
     else:
         # Default: ordina per anno decrescente e data creazione
         query = query.order_by(FileOrdine.anno.desc(), FileOrdine.created_at.desc())
-    
+
     ordini = query.paginate(page=page, per_page=20, error_out=False)
-    
+
     # Lista anni disponibili per filtro
     anni_disponibili = db.session.query(FileOrdine.anno).distinct().order_by(FileOrdine.anno.desc()).all()
     anni_disponibili = [a[0] for a in anni_disponibili]
-    
-    return render_template('ordini/list.html', 
-                         ordini=ordini, 
+
+    return render_template('ordini/list.html',
+                         ordini=ordini,
                          anno_filter=anno_filter,
                          esito_filter=esito_filter,
                          filename_filter=filename_filter,
                          anni_disponibili=anni_disponibili,
                          sort_by=sort_by,
-                         order=order)
+                         order=order,
+                         total_count=total_count,
+                         filtered_count=filtered_count)
 
 @ordini_bp.route('/create', methods=['GET', 'POST'])
 @admin_required
@@ -610,7 +635,7 @@ def create():
         db.session.commit()
         
         flash(f'Ordine di acquisto {filename} caricato con successo! (Anno: {anno})', 'success')
-        return redirect(url_for('ordini.list'))
+        return redirect(url_for('ordini.list', **preserve_list_params()))
     
     return render_template('ordini/create.html', form=form)
 
@@ -630,7 +655,7 @@ def edit(id):
 
         db.session.commit()
         flash(f'Ordine {ordine.filename} aggiornato!', 'success')
-        return redirect(url_for('ordini.list'))
+        return redirect(url_for('ordini.list', **preserve_list_params()))
     
     return render_template('ordini/edit.html', form=form, ordine=ordine)
 
@@ -674,7 +699,7 @@ def delete(id):
             logger.error(f"[DELETE] Errore rimozione file PDF: {str(e)}")
             flash(f'Errore nell\'eliminazione del file: {str(e)}', 'danger')
             db.session.rollback()
-            return redirect(url_for('ordini.list'))
+            return redirect(url_for('ordini.list', **preserve_list_params()))
     else:
         logger.warning(f"[DELETE] File PDF non trovato: {filepath}")
 
@@ -688,7 +713,7 @@ def delete(id):
     logger.info(f"[DELETE] Trace: NON toccate (storico elaborazioni)")
 
     flash(f'Ordine {filename} eliminato ({num_righe} righe ordini rimosse).', 'info')
-    return redirect(url_for('ordini.list'))
+    return redirect(url_for('ordini.list', **preserve_list_params()))
 
 @ordini_bp.route('/download/<int:id>')
 @login_required
@@ -698,7 +723,7 @@ def download(id):
     
     if not os.path.exists(ordine.filepath):
         flash('File non trovato sul server!', 'danger')
-        return redirect(url_for('ordini.list'))
+        return redirect(url_for('ordini.list', **preserve_list_params()))
     
     directory = os.path.dirname(ordine.filepath)
     filename = os.path.basename(ordine.filepath)
@@ -713,7 +738,7 @@ def view(id):
     
     if not os.path.exists(ordine.filepath):
         flash('File non trovato sul server!', 'danger')
-        return redirect(url_for('ordini.list'))
+        return redirect(url_for('ordini.list', **preserve_list_params()))
     
     directory = os.path.dirname(ordine.filepath)
     filename = os.path.basename(ordine.filepath)
@@ -739,7 +764,7 @@ def sync():
         logger.error(f"[SYNC] Errore sincronizzazione: {str(e)}")
         flash(f'Errore durante sincronizzazione: {str(e)}', 'danger')
 
-    return redirect(url_for('ordini.list'))
+    return redirect(url_for('ordini.list', **preserve_list_params()))
 
 @ordini_bp.route('/<int:id>/elabora', methods=['POST'])
 @admin_required
@@ -753,7 +778,7 @@ def elabora(id):
     # Verifica che l'ordine possa essere elaborato
     if ordine.esito not in ['Da processare', 'Errore']:
         flash(f'L\'ordine è già stato elaborato con successo e non può essere rielaborato.', 'warning')
-        return redirect(url_for('ordini.list'))
+        return redirect(url_for('ordini.list', **preserve_list_params()))
     
     # Elabora l'ordine (sincrono - attende il completamento)
     success, message = elabora_ordine(id)

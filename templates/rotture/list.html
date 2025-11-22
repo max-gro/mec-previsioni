@@ -30,7 +30,16 @@
                     <li class="breadcrumb-item active" aria-current="page">File Rotture</li>
                 </ol>
             </nav>
-            <p class="text-muted">Upload ed elaborazione file Excel rotture componenti</p>
+            <p class="text-muted">
+                Upload ed elaborazione file Excel rotture componenti
+                {% if total_count is defined and filtered_count is defined %}
+                    {% if filtered_count < total_count %}
+                        <span class="badge bg-info ms-2">{{ filtered_count }} di {{ total_count }} risultati</span>
+                    {% else %}
+                        <span class="badge bg-secondary ms-2">{{ total_count }} risultati</span>
+                    {% endif %}
+                {% endif %}
+            </p>
         </div>
         <div class="col-md-6 text-end">
             {% if current_user.is_admin() %}

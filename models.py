@@ -454,17 +454,35 @@ class FileStock(db.Model):
 
 
 class Stock(db.Model):
-    """Modello Righe Stock (giacenze componenti)"""
+    """Modello Righe Stock (giacenze componenti con warehouse e soglie)"""
     __tablename__ = 'stock'
 
     id = db.Column('id_stock', db.Integer, primary_key=True)
     id_file_stock = db.Column(db.Integer, db.ForeignKey('file_stock.id_file_stock'), nullable=False, index=True)
-    cod_componente = db.Column(db.String(100), db.ForeignKey('componenti.cod_componente'), nullable=False, index=True)
-    qta = db.Column('qtà', db.Integer, nullable=False, default=0)
-    data_rilevazione = db.Column(db.Date, nullable=False)
-    ubicazione = db.Column(db.String(100))
+    cod_componente = db.Column(db.String(100), db.ForeignKey('componenti.cod_componente'), index=True)
+
+    # Magazzino
+    warehouse = db.Column(db.String(100))  # Magazzino (A, B, C...)
+    ubicazione = db.Column(db.String(100))  # Scaffale/posizione
     lotto = db.Column(db.String(100))
-    note = db.Column(db.Text)
+
+    # Giacenze
+    giacenza_disponibile = db.Column(db.Integer, default=0)
+    giacenza_impegnata = db.Column(db.Integer, default=0)  # Riservata per ordini clienti
+    giacenza_fisica = db.Column(db.Integer, default=0)  # Totale fisico in magazzino
+
+    # Soglie
+    scorta_minima = db.Column(db.Integer)  # Sotto questo = allarme
+    scorta_massima = db.Column(db.Integer)
+    punto_riordino = db.Column(db.Integer)  # Quando ordinare
+    lead_time_days = db.Column(db.Integer)  # Tempo riordino
+
+    # Metadata
+    data_snapshot = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)  # Quando è stato fatto export Mexal
+    data_stock = db.Column(db.DateTime)  # Data stock
+    flag_corrente = db.Column(db.Boolean, nullable=False, default=False)  # Identifica lo stock corrente
+
+    # Audit
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
     updated_at = db.Column(db.DateTime)
@@ -477,7 +495,7 @@ class Stock(db.Model):
     updater = db.relationship('User', foreign_keys=[updated_by], backref='stock_updated')
 
     def __repr__(self):
-        return f'<Stock {self.cod_componente} - {self.qta} @ {self.data_rilevazione}>'
+        return f'<Stock {self.cod_componente} - Disp:{self.giacenza_disponibile} Fis:{self.giacenza_fisica} @ {self.data_snapshot}>'
 
 
 # ============================================================================

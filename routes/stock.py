@@ -200,39 +200,66 @@ def elabora(id):
                 try:
                     # Validazione campi obbligatori
                     cod_componente = row.get('cod_componente', '').strip()
-                    qta_str = row.get('qtà', '').strip()
-                    data_rilevazione_str = row.get('data_rilevazione', '').strip()
+                    data_snapshot_str = row.get('data_snapshot', '').strip()
 
                     if not cod_componente:
                         errori.append(f"Riga {idx}: cod_componente mancante")
                         righe_errore += 1
                         continue
 
-                    if not qta_str:
-                        errori.append(f"Riga {idx}: qtà mancante")
+                    if not data_snapshot_str:
+                        errori.append(f"Riga {idx}: data_snapshot mancante")
                         righe_errore += 1
                         continue
 
-                    if not data_rilevazione_str:
-                        errori.append(f"Riga {idx}: data_rilevazione mancante")
-                        righe_errore += 1
-                        continue
-
-                    # Parse quantità
+                    # Parse giacenze (obbligatorie)
                     try:
-                        qta = int(qta_str)
-                    except ValueError:
-                        errori.append(f"Riga {idx}: qtà non valida '{qta_str}'")
+                        giacenza_disponibile = int(row.get('giacenza_disponibile', '0'))
+                        giacenza_impegnata = int(row.get('giacenza_impegnata', '0'))
+                        giacenza_fisica = int(row.get('giacenza_fisica', '0'))
+                    except ValueError as e:
+                        errori.append(f"Riga {idx}: giacenza non valida - {str(e)}")
                         righe_errore += 1
                         continue
 
-                    # Parse data
+                    # Parse soglie (opzionali)
                     try:
-                        data_rilevazione = datetime.strptime(data_rilevazione_str, '%Y-%m-%d').date()
-                    except ValueError:
-                        errori.append(f"Riga {idx}: data_rilevazione non valida '{data_rilevazione_str}'")
+                        scorta_minima = int(row.get('scorta_minima')) if row.get('scorta_minima', '').strip() else None
+                        scorta_massima = int(row.get('scorta_massima')) if row.get('scorta_massima', '').strip() else None
+                        punto_riordino = int(row.get('punto_riordino')) if row.get('punto_riordino', '').strip() else None
+                        lead_time_days = int(row.get('lead_time_days')) if row.get('lead_time_days', '').strip() else None
+                    except ValueError as e:
+                        errori.append(f"Riga {idx}: soglie non valide - {str(e)}")
                         righe_errore += 1
                         continue
+
+                    # Parse date
+                    try:
+                        # data_snapshot può essere YYYY-MM-DD HH:MM:SS o solo YYYY-MM-DD
+                        if ' ' in data_snapshot_str:
+                            data_snapshot = datetime.strptime(data_snapshot_str, '%Y-%m-%d %H:%M:%S')
+                        else:
+                            data_snapshot = datetime.strptime(data_snapshot_str, '%Y-%m-%d')
+                    except ValueError:
+                        errori.append(f"Riga {idx}: data_snapshot non valida '{data_snapshot_str}'")
+                        righe_errore += 1
+                        continue
+
+                    # Parse data_stock (opzionale)
+                    data_stock = None
+                    data_stock_str = row.get('data_stock', '').strip()
+                    if data_stock_str:
+                        try:
+                            if ' ' in data_stock_str:
+                                data_stock = datetime.strptime(data_stock_str, '%Y-%m-%d %H:%M:%S')
+                            else:
+                                data_stock = datetime.strptime(data_stock_str, '%Y-%m-%d')
+                        except ValueError:
+                            pass  # Ignora se non valida
+
+                    # Parse flag_corrente
+                    flag_corrente_str = row.get('flag_corrente', 'FALSE').strip().upper()
+                    flag_corrente = flag_corrente_str in ('TRUE', 'T', '1', 'YES')
 
                     # Verifica se componente esiste (opzionale - crea se non esiste)
                     componente = Componente.query.filter_by(cod_componente=cod_componente).first()
@@ -250,11 +277,19 @@ def elabora(id):
                     stock_record = Stock(
                         id_file_stock=file_stock.id,
                         cod_componente=cod_componente,
-                        qta=qta,
-                        data_rilevazione=data_rilevazione,
+                        warehouse=row.get('warehouse', '').strip() or None,
                         ubicazione=row.get('ubicazione', '').strip() or None,
                         lotto=row.get('lotto', '').strip() or None,
-                        note=row.get('note', '').strip() or None,
+                        giacenza_disponibile=giacenza_disponibile,
+                        giacenza_impegnata=giacenza_impegnata,
+                        giacenza_fisica=giacenza_fisica,
+                        scorta_minima=scorta_minima,
+                        scorta_massima=scorta_massima,
+                        punto_riordino=punto_riordino,
+                        lead_time_days=lead_time_days,
+                        data_snapshot=data_snapshot,
+                        data_stock=data_stock,
+                        flag_corrente=flag_corrente,
                         created_by=current_user.id
                     )
 

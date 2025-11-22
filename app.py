@@ -172,6 +172,7 @@ def create_app(config_class=DevelopmentConfig):
     from routes.previsioni import previsioni_bp
     #from routes.anagrafica import anagrafica_bp
     from routes.rotture import rotture_bp
+    from routes.rotture_explorer import rotture_explorer_bp  # Explorer rotture database
     from routes.users import users_bp
     from routes.ordini import ordini_bp
     from routes.anagrafiche import anagrafiche_bp  # Gestione file anagrafiche Excel
@@ -182,6 +183,7 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(previsioni_bp, url_prefix='/previsioni')
     #app.register_blueprint(anagrafica_bp, url_prefix='/anagrafica')
     app.register_blueprint(rotture_bp, url_prefix='/rotture')
+    app.register_blueprint(rotture_explorer_bp)  # Già ha url_prefix='/rotture/explorer'
     app.register_blueprint(users_bp, url_prefix='/users')
     app.register_blueprint(ordini_bp, url_prefix='/ordini')
     app.register_blueprint(anagrafiche_bp, url_prefix='/anagrafiche')  # Gestione file anagrafiche
@@ -217,6 +219,20 @@ def create_app(config_class=DevelopmentConfig):
         if isinstance(value, str):
             return value
         return value.strftime(format)
+
+    @app.template_filter('number_format')
+    def number_format(value, decimals=0):
+        """Formatta numeri con separatore migliaia italiano"""
+        if value is None:
+            return '-'
+        try:
+            value = float(value)
+            if decimals == 0:
+                return f'{int(value):,}'.replace(',', '.')
+            else:
+                return f'{value:,.{decimals}f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+        except (ValueError, TypeError):
+            return value
 
     # Context processor per rendere current_user disponibile in tutti i template
     @app.context_processor

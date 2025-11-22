@@ -388,7 +388,7 @@ class TraceElab(db.Model):
     id_trace = db.Column(db.Integer, primary_key=True)
     id_elab = db.Column(db.Integer, nullable=False, index=True)  # Identifica gruppo elaborazione
     id_file = db.Column(db.Integer, nullable=False, index=True)
-    tipo_file = db.Column(db.String(10), nullable=False)  # 'ORD', 'ANA', 'ROT'
+    tipo_file = db.Column(db.String(10), nullable=False)  # 'ORD', 'ANA', 'ROT', 'STOCK'
     step = db.Column(db.String(50), nullable=False, default='PROCESS')  # 'START', 'END', 'PROCESS'
     stato = db.Column(db.String(20), nullable=False, default='OK')  # 'OK', 'KO', 'WARN'
     messaggio = db.Column(db.Text)

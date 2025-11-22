@@ -181,6 +181,7 @@ def create_app(config_class=DevelopmentConfig):
     from routes.dashboard import dashboard_bp  # Dashboard elaborazioni
     from routes.stock import stock_bp  # Gestione stock giacenze componenti
     from routes.stock_explorer import stock_explorer_bp  # Stock explorer
+    from routes.dev_migrate import dev_migrate_bp  # TEMPORARY: Dev migration routes
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp, url_prefix='/dashboard')  # Dashboard elaborazioni
@@ -195,6 +196,7 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(anagrafiche_catalogo_bp)  # Già ha url_prefix='/anagrafiche/catalogo'
     app.register_blueprint(stock_bp)  # Già ha url_prefix='/stock'
     app.register_blueprint(stock_explorer_bp)  # Già ha url_prefix='/stock/explorer'
+    app.register_blueprint(dev_migrate_bp)  # TEMPORARY: Dev migration routes
 
     # Teardown handler per pulire la log session
     @app.teardown_appcontext

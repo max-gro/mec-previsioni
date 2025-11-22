@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+
+{% block title %}Guida e Aiuto - Sistema Previsioni MEC{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Sidebar Navigazione -->
+        <div class="col-md-3">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📚 Indice</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="#intro" class="list-group-item list-group-item-action">Introduzione</a>
+                    <a href="#pipeline-ordini" class="list-group-item list-group-item-action">📋 Pipeline Ordini</a>
+                    <a href="#pipeline-anagrafiche" class="list-group-item list-group-item-action">📗 Pipeline Anagrafiche</a>
+                    <a href="#pipeline-rotture" class="list-group-item list-group-item-action">🔧 Pipeline Rotture</a>
+                    <a href="#pipeline-stock" class="list-group-item list-group-item-action">📦 Pipeline Stock</a>
+                    <a href="#workflow" class="list-group-item list-group-item-action">🔄 Workflow Comune</a>
+                    <a href="#explorer" class="list-group-item list-group-item-action">🔍 Usare gli Explorer</a>
+                    <a href="#troubleshooting" class="list-group-item list-group-item-action">⚠️ Risoluzione Problemi</a>
+                    <a href="#faq" class="list-group-item list-group-item-action">❓ FAQ</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenuto Principale -->
+        <div class="col-md-9">
+            <h1 class="mb-4">📖 Guida Sistema Previsioni MEC</h1>
+
+            <!-- Introduzione -->
+            <section id="intro" class="mb-5">
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title">👋 Benvenuto</h2>
+                        <p class="lead">
+                            Il Sistema Previsioni MEC gestisce <strong>4 pipeline di elaborazione dati</strong> per l'analisi predittiva di componenti e ricambi.
+                        </p>
+                        <div class="alert alert-info">
+                            <strong>🎯 Obiettivo:</strong> Alimentare un database centralizzato con dati da diverse fonti (PDF, Excel, TSV) per analisi di affidabilità e previsioni di rottura componenti.
+                        </div>
+                        <h5>Le 4 Pipeline:</h5>
+                        <ul>
+                            <li><strong>📋 Ordini</strong> - File PDF ordini di acquisto</li>
+                            <li><strong>📗 Anagrafiche (BOM)</strong> - File Excel distinte base componenti</li>
+                            <li><strong>🔧 Rotture</strong> - File Excel eventi di guasto</li>
+                            <li><strong>📦 Stock</strong> - File TSV giacenze magazzino</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pipeline Ordini -->
+            <section id="pipeline-ordini" class="mb-5">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h2 class="mb-0">📋 Pipeline Ordini di Acquisto</h2>
+                    </div>
+                    <div class="card-body">
+                        <h5>Descrizione</h5>
+                        <p>Gestisce file PDF di ordini di acquisto, estrae dati di fornitori, componenti ordinati, quantità e date.</p>
+
+                        <h5>Come Usarla</h5>
+                        <ol>
+                            <li><strong>Carica PDF</strong>: Clicca "Nuovo Ordine" e seleziona il file PDF</li>
+                            <li><strong>Elabora</strong>: Il sistema estrae automaticamente testo e tabelle dal PDF</li>
+                            <li><strong>Verifica</strong>: Controlla i dati estratti e correggi eventuali errori</li>
+                            <li><strong>Esplora</strong>: Usa "Ordini Explorer" per cercare e filtrare ordini</li>
+                        </ol>
+
+                        <h5>Formati Supportati</h5>
+                        <div class="alert alert-warning">
+                            <strong>⚠️ Importante:</strong> Solo file PDF. Il sistema usa OCR e parsing intelligente per estrarre dati.
+                        </div>
+
+                        <h5>Azioni Disponibili</h5>
+                        <ul>
+                            <li>📥 <strong>Download</strong>: Scarica il PDF originale</li>
+                            <li>👁️ <strong>Visualizza</strong>: Mostra anteprima PDF nel browser</li>
+                            <li>⚙️ <strong>Elabora</strong>: Avvia/riavvia elaborazione</li>
+                            <li>📊 <strong>Dettaglio</strong>: Vedi righe estratte e anomalie</li>
+                            <li>📋 <strong>Tentativi</strong>: Storico elaborazioni con export CSV</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pipeline Anagrafiche -->
+            <section id="pipeline-anagrafiche" class="mb-5">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <h2 class="mb-0">📗 Pipeline Anagrafiche (BOM)</h2>
+                    </div>
+                    <div class="card-body">
+                        <h5>Descrizione</h5>
+                        <p>Gestisce file Excel con distinte base (Bill of Materials) di componenti per marca/modello.</p>
+
+                        <h5>Come Usarla</h5>
+                        <ol>
+                            <li><strong>Carica Excel</strong>: Upload file .xlsx o .xls</li>
+                            <li><strong>Elabora</strong>: Il sistema legge fogli, identifica marca/modello e componenti</li>
+                            <li><strong>Verifica</strong>: Controlla mapping componenti estratti</li>
+                            <li><strong>Catalogo</strong>: Esplora modelli e componenti nel catalogo</li>
+                        </ol>
+
+                        <h5>Formati Supportati</h5>
+                        <ul>
+                            <li>Excel (.xlsx, .xls)</li>
+                            <li>Fogli multipli supportati</li>
+                        </ul>
+
+                        <h5>Dati Estratti</h5>
+                        <ul>
+                            <li>Marca e Modello apparecchio</li>
+                            <li>Codici componenti</li>
+                            <li>Descrizioni componenti</li>
+                            <li>Quantità (se presenti)</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pipeline Rotture -->
+            <section id="pipeline-rotture" class="mb-5">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning">
+                        <h2 class="mb-0">🔧 Pipeline Rotture</h2>
+                    </div>
+                    <div class="card-body">
+                        <h5>Descrizione</h5>
+                        <p>Gestisce file Excel con eventi di guasto e componenti sostituiti, fondamentale per analisi affidabilità.</p>
+
+                        <h5>Come Usarla</h5>
+                        <ol>
+                            <li><strong>Carica Excel</strong>: Upload file con eventi di rottura</li>
+                            <li><strong>Elabora</strong>: Estrae eventi, date, componenti rotti</li>
+                            <li><strong>Analizza</strong>: Usa "Rotture Explorer" per statistiche e trend</li>
+                        </ol>
+
+                        <h5>Dati Estratti</h5>
+                        <ul>
+                            <li>Data rottura/guasto</li>
+                            <li>Codice componente rotto</li>
+                            <li>Marca/Modello interessato</li>
+                            <li>Note e descrizioni</li>
+                        </ul>
+
+                        <h5>Analisi Disponibili</h5>
+                        <ul>
+                            <li>📊 Componenti più problematici</li>
+                            <li>📈 Trend rotture nel tempo</li>
+                            <li>🔍 Ricerca per componente/modello</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pipeline Stock -->
+            <section id="pipeline-stock" class="mb-5">
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                        <h2 class="mb-0">📦 Pipeline Stock Giacenze</h2>
+                    </div>
+                    <div class="card-body">
+                        <h5>Descrizione</h5>
+                        <p>Gestisce file TSV (Tab-Separated Values) con snapshot giacenze magazzino componenti.</p>
+
+                        <h5>Come Usarla</h5>
+                        <ol>
+                            <li><strong>Carica TSV</strong>: Upload file giacenze dal gestionale</li>
+                            <li><strong>Elabora</strong>: Importa giacenze nel database</li>
+                            <li><strong>Explorer</strong>: Visualizza stock corrente e storico</li>
+                            <li><strong>Alert</strong>: Monitora scorte critiche</li>
+                        </ol>
+
+                        <h5>Formato File TSV</h5>
+                        <div class="alert alert-secondary">
+                            <strong>Campi richiesti:</strong>
+                            <ul class="mb-0">
+                                <li><code>cod_componente</code> - Codice univoco componente</li>
+                                <li><code>giacenza_fisica</code> - Quantità fisica in magazzino</li>
+                                <li><code>giacenza_disponibile</code> - Quantità disponibile</li>
+                                <li><code>giacenza_impegnata</code> - Quantità impegnata</li>
+                                <li><code>data_snapshot</code> - Data rilevazione (YYYY-MM-DD)</li>
+                            </ul>
+                        </div>
+
+                        <h5>Funzionalità Stock Explorer</h5>
+                        <ul>
+                            <li>🔍 Ricerca componenti</li>
+                            <li>📊 Statistiche giacenze</li>
+                            <li>⚠️ Alert scorte critiche (< 50 unità)</li>
+                            <li>📈 Storico movimenti</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Workflow Comune -->
+            <section id="workflow" class="mb-5">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="mb-0">🔄 Workflow Comune</h2>
+                    </div>
+                    <div class="card-body">
+                        <h5>Processo Standard per Tutte le Pipeline</h5>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>1️⃣ Upload File</h6>
+                                <ul>
+                                    <li>Vai alla pipeline desiderata</li>
+                                    <li>Clicca "Nuovo File" o "Upload"</li>
+                                    <li>Seleziona file dal computer</li>
+                                    <li>Il file viene salvato in INPUT</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>2️⃣ Elaborazione</h6>
+                                <ul>
+                                    <li>Clicca bottone "Elabora"</li>
+                                    <li>Il sistema processa il file</li>
+                                    <li>File movimentato in OUTPUT</li>
+                                    <li>Dati importati nel database</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <h6>3️⃣ Verifica Risultati</h6>
+                                <ul>
+                                    <li>Controlla esito elaborazione</li>
+                                    <li>Vedi statistiche (righe OK/KO)</li>
+                                    <li>Clicca "Dettagli" per anomalie</li>
+                                    <li>Export CSV per analisi offline</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>4️⃣ Esplorazione Dati</h6>
+                                <ul>
+                                    <li>Usa gli "Explorer" per cercare</li>
+                                    <li>Applica filtri avanzati</li>
+                                    <li>Ordina per colonna</li>
+                                    <li>Vedi dettagli record</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-success mt-3">
+                            <strong>💡 Tip:</strong> Ogni elaborazione viene tracciata con log completo. Usa il bottone "Tentativi" per vedere lo storico!
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Explorer -->
+            <section id="explorer" class="mb-5">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h2 class="mb-0">🔍 Usare gli Explorer</h2>
+                    </div>
+                    <div class="card-body">
+                        <h5>Cosa Sono gli Explorer?</h5>
+                        <p>Gli Explorer sono interfacce di ricerca e visualizzazione dati elaborati dalle pipeline.</p>
+
+                        <h5>Explorer Disponibili</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>📋 Ordini Explorer</h6>
+                                <ul>
+                                    <li>Cerca ordini per fornitore</li>
+                                    <li>Filtra per data ordine</li>
+                                    <li>Vedi dettagli righe ordine</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>📗 Catalogo Anagrafiche</h6>
+                                <ul>
+                                    <li>Esplora modelli per marca</li>
+                                    <li>Vedi componenti per modello</li>
+                                    <li>Ricerca componente</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <h6>🔧 Rotture Explorer</h6>
+                                <ul>
+                                    <li>Ricerca eventi rottura</li>
+                                    <li>Filtra per componente</li>
+                                    <li>Statistiche affidabilità</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>📦 Stock Explorer</h6>
+                                <ul>
+                                    <li>Visualizza giacenze correnti</li>
+                                    <li>Alert scorte basse</li>
+                                    <li>Storico movimenti</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <h5 class="mt-4">Funzionalità Comuni</h5>
+                        <ul>
+                            <li>🔍 <strong>Ricerca testuale</strong> - Cerca in tutti i campi</li>
+                            <li>📊 <strong>Ordinamento colonne</strong> - Clicca header tabella</li>
+                            <li>🔽 <strong>Filtri avanzati</strong> - Dropdown per filtri specifici</li>
+                            <li>📄 <strong>Paginazione</strong> - Naviga grandi dataset</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Troubleshooting -->
+            <section id="troubleshooting" class="mb-5">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h2 class="mb-0">⚠️ Risoluzione Problemi</h2>
+                    </div>
+                    <div class="card-body">
+                        <h5>Problemi Comuni e Soluzioni</h5>
+
+                        <div class="accordion" id="troubleshootingAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#problem1">
+                                        File non viene elaborato / Resta "Da processare"
+                                    </button>
+                                </h2>
+                                <div id="problem1" class="accordion-collapse collapse show" data-bs-parent="#troubleshootingAccordion">
+                                    <div class="accordion-body">
+                                        <strong>Possibili cause:</strong>
+                                        <ul>
+                                            <li>File corrotto o non valido</li>
+                                            <li>Formato file non supportato</li>
+                                            <li>Permessi insufficienti</li>
+                                        </ul>
+                                        <strong>Soluzioni:</strong>
+                                        <ol>
+                                            <li>Verifica formato file (PDF per Ordini, Excel per Anagrafiche/Rotture, TSV per Stock)</li>
+                                            <li>Riprova elaborazione cliccando di nuovo "Elabora"</li>
+                                            <li>Controlla log errori nella sezione "Dettagli"</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#problem2">
+                                        Elaborazione completata con errori
+                                    </button>
+                                </h2>
+                                <div id="problem2" class="accordion-collapse collapse" data-bs-parent="#troubleshootingAccordion">
+                                    <div class="accordion-body">
+                                        <strong>È normale!</strong> Il sistema elabora anche file con anomalie.
+                                        <br><br>
+                                        <strong>Cosa fare:</strong>
+                                        <ol>
+                                            <li>Clicca "Dettagli" per vedere righe con errori</li>
+                                            <li>Controlla campo "Messaggio" per capire l'errore</li>
+                                            <li>Correggi il file sorgente se necessario</li>
+                                            <li>Ri-elabora il file corretto</li>
+                                        </ol>
+                                        <div class="alert alert-info">
+                                            <strong>💡 Tip:</strong> Puoi esportare gli errori in CSV per analisi offline
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#problem3">
+                                        Non trovo un componente nell'Explorer
+                                    </button>
+                                </h2>
+                                <div id="problem3" class="accordion-collapse collapse" data-bs-parent="#troubleshootingAccordion">
+                                    <div class="accordion-body">
+                                        <strong>Verifica:</strong>
+                                        <ul>
+                                            <li>File contenente il componente è stato elaborato?</li>
+                                            <li>Elaborazione è andata a buon fine?</li>
+                                            <li>Stai usando i filtri corretti nell'Explorer?</li>
+                                        </ul>
+                                        <strong>Suggerimenti:</strong>
+                                        <ol>
+                                            <li>Vai alla lista file e verifica stato elaborazione</li>
+                                            <li>Controlla dettagli elaborazione per quel file</li>
+                                            <li>Rimuovi tutti i filtri nell'Explorer e riprova</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#problem4">
+                                        Dashboard non mostra statistiche
+                                    </button>
+                                </h2>
+                                <div id="problem4" class="accordion-collapse collapse" data-bs-parent="#troubleshootingAccordion">
+                                    <div class="accordion-body">
+                                        <strong>Possibile causa:</strong> Nessuna elaborazione nel periodo selezionato
+                                        <br><br>
+                                        <strong>Soluzione:</strong>
+                                        <ol>
+                                            <li>Cambia filtro temporale (7/30/90 giorni)</li>
+                                            <li>Verifica che ci siano file elaborati</li>
+                                            <li>Aggiorna la pagina (F5)</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- FAQ -->
+            <section id="faq" class="mb-5">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h2 class="mb-0">❓ Domande Frequenti (FAQ)</h2>
+                    </div>
+                    <div class="card-body">
+                        <h5>Generale</h5>
+                        <dl class="row">
+                            <dt class="col-sm-4">Posso ri-elaborare un file?</dt>
+                            <dd class="col-sm-8">Sì! Ogni file può essere ri-elaborato più volte. Lo storico è disponibile in "Tentativi".</dd>
+
+                            <dt class="col-sm-4">I file vengono cancellati?</dt>
+                            <dd class="col-sm-8">No, i file vengono conservati. I file elaborati vanno in OUTPUT, quelli con errori restano in INPUT.</dd>
+
+                            <dt class="col-sm-4">Posso eliminare un file?</dt>
+                            <dd class="col-sm-8">Sì, se sei Admin. La cancellazione elimina anche i dati elaborati (cascata).</dd>
+
+                            <dt class="col-sm-4">Come esporto i dati?</dt>
+                            <dd class="col-sm-8">Usa il bottone "CSV" nelle liste, o gli Explorer per esportazioni filtrate.</dd>
+                        </dl>
+
+                        <h5 class="mt-4">Stock Specifico</h5>
+                        <dl class="row">
+                            <dt class="col-sm-4">Cos'è flag_corrente?</dt>
+                            <dd class="col-sm-8">Indica se è lo snapshot più recente di quel componente. Stock Explorer mostra solo record correnti.</dd>
+
+                            <dt class="col-sm-4">Differenza tra giacenza fisica e disponibile?</dt>
+                            <dd class="col-sm-8">
+                                <ul>
+                                    <li><strong>Fisica</strong>: Quantità reale in magazzino</li>
+                                    <li><strong>Disponibile</strong>: Fisica - Impegnata</li>
+                                    <li><strong>Impegnata</strong>: Riservata per ordini</li>
+                                </ul>
+                            </dd>
+                        </dl>
+
+                        <h5 class="mt-4">Permessi</h5>
+                        <dl class="row">
+                            <dt class="col-sm-4">Cosa può fare un utente normale?</dt>
+                            <dd class="col-sm-8">Visualizzare dashboard, esplorare dati, consultare report. NO upload/elaborazione/cancellazione.</dd>
+
+                            <dt class="col-sm-4">Cosa può fare un Admin?</dt>
+                            <dd class="col-sm-8">Tutto: upload file, elaborazione, cancellazione, gestione utenti.</dd>
+                        </dl>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Contatti / Supporto -->
+            <div class="alert alert-primary">
+                <h5 class="alert-heading">📧 Serve Altro Aiuto?</h5>
+                <p>Se non trovi risposta in questa guida o riscontri problemi tecnici, contatta l'amministratore di sistema.</p>
+                <hr>
+                <p class="mb-0"><strong>Versione Sistema:</strong> 1.0 - Pipeline: Ordini, Anagrafiche, Rotture, Stock</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.sticky-top {
+    position: -webkit-sticky;
+    position: sticky;
+}
+
+section {
+    scroll-margin-top: 20px;
+}
+
+.list-group-item-action:hover {
+    background-color: #e9ecef;
+}
+</style>
+{% endblock %}

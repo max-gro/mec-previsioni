@@ -211,6 +211,12 @@ def create_app(config_class=DevelopmentConfig):
         """Homepage con card per accedere alle funzioni principali"""
         return render_template('home.html')
 
+    @app.route('/help')
+    @login_required
+    def help():
+        """Pagina di aiuto e documentazione sistema"""
+        return render_template('help.html')
+
     # Filtri Jinja2 custom per formattazione date
     @app.template_filter('datetime_format')
     def datetime_format(value, format='%d/%m/%Y %H:%M'):

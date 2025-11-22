@@ -495,6 +495,8 @@ def list():
     page = request.args.get('page', 1, type=int)
     anno_filter = request.args.get('anno', type=int)
     esito_filter = request.args.get('esito', '')
+    sort_by = request.args.get('sort', 'anno')
+    order = request.args.get('order', 'desc')
 
     # Conteggio totale prima dei filtri
     total_count = FileRottura.query.count()
@@ -510,9 +512,19 @@ def list():
     # Conteggio dopo filtri
     filtered_count = query.count()
 
-    rotture = query.order_by(FileRottura.anno.desc(), FileRottura.data_acquisizione.desc()).paginate(
-        page=page, per_page=20, error_out=False
-    )
+    # Ordinamento dinamico
+    sortable_columns = ['anno', 'filename', 'data_acquisizione', 'data_elaborazione', 'esito']
+    if sort_by in sortable_columns and hasattr(FileRottura, sort_by):
+        column = getattr(FileRottura, sort_by)
+        if order == 'desc':
+            query = query.order_by(column.desc())
+        else:
+            query = query.order_by(column.asc())
+    else:
+        # Default: ordina per anno e data acquisizione decrescente
+        query = query.order_by(FileRottura.anno.desc(), FileRottura.data_acquisizione.desc())
+
+    rotture = query.paginate(page=page, per_page=20, error_out=False)
 
     # Lista anni disponibili per filtro
     anni_disponibili = db.session.query(FileRottura.anno.distinct()).order_by(FileRottura.anno.desc()).all()
@@ -523,6 +535,8 @@ def list():
                          anni_disponibili=anni_disponibili,
                          anno_filter=anno_filter,
                          esito_filter=esito_filter,
+                         sort_by=sort_by,
+                         order=order,
                          total_count=total_count,
                          filtered_count=filtered_count)
 

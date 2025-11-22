@@ -2,8 +2,8 @@
 
 **Data Analisi:** 2025-11-21
 **Branch:** claude/analyze-ui-improvements-0186LN7UhaDpKVMysQ7StAaz
-**Versione Applicazione:** 0.0.8
-**Completamento Progetto:** 56%
+**Versione Applicazione:** 0.0.9
+**Completamento Progetto:** 65%
 
 ---
 

@@ -82,29 +82,18 @@
 						<div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.data_acquisizione.label }}</label>
-                                <input type="text" 
-                                       name="data_acquisizione" 
-                                       id="data_acquisizione"
-                                       class="form-control{% if form.data_acquisizione.errors %} is-invalid{% endif %}" 
-                                       placeholder="gg/mm/aaaa"
-                                       value="{% if anagrafica.data_acquisizione %}{{ anagrafica.data_acquisizione.strftime('%d/%m/%Y') }}{% endif %}"
-									   {% if anagrafica.esito == 'Processato' %}disabled{% endif %}>
+                                {{ form.data_acquisizione(class="form-control" + (" is-invalid" if form.data_acquisizione.errors else ""), disabled=(anagrafica.esito == 'Processato')) }}
                                 {% if form.data_acquisizione.errors %}
                                     <div class="invalid-feedback">
                                         {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
+                                <small class="form-text text-muted">Seleziona la data{% if anagrafica.esito == 'Processato' %} (disabilitata - file processato){% endif %}</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.data_elaborazione.label }}</label>
-                                <input type="text" 
-                                       name="data_elaborazione" 
-                                       id="data_elaborazione"
-                                       class="form-control" 
-                                       placeholder="gg/mm/aaaa"
-                                       value="{% if anagrafica.data_elaborazione %}{{ anagrafica.data_elaborazione.strftime('%d/%m/%Y') }}{% endif %}"
-									   {% if anagrafica.esito == 'Processato' %}disabled{% endif %}>
-                                <div class="form-text">Opzionale</div>
+                                {{ form.data_elaborazione(class="form-control", disabled=(anagrafica.esito == 'Processato')) }}
+                                <div class="form-text">Opzionale{% if anagrafica.esito == 'Processato' %} (disabilitata - file processato){% endif %}</div>
                             </div>
                         </div>
 						

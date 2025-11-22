@@ -37,24 +37,20 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.data_acquisizione.label }}</label>
-                                <input type="text"
-                                       name="data_acquisizione"
-                                       id="data_acquisizione"
-                                       class="form-control"
-                                       placeholder="gg/mm/aaaa"
-                                       value="{% if rottura.data_acquisizione %}{{ rottura.data_acquisizione.strftime('%d/%m/%Y') }}{% endif %}">
+                                {{ form.data_acquisizione(class="form-control" + (" is-invalid" if form.data_acquisizione.errors else "")) }}
+                                {% if form.data_acquisizione.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">Seleziona la data</small>
                             </div>
                         </div>
 
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.data_elaborazione.label }}</label>
-                                <input type="text"
-                                       name="data_elaborazione"
-                                       id="data_elaborazione"
-                                       class="form-control"
-                                       placeholder="gg/mm/aaaa"
-                                       value="{% if rottura.data_elaborazione %}{{ rottura.data_elaborazione.strftime('%d/%m/%Y') }}{% endif %}">
+                                {{ form.data_elaborazione(class="form-control") }}
                                 <small class="form-text text-muted">Opzionale - lascia vuoto se non elaborato</small>
                             </div>
                             <div class="col-md-6">

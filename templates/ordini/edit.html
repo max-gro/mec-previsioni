@@ -33,19 +33,13 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.data_acquisizione.label }} <span class="text-danger">*</span></label>
-                                <input type="text" 
-                                       name="data_acquisizione" 
-                                       id="data_acquisizione"
-                                       class="form-control{% if form.data_acquisizione.errors %} is-invalid{% endif %}" 
-                                       placeholder="gg/mm/aaaa"
-                                       value="{% if form.data_acquisizione.data %}{{ form.data_acquisizione.data.strftime('%d/%m/%Y') }}{% endif %}"
-									   {% if ordine.esito == 'Processato' %}disabled{% endif %}>
+                                {{ form.data_acquisizione(class="form-control" + (" is-invalid" if form.data_acquisizione.errors else ""), disabled=(ordine.esito == 'Processato')) }}
                                 {% if form.data_acquisizione.errors %}
                                     <div class="invalid-feedback">
                                         {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
-                                <small class="form-text text-muted">Formato: gg/mm/aaaa</small>
+                                <small class="form-text text-muted">Seleziona la data{% if ordine.esito == 'Processato' %} (disabilitata - file processato){% endif %}</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Stato</label>

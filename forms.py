@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired, FileAllowed
-from wtforms import StringField, PasswordField, FloatField, TextAreaField, SelectField, DateField, DateTimeField, IntegerField, BooleanField
+from wtforms import StringField, PasswordField, FloatField, TextAreaField, SelectField, DateField, DateTimeField, IntegerField, BooleanField, EmailField
 from wtforms.validators import Email, Length, EqualTo
 from wtforms.validators import DataRequired, NumberRange, Optional, ValidationError
 from models import User #, Componente
@@ -12,15 +12,15 @@ def _anno_bounds():
     
     
 class LoginForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)])
-    password = PasswordField('Password', validators=[DataRequired()])
+    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)], render_kw={'minlength': 3, 'maxlength': 80})
+    password = PasswordField('Password', validators=[DataRequired()], render_kw={'minlength': 6})
 
 
 class UserForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)])
-    email = StringField('Email', validators=[DataRequired(), Email()])
-    password = PasswordField('Password', validators=[Length(min=6)])
-    confirm_password = PasswordField('Conferma Password', validators=[EqualTo('password')])
+    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)], render_kw={'minlength': 3, 'maxlength': 80})
+    email = EmailField('Email', validators=[DataRequired(), Email()], render_kw={'pattern': '[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$'})
+    password = PasswordField('Password', validators=[Length(min=6)], render_kw={'minlength': 6})
+    confirm_password = PasswordField('Conferma Password', validators=[EqualTo('password')], render_kw={'minlength': 6})
     role = SelectField('Ruolo', choices=[('user', 'Utente'), ('admin', 'Amministratore')])
     active = BooleanField('Attivo')
     

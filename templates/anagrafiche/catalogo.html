@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Catalogo Modelli & Componenti - M&C Previsioni{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* KPI Cards */
+    .kpi-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+        border-left: 4px solid var(--color-primary);
+    }
+
+    .kpi-card h6 {
+        color: #6c757d;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--color-primary);
+    }
+
+    /* Filtri */
+    .filtri-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    /* Tabella sortable */
+    .sortable-header {
+        cursor: pointer;
+        user-select: none;
+        color: var(--color-primary);
+        text-decoration: none;
+    }
+
+    .sortable-header:hover {
+        text-decoration: underline;
+    }
+
+    /* Badge origine dati */
+    .badge-origine {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+
+    .badge-ORD {
+        background-color: #0d6efd;
+    }
+
+    .badge-ANA {
+        background-color: #198754;
+    }
+
+    .badge-ROT {
+        background-color: #dc3545;
+    }
+
+    .badge-ND {
+        background-color: #6c757d;
+    }
+
+    /* Actions buttons */
+    .btn-action {
+        font-size: 0.875rem;
+        padding: 4px 12px;
+    }
+
+    /* Breadcrumb */
+    .breadcrumb {
+        background: transparent;
+        padding: 0;
+        margin-bottom: 20px;
+    }
+
+    /* Responsive table */
+    .table-responsive {
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('anagrafiche.list') }}">Anagrafiche</a></li>
+            <li class="breadcrumb-item active">Catalogo Modelli & Componenti</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">📦 Catalogo Modelli & Componenti</h1>
+        <a href="{{ url_for('anagrafiche.list') }}" class="btn btn-outline-secondary">
+            ← Torna a File Anagrafiche
+        </a>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="kpi-card">
+                <h6>Totale Modelli</h6>
+                <div class="kpi-value">{{ total_modelli|number_format }}</div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="kpi-card">
+                <h6>Totale Componenti nel BOM</h6>
+                <div class="kpi-value">{{ total_componenti|number_format }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtri -->
+    <div class="filtri-card">
+        <h5 class="mb-3">🔍 Filtri Ricerca</h5>
+        <form method="GET" action="{{ url_for('anagrafiche_catalogo.index') }}">
+            <div class="row g-3">
+                <!-- Marca -->
+                <div class="col-md-3">
+                    <label for="marca" class="form-label">Marca</label>
+                    <select name="marca" id="marca" class="form-select">
+                        <option value="">-- Tutte --</option>
+                        {% for m in marche %}
+                        <option value="{{ m }}" {% if marca == m %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Divisione -->
+                <div class="col-md-3">
+                    <label for="divisione" class="form-label">Divisione</label>
+                    <select name="divisione" id="divisione" class="form-select">
+                        <option value="">-- Tutte --</option>
+                        {% for d in divisioni %}
+                        <option value="{{ d }}" {% if divisione == d %}selected{% endif %}>{{ d }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Famiglia -->
+                <div class="col-md-3">
+                    <label for="famiglia" class="form-label">Famiglia</label>
+                    <select name="famiglia" id="famiglia" class="form-select">
+                        <option value="">-- Tutte --</option>
+                        {% for f in famiglie %}
+                        <option value="{{ f }}" {% if famiglia == f %}selected{% endif %}>{{ f }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Tipo -->
+                <div class="col-md-3">
+                    <label for="tipo" class="form-label">Tipo</label>
+                    <select name="tipo" id="tipo" class="form-select">
+                        <option value="">-- Tutti --</option>
+                        {% for t in tipi %}
+                        <option value="{{ t }}" {% if tipo == t %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Ricerca testo -->
+                <div class="col-md-8">
+                    <label for="ricerca" class="form-label">Cerca Modello (codice o nome)</label>
+                    <input type="text" name="ricerca" id="ricerca" class="form-control"
+                           value="{{ ricerca }}" placeholder="Es: ABC123, Lavatrice, ecc.">
+                </div>
+
+                <!-- Pulsanti -->
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        🔍 Cerca
+                    </button>
+                    <a href="{{ url_for('anagrafiche_catalogo.index') }}" class="btn btn-outline-secondary">
+                        🔄 Reset
+                    </a>
+                </div>
+            </div>
+
+            <!-- Mantieni sort e order -->
+            <input type="hidden" name="sort" value="{{ sort_by }}">
+            <input type="hidden" name="order" value="{{ order }}">
+        </form>
+    </div>
+
+    <!-- Risultati -->
+    <div class="card">
+        <div class="card-header bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">📋 Modelli ({{ total_modelli|number_format }} risultati)</h5>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            {% if modelli %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>
+                                {% macro sort_link(column, label) %}
+                                <a href="{{ url_for('anagrafiche_catalogo.index', marca=marca, divisione=divisione, famiglia=famiglia, tipo=tipo, ricerca=ricerca, sort=column, order='desc' if sort_by == column and order == 'asc' else 'asc') }}"
+                                   class="sortable-header">
+                                    {{ label }}
+                                    {% if sort_by == column %}
+                                        {% if order == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% else %}
+                                        ⇅
+                                    {% endif %}
+                                </a>
+                                {% endmacro %}
+                                {{ sort_link('cod_modello', 'Codice Modello') }}
+                            </th>
+                            <th>{{ sort_link('marca', 'Marca') }}</th>
+                            <th>{{ sort_link('divisione', 'Divisione') }}</th>
+                            <th>{{ sort_link('famiglia', 'Famiglia') }}</th>
+                            <th>{{ sort_link('tipo', 'Tipo') }}</th>
+                            <th>Nome Modello</th>
+                            <th class="text-center">{{ sort_link('n_componenti', 'N. Componenti') }}</th>
+                            <th class="text-center">Origine</th>
+                            <th class="text-center">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for modello in modelli %}
+                        <tr>
+                            <td><strong>{{ modello.cod_modello }}</strong></td>
+                            <td>{{ modello.marca or '-' }}</td>
+                            <td>{{ modello.divisione or '-' }}</td>
+                            <td>{{ modello.famiglia or '-' }}</td>
+                            <td>{{ modello.tipo or '-' }}</td>
+                            <td>
+                                <small class="text-muted">{{ modello.nome_modello or modello.nome_modello_it or '-' }}</small>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ modello.n_componenti }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge badge-origine badge-{{ modello.updated_from }}">
+                                    {{ modello.updated_from }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <a href="{{ url_for('anagrafiche_catalogo.dettaglio_modello', cod_modello=modello.cod_modello) }}"
+                                   class="btn btn-sm btn-primary btn-action">
+                                    👁️ Dettaglio
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info m-3">
+                Nessun modello trovato con i filtri selezionati.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Help text -->
+    <div class="mt-3 text-muted">
+        <small>
+            <strong>Legenda Origine Dati:</strong>
+            <span class="badge badge-origine badge-ORD">ORD</span> = da Ordini |
+            <span class="badge badge-origine badge-ANA">ANA</span> = da Anagrafiche |
+            <span class="badge badge-origine badge-ROT">ROT</span> = da Rotture |
+            <span class="badge badge-origine badge-ND">N/D</span> = Non disponibile
+        </small>
+    </div>
+</div>
+{% endblock %}

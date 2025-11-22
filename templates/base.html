@@ -117,12 +117,17 @@
                     <!-- Menu Anagrafiche -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarAnagrafiche" role="button" data-bs-toggle="dropdown">
-                            📄 File Anagrafiche
+                            📄 Anagrafiche
                         </a>
                         <ul class="dropdown-menu">
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('anagrafiche.list') }}">
                                     📄 Gestione File Excel
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('anagrafiche_catalogo.index') }}">
+                                    📦 Catalogo Modelli & Componenti
                                 </a>
                             </li>
                             {% if current_user.is_admin() %}

@@ -4,7 +4,7 @@ Blueprint per la Dashboard Generale delle Elaborazioni
 
 from flask import Blueprint, render_template, request
 from flask_login import login_required
-from models import db, TraceElab, TraceElabDett, OrdineAcquisto, AnagraficaFile, Rottura
+from models import db, TraceElab, TraceElabDett, OrdineAcquisto, AnagraficaFile, Rottura, FileStock
 from sqlalchemy import func, desc
 from datetime import datetime, timedelta
 
@@ -59,10 +59,23 @@ def index():
         stato='OK'
     ).filter(TraceElab.created_at >= data_inizio).count()
 
+    # STOCK
+    stock_total = FileStock.query.count()
+    stock_elab_total = TraceElab.query.filter_by(tipo_file='STOCK', step='END').count()
+    stock_elab_recenti = TraceElab.query.filter_by(tipo_file='STOCK', step='END').filter(
+        TraceElab.created_at >= data_inizio
+    ).count()
+    stock_successo = TraceElab.query.filter_by(
+        tipo_file='STOCK',
+        step='END',
+        esito='OK'
+    ).filter(TraceElab.created_at >= data_inizio).count()
+
     # Calcola % successo
     ordini_perc = round((ordini_successo / ordini_elab_recenti * 100), 1) if ordini_elab_recenti > 0 else 0
     anagr_perc = round((anagr_successo / anagr_elab_recenti * 100), 1) if anagr_elab_recenti > 0 else 0
     rotture_perc = round((rotture_successo / rotture_elab_recenti * 100), 1) if rotture_elab_recenti > 0 else 0
+    stock_perc = round((stock_successo / stock_elab_recenti * 100), 1) if stock_elab_recenti > 0 else 0
 
     stats_pipeline = {
         'ordini': {
@@ -85,6 +98,13 @@ def index():
             'elaborazioni_recenti': rotture_elab_recenti,
             'successi': rotture_successo,
             'perc_successo': rotture_perc
+        },
+        'stock': {
+            'file_totali': stock_total,
+            'elaborazioni_totali': stock_elab_total,
+            'elaborazioni_recenti': stock_elab_recenti,
+            'successi': stock_successo,
+            'perc_successo': stock_perc
         }
     }
 
@@ -116,6 +136,9 @@ def index():
             from models import FileRottura
             file_obj = FileRottura.query.get(elab_end.id_file)
             tipo_pipeline_name = 'rotture'
+        elif elab_end.tipo_file == 'STOCK':
+            file_obj = FileStock.query.get(elab_end.id_file)
+            tipo_pipeline_name = 'stock'
         else:
             file_obj = None
             tipo_pipeline_name = 'unknown'
@@ -164,6 +187,9 @@ def index():
             from models import FileRottura
             file_obj = FileRottura.query.get(elab_end.id_file)
             tipo_pipeline_name = 'rotture'
+        elif elab_end.tipo_file == 'STOCK':
+            file_obj = FileStock.query.get(elab_end.id_file)
+            tipo_pipeline_name = 'stock'
         else:
             file_obj = None
             tipo_pipeline_name = 'unknown'

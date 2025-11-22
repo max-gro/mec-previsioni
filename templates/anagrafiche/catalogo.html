@@ -4,37 +4,59 @@
 
 {% block extra_css %}
 <style>
-    /* KPI Cards */
-    .kpi-card {
+    /* KPI Cards - Compatte */
+    .kpi-inline {
+        display: inline-block;
         background: white;
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        text-align: center;
-        border-left: 4px solid var(--color-primary);
+        border-radius: 6px;
+        padding: 8px 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-left: 3px solid var(--color-primary);
+        margin-right: 15px;
     }
 
-    .kpi-card h6 {
+    .kpi-inline h6 {
         color: #6c757d;
-        font-size: 0.875rem;
+        font-size: 0.7rem;
         font-weight: 600;
         text-transform: uppercase;
-        margin-bottom: 10px;
+        margin-bottom: 3px;
+        display: inline-block;
+        margin-right: 8px;
     }
 
-    .kpi-value {
-        font-size: 2rem;
+    .kpi-value-inline {
+        font-size: 1.1rem;
         font-weight: bold;
         color: var(--color-primary);
+        display: inline-block;
     }
 
-    /* Filtri */
+    /* Filtri - Compatti */
     .filtri-card {
         background: white;
         border-radius: 8px;
-        padding: 20px;
+        padding: 12px 16px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
+        margin-bottom: 15px;
+    }
+
+    .filtri-card .form-label {
+        font-size: 0.75rem;
+        margin-bottom: 2px;
+        color: #6c757d;
+    }
+
+    .filtri-card .form-select,
+    .filtri-card .form-control {
+        font-size: 0.875rem;
+        padding: 5px 10px;
+        height: auto;
+    }
+
+    .filtri-card .btn {
+        font-size: 0.875rem;
+        padding: 6px 12px;
     }
 
     /* Tabella sortable */
@@ -103,40 +125,35 @@
         </ol>
     </nav>
 
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-0">📦 Catalogo Modelli & Componenti</h1>
-        <a href="{{ url_for('anagrafiche.list') }}" class="btn btn-outline-secondary">
+    <!-- Header con KPI inline -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="mb-2">📦 Catalogo Modelli & Componenti</h4>
+            <div>
+                <div class="kpi-inline">
+                    <h6>Totale Modelli</h6>
+                    <span class="kpi-value-inline">{{ total_modelli|number_format }}</span>
+                </div>
+                <div class="kpi-inline">
+                    <h6>Totale Componenti</h6>
+                    <span class="kpi-value-inline">{{ total_componenti|number_format }}</span>
+                </div>
+            </div>
+        </div>
+        <a href="{{ url_for('anagrafiche.list') }}" class="btn btn-outline-secondary btn-sm">
             ← Torna a File Anagrafiche
         </a>
     </div>
 
-    <!-- KPI Cards -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="kpi-card">
-                <h6>Totale Modelli</h6>
-                <div class="kpi-value">{{ total_modelli|number_format }}</div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="kpi-card">
-                <h6>Totale Componenti nel BOM</h6>
-                <div class="kpi-value">{{ total_componenti|number_format }}</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filtri -->
+    <!-- Filtri compatti su una riga -->
     <div class="filtri-card">
-        <h5 class="mb-3">🔍 Filtri Ricerca</h5>
         <form method="GET" action="{{ url_for('anagrafiche_catalogo.index') }}">
-            <div class="row g-3">
+            <div class="row g-2 align-items-end">
                 <!-- Marca -->
-                <div class="col-md-3">
+                <div class="col-auto" style="min-width: 140px;">
                     <label for="marca" class="form-label">Marca</label>
-                    <select name="marca" id="marca" class="form-select">
-                        <option value="">-- Tutte --</option>
+                    <select name="marca" id="marca" class="form-select form-select-sm">
+                        <option value="">Tutte</option>
                         {% for m in marche %}
                         <option value="{{ m }}" {% if marca == m %}selected{% endif %}>{{ m }}</option>
                         {% endfor %}
@@ -144,10 +161,10 @@
                 </div>
 
                 <!-- Divisione -->
-                <div class="col-md-3">
+                <div class="col-auto" style="min-width: 140px;">
                     <label for="divisione" class="form-label">Divisione</label>
-                    <select name="divisione" id="divisione" class="form-select">
-                        <option value="">-- Tutte --</option>
+                    <select name="divisione" id="divisione" class="form-select form-select-sm">
+                        <option value="">Tutte</option>
                         {% for d in divisioni %}
                         <option value="{{ d }}" {% if divisione == d %}selected{% endif %}>{{ d }}</option>
                         {% endfor %}
@@ -155,10 +172,10 @@
                 </div>
 
                 <!-- Famiglia -->
-                <div class="col-md-3">
+                <div class="col-auto" style="min-width: 140px;">
                     <label for="famiglia" class="form-label">Famiglia</label>
-                    <select name="famiglia" id="famiglia" class="form-select">
-                        <option value="">-- Tutte --</option>
+                    <select name="famiglia" id="famiglia" class="form-select form-select-sm">
+                        <option value="">Tutte</option>
                         {% for f in famiglie %}
                         <option value="{{ f }}" {% if famiglia == f %}selected{% endif %}>{{ f }}</option>
                         {% endfor %}
@@ -166,10 +183,10 @@
                 </div>
 
                 <!-- Tipo -->
-                <div class="col-md-3">
+                <div class="col-auto" style="min-width: 120px;">
                     <label for="tipo" class="form-label">Tipo</label>
-                    <select name="tipo" id="tipo" class="form-select">
-                        <option value="">-- Tutti --</option>
+                    <select name="tipo" id="tipo" class="form-select form-select-sm">
+                        <option value="">Tutti</option>
                         {% for t in tipi %}
                         <option value="{{ t }}" {% if tipo == t %}selected{% endif %}>{{ t }}</option>
                         {% endfor %}
@@ -177,18 +194,18 @@
                 </div>
 
                 <!-- Ricerca testo -->
-                <div class="col-md-8">
-                    <label for="ricerca" class="form-label">Cerca Modello (codice o nome)</label>
-                    <input type="text" name="ricerca" id="ricerca" class="form-control"
-                           value="{{ ricerca }}" placeholder="Es: ABC123, Lavatrice, ecc.">
+                <div class="col" style="min-width: 200px;">
+                    <label for="ricerca" class="form-label">Cerca Modello</label>
+                    <input type="text" name="ricerca" id="ricerca" class="form-control form-control-sm"
+                           value="{{ ricerca }}" placeholder="Codice o nome...">
                 </div>
 
                 <!-- Pulsanti -->
-                <div class="col-md-4 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary me-2">
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary btn-sm">
                         🔍 Cerca
                     </button>
-                    <a href="{{ url_for('anagrafiche_catalogo.index') }}" class="btn btn-outline-secondary">
+                    <a href="{{ url_for('anagrafiche_catalogo.index') }}" class="btn btn-outline-secondary btn-sm ms-1">
                         🔄 Reset
                     </a>
                 </div>

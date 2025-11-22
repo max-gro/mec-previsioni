@@ -4,33 +4,35 @@
 
 {% block extra_css %}
 <style>
-    /* Info card */
+    /* Info card compatta */
     .info-card {
         background: white;
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
+        border-radius: 6px;
+        padding: 12px 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 12px;
     }
 
-    .info-row {
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px 16px;
+        font-size: 0.875rem;
+    }
+
+    .info-item {
         display: flex;
-        padding: 8px 0;
-        border-bottom: 1px solid #f0f0f0;
-    }
-
-    .info-row:last-child {
-        border-bottom: none;
+        align-items: center;
     }
 
     .info-label {
         font-weight: 600;
-        width: 180px;
         color: #6c757d;
+        margin-right: 6px;
+        font-size: 0.8rem;
     }
 
     .info-value {
-        flex: 1;
         color: #212529;
     }
 
@@ -54,12 +56,17 @@
         font-weight: bold;
     }
 
-    /* Tabs */
+    /* Tabs compatti */
+    .nav-tabs {
+        margin-bottom: 10px !important;
+    }
+
     .nav-tabs .nav-link {
         color: #6c757d;
         border: none;
         border-bottom: 3px solid transparent;
-        padding: 12px 20px;
+        padding: 8px 16px;
+        font-size: 0.9rem;
     }
 
     .nav-tabs .nav-link.active {
@@ -112,57 +119,41 @@
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('anagrafiche.list') }}">Anagrafiche</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('anagrafiche_catalogo.index') }}">Catalogo</a></li>
-            <li class="breadcrumb-item active">{{ modello.cod_modello }}</li>
-        </ol>
-    </nav>
-
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- Header compatto con info inline -->
+    <div class="d-flex justify-content-between align-items-start mb-2">
         <div>
-            <h1 class="mb-1">📦 {{ modello.cod_modello }}</h1>
-            <p class="text-muted mb-0">{{ modello.nome_modello or modello.nome_modello_it or 'Nome non disponibile' }}</p>
+            <h4 class="mb-1">📦 {{ modello.cod_modello }} <small class="text-muted">- {{ modello.nome_modello or modello.nome_modello_it or 'Nome non disponibile' }}</small></h4>
         </div>
-        <a href="{{ url_for('anagrafiche_catalogo.index') }}" class="btn btn-outline-secondary">
-            ← Torna al Catalogo
+        <a href="{{ url_for('anagrafiche_catalogo.index') }}" class="btn btn-outline-secondary btn-sm">
+            ← Catalogo
         </a>
     </div>
 
-    <!-- Informazioni Modello -->
+    <!-- Informazioni Modello compatte a griglia -->
     <div class="info-card">
-        <h5 class="mb-3">📋 Informazioni Modello</h5>
-        <div class="info-row">
-            <div class="info-label">Codice Modello:</div>
-            <div class="info-value"><strong>{{ modello.cod_modello }}</strong></div>
-        </div>
-        <div class="info-row">
-            <div class="info-label">Marca:</div>
-            <div class="info-value">{{ modello.marca or '-' }}</div>
-        </div>
-        <div class="info-row">
-            <div class="info-label">Divisione:</div>
-            <div class="info-value">{{ modello.divisione or '-' }}</div>
-        </div>
-        <div class="info-row">
-            <div class="info-label">Famiglia:</div>
-            <div class="info-value">{{ modello.famiglia or '-' }}</div>
-        </div>
-        <div class="info-row">
-            <div class="info-label">Tipo:</div>
-            <div class="info-value">{{ modello.tipo or '-' }}</div>
-        </div>
-        <div class="info-row">
-            <div class="info-label">Produttore:</div>
-            <div class="info-value">{{ modello.produttore or '-' }}</div>
-        </div>
-        <div class="info-row">
-            <div class="info-label">Origine Dati:</div>
-            <div class="info-value">
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Marca:</span>
+                <span class="info-value">{{ modello.marca or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Divisione:</span>
+                <span class="info-value">{{ modello.divisione or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Famiglia:</span>
+                <span class="info-value">{{ modello.famiglia or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Tipo:</span>
+                <span class="info-value">{{ modello.tipo or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Produttore:</span>
+                <span class="info-value">{{ modello.produttore or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Origine:</span>
                 <span class="badge bg-{{ 'primary' if modello.updated_from == 'ORD' else 'success' if modello.updated_from == 'ANA' else 'danger' if modello.updated_from == 'ROT' else 'secondary' }}">
                     {{ modello.updated_from or 'N/D' }}
                 </span>

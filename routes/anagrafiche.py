@@ -926,8 +926,10 @@ def create():
         
         flash(f'File {filename} caricato con successo per la marca {marca}!', 'success')
         return redirect(url_for('anagrafiche.list', **preserve_list_params()))
-    
-    return render_template('anagrafiche/create.html', form=form)
+
+    # Passa i parametri della lista al template
+    list_params = preserve_list_params()
+    return render_template('anagrafiche/create.html', form=form, list_params=list_params)
 
 
 @anagrafiche_bp.route('/nuova-marca', methods=['GET', 'POST'])
@@ -973,8 +975,10 @@ def edit(id):
         db.session.commit()
         flash(f'Anagrafica {anagrafica.filename} aggiornata!', 'success')
         return redirect(url_for('anagrafiche.list', **preserve_list_params()))
-    
-    return render_template('anagrafiche/edit.html', form=form, anagrafica=anagrafica)
+
+    # Passa i parametri della lista al template
+    list_params = preserve_list_params()
+    return render_template('anagrafiche/edit.html', form=form, anagrafica=anagrafica, list_params=list_params)
 
 @anagrafiche_bp.route('/<int:id>/elabora', methods=['POST'])
 @admin_required

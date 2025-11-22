@@ -10,7 +10,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('anagrafiche.list') }}">Anagrafiche</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('anagrafiche.list', **list_params) }}">Anagrafiche</a></li>
                     <li class="breadcrumb-item active">Upload</li>
                 </ol>
             </nav>
@@ -81,7 +81,7 @@
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">💾 Carica File</button>
-                            <a href="{{ url_for('anagrafiche.list') }}" class="btn btn-secondary">Annulla</a>
+                            <a href="{{ url_for('anagrafiche.list', **list_params) }}" class="btn btn-secondary">Annulla</a>
                         </div>
                     </form>
                 </div>

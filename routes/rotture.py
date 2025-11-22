@@ -569,8 +569,10 @@ def create():
         
         flash(f'File rottura {filename} caricato con successo!', 'success')
         return redirect(url_for('rotture.list', **preserve_list_params()))
-    
-    return render_template('rotture/create.html', form=form)
+
+    # Passa i parametri della lista al template
+    list_params = preserve_list_params()
+    return render_template('rotture/create.html', form=form, list_params=list_params)
 
 
 @rotture_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
@@ -594,7 +596,9 @@ def edit(id):
         flash(f'File rottura aggiornato!', 'success')
         return redirect(url_for('rotture.list', **preserve_list_params()))
 
-    return render_template('rotture/edit.html', form=form, rottura=rottura)
+    # Passa i parametri della lista al template
+    list_params = preserve_list_params()
+    return render_template('rotture/edit.html', form=form, rottura=rottura, list_params=list_params)
 
 
 

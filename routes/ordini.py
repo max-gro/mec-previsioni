@@ -636,8 +636,10 @@ def create():
         
         flash(f'Ordine di acquisto {filename} caricato con successo! (Anno: {anno})', 'success')
         return redirect(url_for('ordini.list', **preserve_list_params()))
-    
-    return render_template('ordini/create.html', form=form)
+
+    # Passa i parametri della lista al template
+    list_params = preserve_list_params()
+    return render_template('ordini/create.html', form=form, list_params=list_params)
 
 @ordini_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @admin_required
@@ -645,7 +647,7 @@ def edit(id):
     """Modifica un ordine di acquisto esistente"""
     ordine = FileOrdine.query.get_or_404(id)
     form = FileOrdineEditForm(obj=ordine)
-    
+
     if form.validate_on_submit():
         ordine.data_acquisizione = form.data_acquisizione.data
         ordine.esito = form.esito.data
@@ -656,8 +658,10 @@ def edit(id):
         db.session.commit()
         flash(f'Ordine {ordine.filename} aggiornato!', 'success')
         return redirect(url_for('ordini.list', **preserve_list_params()))
-    
-    return render_template('ordini/edit.html', form=form, ordine=ordine)
+
+    # Passa i parametri della lista al template
+    list_params = preserve_list_params()
+    return render_template('ordini/edit.html', form=form, ordine=ordine, list_params=list_params)
 
 @ordini_bp.route('/<int:id>/delete', methods=['POST'])
 @admin_required

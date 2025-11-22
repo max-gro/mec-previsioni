@@ -46,7 +46,7 @@
             <a href="{{ url_for('rotture.sync') }}" class="btn btn-secondary me-2" title="Sincronizza con filesystem">
                 🔄 Sincronizza
             </a>
-            <a href="{{ url_for('rotture.create') }}" class="btn btn-primary">
+            <a href="{{ url_for('rotture.create', anno=anno_filter, esito=esito_filter, page=page) }}" class="btn btn-primary">
                 ➕ Carica Nuove Rotture
             </a>
             {% endif %}
@@ -203,7 +203,7 @@
                                     </a>
                                     
                                     <!-- Bottone Modifica -->
-                                    <a href="{{ url_for('rotture.edit', id=rottura.id) }}" class="btn btn-outline-primary" title="Modifica">
+                                    <a href="{{ url_for('rotture.edit', id=rottura.id, anno=anno_filter, esito=esito_filter, page=rotture.page) }}" class="btn btn-outline-primary" title="Modifica">
                                         ✏️
                                     </a>
                                     
@@ -249,7 +249,7 @@
             <div class="text-center py-5">
                 <p class="text-muted">Nessun file rottura trovato.</p>
                 {% if current_user.is_admin() %}
-                <a href="{{ url_for('rotture.create') }}" class="btn btn-primary">Carica il primo file</a>
+                <a href="{{ url_for('rotture.create', anno=anno_filter, esito=esito_filter, page=page) }}" class="btn btn-primary">Carica il primo file</a>
                 {% endif %}
             </div>
             {% endif %}

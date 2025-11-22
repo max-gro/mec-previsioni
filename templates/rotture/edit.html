@@ -10,7 +10,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('rotture.list') }}">Rotture</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('rotture.list', **list_params) }}">Rotture</a></li>
                     <li class="breadcrumb-item active">Modifica {{ rottura.filename }}</li>
                 </ol>
             </nav>
@@ -69,7 +69,7 @@
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>
-                            <a href="{{ url_for('rotture.list') }}" class="btn btn-secondary">Annulla</a>
+                            <a href="{{ url_for('rotture.list', **list_params) }}" class="btn btn-secondary">Annulla</a>
                         </div>
                     </form>
                 </div>

@@ -10,7 +10,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('ordini.list') }}">Ordini Acquisto</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('ordini.list', **list_params) }}">Ordini Acquisto</a></li>
                     <li class="breadcrumb-item active">Carica</li>
                 </ol>
             </nav>
@@ -77,7 +77,7 @@
                             <button type="submit" class="btn btn-primary">
                                 📤 Carica Ordine
                             </button>
-                            <a href="{{ url_for('ordini.list') }}" class="btn btn-secondary">Annulla</a>
+                            <a href="{{ url_for('ordini.list', **list_params) }}" class="btn btn-secondary">Annulla</a>
                         </div>
                     </form>
                 </div>

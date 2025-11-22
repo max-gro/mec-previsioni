@@ -52,7 +52,7 @@
             <a href="{{ url_for('ordini.sync') }}" class="btn btn-secondary me-2" title="Sincronizza con filesystem">
                 🔄 Sincronizza
             </a>
-            <a href="{{ url_for('ordini.create') }}" class="btn btn-primary">
+            <a href="{{ url_for('ordini.create', anno=anno_filter, esito=esito_filter, filename=filename_filter, sort=sort_by, order=order, page=page) }}" class="btn btn-primary">
                 ➕ Carica Nuovo Ordine
             </a>
             {% endif %}
@@ -195,7 +195,7 @@
 
 									
                                     {% if current_user.is_admin() %}
-                                    <a href="{{ url_for('ordini.edit', id=ordine.id) }}" class="btn btn-outline-primary" title="Modifica">
+                                    <a href="{{ url_for('ordini.edit', id=ordine.id, anno=anno_filter, esito=esito_filter, filename=filename_filter, sort=sort_by, order=order, page=ordini.page) }}" class="btn btn-outline-primary" title="Modifica">
                                         ✏️
                                     </a>
                                     

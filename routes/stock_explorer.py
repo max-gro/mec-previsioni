@@ -39,20 +39,12 @@ def index():
     sort_by = request.args.get('sort', 'cod_componente')
     order = request.args.get('order', 'asc')
 
-    # Subquery: ultima data rilevazione per ogni componente
-    last_dates = db.session.query(
-        Stock.cod_componente,
-        func.max(Stock.data_rilevazione).label('ultima_data')
-    ).group_by(Stock.cod_componente).subquery()
-
-    # Query principale: giacenze correnti con join alla subquery
+    # Query principale: giacenze correnti (flag_corrente = TRUE)
     query = db.session.query(
         Stock,
         Componente
-    ).join(
-        last_dates,
-        (Stock.cod_componente == last_dates.c.cod_componente) &
-        (Stock.data_rilevazione == last_dates.c.ultima_data)
+    ).filter(
+        Stock.flag_corrente == True
     ).outerjoin(
         Componente, Stock.cod_componente == Componente.cod_componente
     )
@@ -68,26 +60,26 @@ def index():
         query = query.filter(Stock.ubicazione.ilike(f'%{ubicazione_filter}%'))
 
     if qta_min is not None:
-        query = query.filter(Stock.qta >= qta_min)
+        query = query.filter(Stock.giacenza_fisica >= qta_min)
 
     if qta_max is not None:
-        query = query.filter(Stock.qta <= qta_max)
+        query = query.filter(Stock.giacenza_fisica <= qta_max)
 
     # Filtro stato
     if stato_filter == 'zero':
-        query = query.filter(Stock.qta == 0)
+        query = query.filter(Stock.giacenza_fisica == 0)
     elif stato_filter == 'low':
-        query = query.filter(Stock.qta > 0, Stock.qta < 50)
+        query = query.filter(Stock.giacenza_fisica > 0, Stock.giacenza_fisica < 50)
     elif stato_filter == 'ok':
-        query = query.filter(Stock.qta >= 50)
+        query = query.filter(Stock.giacenza_fisica >= 50)
 
     # Ordinamento
     if sort_by == 'cod_componente':
         col = Stock.cod_componente
     elif sort_by == 'qta':
-        col = Stock.qta
-    elif sort_by == 'data_rilevazione':
-        col = Stock.data_rilevazione
+        col = Stock.giacenza_fisica
+    elif sort_by == 'data_snapshot':
+        col = Stock.data_snapshot
     elif sort_by == 'ubicazione':
         col = Stock.ubicazione
     else:
@@ -108,9 +100,9 @@ def index():
 
     # KPI Summary
     total_componenti = len(risultati)
-    total_unita = sum(r.Stock.qta for r in risultati)
-    componenti_zero = sum(1 for r in risultati if r.Stock.qta == 0)
-    componenti_low = sum(1 for r in risultati if 0 < r.Stock.qta < 50)
+    total_unita = sum(r.Stock.giacenza_fisica for r in risultati)
+    componenti_zero = sum(1 for r in risultati if r.Stock.giacenza_fisica == 0)
+    componenti_low = sum(1 for r in risultati if 0 < r.Stock.giacenza_fisica < 50)
 
     # Ubicazioni disponibili per filtro
     ubicazioni = db.session.query(distinct(Stock.ubicazione))\
@@ -162,7 +154,7 @@ def dettaglio_componente(cod_componente):
     ).filter(
         Stock.cod_componente == cod_componente
     ).order_by(
-        Stock.data_rilevazione.desc()
+        Stock.data_snapshot.desc()
     ).all()
 
     if not storico:
@@ -180,13 +172,13 @@ def dettaglio_componente(cod_componente):
 
     # Prepara dati per grafico (invertiti per ordine cronologico)
     storico_reversed = list(reversed(storico))
-    chart_labels = [s.Stock.data_rilevazione.strftime('%d/%m/%Y') for s in storico_reversed]
-    chart_data = [s.Stock.qta for s in storico_reversed]
+    chart_labels = [s.Stock.data_snapshot.strftime('%d/%m/%Y') for s in storico_reversed]
+    chart_data = [s.Stock.giacenza_fisica for s in storico_reversed]
 
     # Statistiche
-    qta_media = sum(s.Stock.qta for s in storico) / len(storico) if storico else 0
-    qta_max = max(s.Stock.qta for s in storico)
-    qta_min = min(s.Stock.qta for s in storico)
+    qta_media = sum(s.Stock.giacenza_fisica for s in storico) / len(storico) if storico else 0
+    qta_max = max(s.Stock.giacenza_fisica for s in storico)
+    qta_min = min(s.Stock.giacenza_fisica for s in storico)
 
     return render_template(
         'stock/explorer_dettaglio.html',
@@ -214,33 +206,25 @@ def alert():
     Ordinati per priorità
     """
 
-    # Subquery: ultima data rilevazione per ogni componente
-    last_dates = db.session.query(
-        Stock.cod_componente,
-        func.max(Stock.data_rilevazione).label('ultima_data')
-    ).group_by(Stock.cod_componente).subquery()
-
-    # Query componenti critici (giacenza corrente < 50)
+    # Query componenti critici (giacenza corrente < 50, usando flag_corrente)
     query = db.session.query(
         Stock,
         Componente
-    ).join(
-        last_dates,
-        (Stock.cod_componente == last_dates.c.cod_componente) &
-        (Stock.data_rilevazione == last_dates.c.ultima_data)
+    ).filter(
+        Stock.flag_corrente == True
     ).outerjoin(
         Componente, Stock.cod_componente == Componente.cod_componente
     ).filter(
-        Stock.qta < 50
+        Stock.giacenza_fisica < 50
     ).order_by(
-        Stock.qta.asc()  # Prima gli esauriti, poi i più bassi
+        Stock.giacenza_fisica.asc()  # Prima gli esauriti, poi i più bassi
     )
 
     componenti_critici = query.all()
 
     # Separa esauriti e scorta bassa
-    esauriti = [c for c in componenti_critici if c.Stock.qta == 0]
-    scorta_bassa = [c for c in componenti_critici if 0 < c.Stock.qta < 50]
+    esauriti = [c for c in componenti_critici if c.Stock.giacenza_fisica == 0]
+    scorta_bassa = [c for c in componenti_critici if 0 < c.Stock.giacenza_fisica < 50]
 
     return render_template(
         'stock/explorer_alert.html',

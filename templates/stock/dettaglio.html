@@ -95,7 +95,7 @@
 
     <!-- KPI Cards -->
     <div class="row mb-4">
-        <div class="col-md-3">
+        <div class="col-md-2">
             <div class="card stat-card">
                 <div class="card-body">
                     <div class="stat-value">{{ totale_righe }}</div>
@@ -103,23 +103,39 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <div class="card stat-card">
                 <div class="card-body">
-                    <div class="stat-value">{{ "{:,}".format(totale_qta) }}</div>
-                    <div class="stat-label">Totale Unità</div>
+                    <div class="stat-value text-success">{{ "{:,}".format(totale_qta_disponibile) }}</div>
+                    <div class="stat-label">Disponibile</div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-value text-info">{{ "{:,}".format(totale_qta_impegnata) }}</div>
+                    <div class="stat-label">Impegnata</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-value text-primary">{{ "{:,}".format(totale_qta_fisica) }}</div>
+                    <div class="stat-label">Fisica Totale</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
             <div class="card stat-card border-warning">
                 <div class="card-body">
                     <div class="stat-value text-warning">{{ componenti_low }}</div>
-                    <div class="stat-label">Scorta Bassa (&lt;50)</div>
+                    <div class="stat-label">Sotto Scorta Min</div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <div class="card stat-card border-danger">
                 <div class="card-body">
                     <div class="stat-value text-danger">{{ componenti_zero }}</div>
@@ -144,31 +160,32 @@
                                 <tr>
                                     <th>Cod. Componente</th>
                                     <th>Descrizione</th>
-                                    <th class="text-end">Qtà</th>
-                                    <th>Data Rilevazione</th>
+                                    <th>Warehouse</th>
                                     <th>Ubicazione</th>
+                                    <th class="text-end">Disp.</th>
+                                    <th class="text-end">Imp.</th>
+                                    <th class="text-end">Fisica</th>
+                                    <th class="text-end">Sc.Min</th>
+                                    <th>Data Snapshot</th>
                                     <th>Lotto</th>
-                                    <th>Note</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for riga in righe %}
-                                <tr {% if riga.Stock.qta == 0 %}class="table-danger"{% elif riga.Stock.qta < 50 %}class="table-warning"{% endif %}>
+                                <tr {% if riga.Stock.giacenza_fisica == 0 %}class="table-danger"{% elif riga.Stock.scorta_minima and riga.Stock.giacenza_disponibile < riga.Stock.scorta_minima %}class="table-warning"{% endif %}>
                                     <td>
                                         <code>{{ riga.Stock.cod_componente }}</code>
                                     </td>
                                     <td>
                                         {{ riga.Componente.componente_it if riga.Componente else '-' }}
                                     </td>
-                                    <td class="text-end">
-                                        <strong>{{ riga.Stock.qta }}</strong>
-                                        {% if riga.Stock.qta == 0 %}
-                                            <span class="badge bg-danger ms-1">0</span>
-                                        {% elif riga.Stock.qta < 50 %}
-                                            <span class="badge bg-warning text-dark ms-1">LOW</span>
+                                    <td>
+                                        {% if riga.Stock.warehouse %}
+                                            <span class="badge bg-info">{{ riga.Stock.warehouse }}</span>
+                                        {% else %}
+                                            -
                                         {% endif %}
                                     </td>
-                                    <td>{{ riga.Stock.data_rilevazione.strftime('%d/%m/%Y') if riga.Stock.data_rilevazione else '-' }}</td>
                                     <td>
                                         {% if riga.Stock.ubicazione %}
                                             <span class="badge bg-secondary">{{ riga.Stock.ubicazione }}</span>
@@ -176,11 +193,26 @@
                                             -
                                         {% endif %}
                                     </td>
+                                    <td class="text-end">
+                                        <strong class="text-success">{{ riga.Stock.giacenza_disponibile }}</strong>
+                                    </td>
+                                    <td class="text-end">
+                                        <small class="text-info">{{ riga.Stock.giacenza_impegnata }}</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>{{ riga.Stock.giacenza_fisica }}</strong>
+                                        {% if riga.Stock.giacenza_fisica == 0 %}
+                                            <span class="badge bg-danger ms-1">0</span>
+                                        {% elif riga.Stock.scorta_minima and riga.Stock.giacenza_disponibile < riga.Stock.scorta_minima %}
+                                            <span class="badge bg-warning text-dark ms-1">LOW</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <small class="text-muted">{{ riga.Stock.scorta_minima if riga.Stock.scorta_minima else '-' }}</small>
+                                    </td>
+                                    <td>{{ riga.Stock.data_snapshot.strftime('%d/%m/%Y') if riga.Stock.data_snapshot else '-' }}</td>
                                     <td>
                                         <small>{{ riga.Stock.lotto if riga.Stock.lotto else '-' }}</small>
-                                    </td>
-                                    <td>
-                                        <small class="text-muted">{{ riga.Stock.note if riga.Stock.note else '' }}</small>
                                     </td>
                                 </tr>
                                 {% endfor %}

@@ -190,7 +190,29 @@
                             {% endif %}
                         </ul>
                     </li>
-                    
+
+                    <!-- Menu File Stock -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarStock" role="button" data-bs-toggle="dropdown">
+                            📦 File Stock
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('stock.index') }}">
+                                    📄 Gestione File Stock
+                                </a>
+                            </li>
+                            {% if current_user.is_admin() %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('stock.create') }}">
+                                    ➕ Carica Nuovo File Stock
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </li>
+
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('previsioni.index') }}">
                             📈 Previsioni
@@ -216,6 +238,11 @@
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('rotture_explorer.index') }}">
                                     🔧 Rotture Explorer
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('stock_explorer.index') }}">
+                                    📦 Stock Explorer
                                 </a>
                             </li>
                         </ul>

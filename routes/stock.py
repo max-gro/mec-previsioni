@@ -391,16 +391,20 @@ def dettaglio(id):
 
     # Statistiche
     totale_righe = len(righe)
-    totale_qta = sum(r.Stock.qta for r in righe)
-    componenti_zero = sum(1 for r in righe if r.Stock.qta == 0)
-    componenti_low = sum(1 for r in righe if 0 < r.Stock.qta < 50)
+    totale_qta_fisica = sum(r.Stock.giacenza_fisica for r in righe)
+    totale_qta_disponibile = sum(r.Stock.giacenza_disponibile for r in righe)
+    totale_qta_impegnata = sum(r.Stock.giacenza_impegnata for r in righe)
+    componenti_zero = sum(1 for r in righe if r.Stock.giacenza_fisica == 0)
+    componenti_low = sum(1 for r in righe if r.Stock.scorta_minima and 0 < r.Stock.giacenza_disponibile < r.Stock.scorta_minima)
 
     return render_template(
         'stock/dettaglio.html',
         file_stock=file_stock,
         righe=righe,
         totale_righe=totale_righe,
-        totale_qta=totale_qta,
+        totale_qta_fisica=totale_qta_fisica,
+        totale_qta_disponibile=totale_qta_disponibile,
+        totale_qta_impegnata=totale_qta_impegnata,
         componenti_zero=componenti_zero,
         componenti_low=componenti_low
     )

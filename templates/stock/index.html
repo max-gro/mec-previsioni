@@ -37,6 +37,9 @@
         </div>
         <div class="col-md-6 text-end">
             {% if current_user.is_admin() %}
+            <a href="{{ url_for('stock.index') }}" class="btn btn-secondary me-2" title="Sincronizza con filesystem">
+                🔄 Sincronizza
+            </a>
             <a href="{{ url_for('stock.create') }}" class="btn btn-primary">
                 ➕ Carica Nuovo File Stock
             </a>
@@ -144,20 +147,38 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if current_user.is_admin() %}
-                                    {% if file.esito == 'Da processare' or file.esito == 'Errore' %}
-                                    <a href="{{ url_for('stock.elabora', id=file.id) }}"
-                                       class="btn btn-sm btn-primary"
-                                       onclick="return confirm('Elaborare il file {{ file.filename }}?')">
-                                        ⚙️ Elabora
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('stock.dettaglio', id=file.id) }}" class="btn btn-outline-info" title="Visualizza dettaglio">
+                                        👁️
+                                    </a>
+                                    {% if file.filepath and file.esito == 'Processato' %}
+                                    <a href="{{ url_for('stock.dettaglio', id=file.id) }}" class="btn btn-outline-success" title="Download file">
+                                        ⬇
                                     </a>
                                     {% endif %}
-                                    <a href="{{ url_for('stock.delete', id=file.id) }}"
-                                       class="btn btn-sm btn-danger"
-                                       onclick="return confirm('Eliminare il file {{ file.filename }} e tutte le righe associate?')">
-                                        🗑️ Elimina
+
+                                    {% if current_user.is_admin() %}
+                                    <a href="{{ url_for('stock.dettaglio', id=file.id) }}" class="btn btn-outline-primary" title="Modifica">
+                                        ✏️
                                     </a>
-                                {% endif %}
+
+                                    {% if file.esito == 'Da processare' or file.esito == 'Errore' %}
+                                    <a href="{{ url_for('stock.elabora', id=file.id) }}"
+                                       class="btn btn-outline-warning"
+                                       title="Elabora file"
+                                       onclick="return confirm('Elaborare il file {{ file.filename }}?')">
+                                        ⚙️
+                                    </a>
+                                    {% endif %}
+
+                                    <a href="{{ url_for('stock.delete', id=file.id) }}"
+                                       class="btn btn-outline-danger"
+                                       title="Elimina"
+                                       onclick="return confirm('Eliminare il file {{ file.filename }} e tutte le righe associate?')">
+                                        🗑️
+                                    </a>
+                                    {% endif %}
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}

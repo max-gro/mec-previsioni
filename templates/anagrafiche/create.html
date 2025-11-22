@@ -10,7 +10,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('anagrafiche.list') }}">Anagrafiche</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('anagrafiche.list', **list_params) }}">Anagrafiche</a></li>
                     <li class="breadcrumb-item active">Upload</li>
                 </ol>
             </nav>
@@ -63,31 +63,15 @@
                         </div>
 
                         <div class="mb-3">
-						
-						
-                            <!-- <label class="form-label">{{ form.data_acquisizione.label }}</label> -->
-                            <!-- {{ form.data_acquisizione(class="form-control" + (" is-invalid" if form.data_acquisizione.errors else "")) }} -->
-                            <!-- {% if form.data_acquisizione.errors %} -->
-                                <!-- <div class="invalid-feedback"> -->
-                                    <!-- {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %} -->
-                                <!-- </div> -->
-                            <!-- {% endif %} -->
-
-                                <label class="form-label">{{ form.data_acquisizione.label }} <span class="text-danger">*</span></label>
-                                <input type="text" 
-                                       name="data_acquisizione" 
-                                       id="data_acquisizione"
-                                       class="form-control{% if form.data_acquisizione.errors %} is-invalid{% endif %}" 
-                                       placeholder="gg/mm/aaaa"
-                                       value="{% if form.data_acquisizione.data %}{{ form.data_acquisizione.data.strftime('%d/%m/%Y') }}{% endif %}">
-                                {% if form.data_acquisizione.errors %}
-                                    <div class="invalid-feedback">
-                                        {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% else %}
-                                    <small class="form-text text-muted">Formato: gg/mm/aaaa (es. 26/10/2025)</small>
-                                {% endif %}							
-							
+                            <label class="form-label">{{ form.data_acquisizione.label }} <span class="text-danger">*</span></label>
+                            {{ form.data_acquisizione(class="form-control" + (" is-invalid" if form.data_acquisizione.errors else "")) }}
+                            {% if form.data_acquisizione.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% else %}
+                                <small class="form-text text-muted">Seleziona la data</small>
+                            {% endif %}
                         </div>
 
                         <div class="mb-4">
@@ -97,7 +81,7 @@
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">💾 Carica File</button>
-                            <a href="{{ url_for('anagrafiche.list') }}" class="btn btn-secondary">Annulla</a>
+                            <a href="{{ url_for('anagrafiche.list', **list_params) }}" class="btn btn-secondary">Annulla</a>
                         </div>
                     </form>
                 </div>

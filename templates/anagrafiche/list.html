@@ -4,15 +4,35 @@
 {% block content %}
 <div class="container-fluid">
 
+  <div class="mb-3">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">File Anagrafiche</li>
+      </ol>
+    </nav>
+  </div>
+
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>📄 File Anagrafiche</h2>
+    <div>
+      <h2>📄 File Anagrafiche</h2>
+      <p class="text-muted mb-0">
+        {% if total_count is defined and filtered_count is defined %}
+          {% if filtered_count < total_count %}
+            <span class="badge bg-info">{{ filtered_count }} di {{ total_count }} risultati</span>
+          {% else %}
+            <span class="badge bg-secondary">{{ total_count }} risultati</span>
+          {% endif %}
+        {% endif %}
+      </p>
+    </div>
     <div class="d-flex gap-2">
       {% if current_user.is_admin() %}
       <a href="{{ url_for('anagrafiche.sync') }}" class="btn btn-secondary" title="Sincronizza con filesystem">
         🔄 Sincronizza
       </a>
       {% endif %}
-      <a href="{{ url_for('anagrafiche.create') }}" class="btn btn-primary">➕ Carica Nuova Anagrafica</a>
+      <a href="{{ url_for('anagrafiche.create', marca=marca_filter, esito=esito_filter, anno=anno_filter, q=q, sort=sort_by, order=order, page=page) }}" class="btn btn-primary">➕ Carica Nuova Anagrafica</a>
       <a href="{{ url_for('anagrafiche.nuova_marca') }}" class="btn btn-outline-secondary">➕ Nuova Marca</a>
     </div>
   </div>
@@ -137,7 +157,7 @@
                 <div class="btn-group btn-group-sm" role="group">
                   <a href="{{ url_for('anagrafiche.preview', id=ana.id) }}" class="btn btn-outline-info" title="Anteprima">👁️</a>
                   <a href="{{ url_for('anagrafiche.download', id=ana.id) }}" class="btn btn-outline-secondary" title="Scarica">⬇️</a>
-                  <a href="{{ url_for('anagrafiche.edit', id=ana.id) }}" class="btn btn-outline-primary" title="Modifica note">✏️</a>
+                  <a href="{{ url_for('anagrafiche.edit', id=ana.id, marca=marca_filter, esito=esito_filter, anno=anno_filter, q=q, sort=sort_by, order=order, page=anagrafiche.page) }}" class="btn btn-outline-primary" title="Modifica note">✏️</a>
 
                   {% if ana.esito != 'Processato' %}
                   <form method="POST" action="{{ url_for('anagrafiche.elabora', id=ana.id) }}" class="d-inline" onsubmit="return confirm('Elaborare questo file?');">

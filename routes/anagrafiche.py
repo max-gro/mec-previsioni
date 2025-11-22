@@ -32,6 +32,25 @@ MARCHE_DEFAULT = ['HISENSE', 'HOMA', 'MIDEA']
 # FUNZIONI HELPER PER ELABORAZIONE
 # ============================================================================
 
+def preserve_list_params():
+    """Preserva i parametri di filtro/ordinamento/paginazione della lista"""
+    params = {}
+    if request.args.get('marca'):
+        params['marca'] = request.args.get('marca')
+    if request.args.get('esito'):
+        params['esito'] = request.args.get('esito')
+    if request.args.get('anno'):
+        params['anno'] = request.args.get('anno')
+    if request.args.get('q'):
+        params['q'] = request.args.get('q')
+    if request.args.get('sort'):
+        params['sort'] = request.args.get('sort')
+    if request.args.get('order'):
+        params['order'] = request.args.get('order')
+    if request.args.get('page'):
+        params['page'] = request.args.get('page')
+    return params
+
 def normalize_code(code):
     """
     Normalizza un codice rimuovendo spazi, punteggiatura e convertendo in minuscolo
@@ -792,7 +811,7 @@ def list():
     """Lista tutte le anagrafiche con paginazione, filtri e ordinamento"""
     # Sincronizza con filesystem
     scan_anagrafiche_folder()
-    
+
     page = request.args.get('page', 1, type=int)
     marca_filter = request.args.get('marca', '')
     esito_filter = request.args.get('esito', '')
@@ -800,9 +819,12 @@ def list():
     q = request.args.get('q', '').strip()
     sort_by = request.args.get('sort', 'created_at')
     order = request.args.get('order', 'desc')
-    
+
+    # Conteggio totale prima dei filtri
+    total_count = FileAnagrafica.query.count()
+
     query = FileAnagrafica.query
-    
+
     # Filtri
     if marca_filter:
         query = query.filter_by(marca=marca_filter)
@@ -812,7 +834,10 @@ def list():
         query = query.filter_by(anno=anno_filter)
     if q:
         query = query.filter(FileAnagrafica.filename.ilike(f"%{q}%"))
-    
+
+    # Conteggio dopo filtri
+    filtered_count = query.count()
+
     # Ordinamento dinamico
     sortable_columns = ['anno','marca','filename','data_acquisizione','data_elaborazione','esito','created_at','updated_at']
     if sort_by in sortable_columns and hasattr(FileAnagrafica, sort_by):
@@ -824,13 +849,13 @@ def list():
     else:
         # Default: ordina per data creazione decrescente
         query = query.order_by(FileAnagrafica.created_at.desc())
-    
+
     anagrafiche = query.paginate(page=page, per_page=20, error_out=False)
-    
+
     # Liste per filtri
     marche_disponibili = get_marche_disponibili()
     anni_disponibili = [r[0] for r in db.session.query(FileAnagrafica.anno).distinct().order_by(FileAnagrafica.anno.desc())]
-    
+
     return render_template('anagrafiche/list.html',
                          anagrafiche=anagrafiche,
                          marca_filter=marca_filter,
@@ -840,7 +865,9 @@ def list():
                          marche_disponibili=marche_disponibili,
                          anni_disponibili=anni_disponibili,
                          sort_by=sort_by,
-                         order=order)
+                         order=order,
+                         total_count=total_count,
+                         filtered_count=filtered_count)
 
 
 @anagrafiche_bp.route('/create', methods=['GET', 'POST'])
@@ -898,9 +925,11 @@ def create():
         db.session.commit()
         
         flash(f'File {filename} caricato con successo per la marca {marca}!', 'success')
-        return redirect(url_for('anagrafiche.list'))
-    
-    return render_template('anagrafiche/create.html', form=form)
+        return redirect(url_for('anagrafiche.list', **preserve_list_params()))
+
+    # Passa i parametri della lista al template
+    list_params = preserve_list_params()
+    return render_template('anagrafiche/create.html', form=form, list_params=list_params)
 
 
 @anagrafiche_bp.route('/nuova-marca', methods=['GET', 'POST'])
@@ -945,9 +974,11 @@ def edit(id):
 
         db.session.commit()
         flash(f'Anagrafica {anagrafica.filename} aggiornata!', 'success')
-        return redirect(url_for('anagrafiche.list'))
-    
-    return render_template('anagrafiche/edit.html', form=form, anagrafica=anagrafica)
+        return redirect(url_for('anagrafiche.list', **preserve_list_params()))
+
+    # Passa i parametri della lista al template
+    list_params = preserve_list_params()
+    return render_template('anagrafiche/edit.html', form=form, anagrafica=anagrafica, list_params=list_params)
 
 @anagrafiche_bp.route('/<int:id>/elabora', methods=['POST'])
 @admin_required
@@ -1006,7 +1037,7 @@ def delete(id):
             except Exception as e:
                 logger.warning(f"[DELETE ANA] Errore eliminazione file fisico: {str(e)}")
                 flash(f'Anagrafica {filename} eliminata dal DB. Errore eliminazione file: {str(e)}', 'warning')
-                return redirect(url_for('anagrafiche.list'))
+                return redirect(url_for('anagrafiche.list', **preserve_list_params()))
 
         flash(f'✅ Anagrafica {filename} eliminata con successo. '
               f'({num_relazioni} relazioni modelli-componenti rimosse)', 'success')
@@ -1016,7 +1047,7 @@ def delete(id):
         logger.error(f"[DELETE ANA] Errore durante eliminazione: {str(e)}")
         flash(f'❌ Errore durante l\'eliminazione: {str(e)}', 'danger')
 
-    return redirect(url_for('anagrafiche.list'))
+    return redirect(url_for('anagrafiche.list', **preserve_list_params()))
 
 
 @anagrafiche_bp.route('/download/<int:id>')
@@ -1027,7 +1058,7 @@ def download(id):
     
     if not os.path.exists(anagrafica.filepath):
         flash('File non trovato sul server!', 'danger')
-        return redirect(url_for('anagrafiche.list'))
+        return redirect(url_for('anagrafiche.list', **preserve_list_params()))
     
     directory = os.path.dirname(anagrafica.filepath)
     filename = os.path.basename(anagrafica.filepath)
@@ -1043,7 +1074,7 @@ def view(id):
     
     if not os.path.exists(anagrafica.filepath):
         flash('File non trovato sul server!', 'danger')
-        return redirect(url_for('anagrafiche.list'))
+        return redirect(url_for('anagrafiche.list', **preserve_list_params()))
     
     directory = os.path.dirname(anagrafica.filepath)
     filename = os.path.basename(anagrafica.filepath)
@@ -1071,7 +1102,7 @@ def sync():
         logger.error(f"[SYNC] Errore sincronizzazione: {str(e)}")
         flash(f'Errore durante sincronizzazione: {str(e)}', 'danger')
 
-    return redirect(url_for('anagrafiche.list'))
+    return redirect(url_for('anagrafiche.list', **preserve_list_params()))
 
 
 @anagrafiche_bp.route('/<int:id>/elaborazioni')
@@ -1229,7 +1260,7 @@ def preview(id):
     filepath = ana.filepath
     if not os.path.isfile(filepath):
         flash("File non trovato sul filesystem.", "danger")
-        return redirect(url_for('anagrafiche.list'))
+        return redirect(url_for('anagrafiche.list', **preserve_list_params()))
 
     # Carica prime righe
     try:

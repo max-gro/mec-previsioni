@@ -10,7 +10,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('anagrafiche.list') }}">Anagrafiche</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('anagrafiche.list', **list_params) }}">Anagrafiche</a></li>
                     <li class="breadcrumb-item active">Modifica {{ anagrafica.filename }}</li>
                 </ol>
             </nav>
@@ -82,29 +82,18 @@
 						<div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.data_acquisizione.label }}</label>
-                                <input type="text" 
-                                       name="data_acquisizione" 
-                                       id="data_acquisizione"
-                                       class="form-control{% if form.data_acquisizione.errors %} is-invalid{% endif %}" 
-                                       placeholder="gg/mm/aaaa"
-                                       value="{% if anagrafica.data_acquisizione %}{{ anagrafica.data_acquisizione.strftime('%d/%m/%Y') }}{% endif %}"
-									   {% if anagrafica.esito == 'Processato' %}disabled{% endif %}>
+                                {{ form.data_acquisizione(class="form-control" + (" is-invalid" if form.data_acquisizione.errors else ""), disabled=(anagrafica.esito == 'Processato')) }}
                                 {% if form.data_acquisizione.errors %}
                                     <div class="invalid-feedback">
                                         {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
+                                <small class="form-text text-muted">Seleziona la data{% if anagrafica.esito == 'Processato' %} (disabilitata - file processato){% endif %}</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.data_elaborazione.label }}</label>
-                                <input type="text" 
-                                       name="data_elaborazione" 
-                                       id="data_elaborazione"
-                                       class="form-control" 
-                                       placeholder="gg/mm/aaaa"
-                                       value="{% if anagrafica.data_elaborazione %}{{ anagrafica.data_elaborazione.strftime('%d/%m/%Y') }}{% endif %}"
-									   {% if anagrafica.esito == 'Processato' %}disabled{% endif %}>
-                                <div class="form-text">Opzionale</div>
+                                {{ form.data_elaborazione(class="form-control", disabled=(anagrafica.esito == 'Processato')) }}
+                                <div class="form-text">Opzionale{% if anagrafica.esito == 'Processato' %} (disabilitata - file processato){% endif %}</div>
                             </div>
                         </div>
 						
@@ -124,7 +113,7 @@
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>
-                            <a href="{{ url_for('anagrafiche.list') }}" class="btn btn-secondary">Annulla</a>
+                            <a href="{{ url_for('anagrafiche.list', **list_params) }}" class="btn btn-secondary">Annulla</a>
                         </div>
                     </form>
                 </div>

@@ -61,6 +61,23 @@ rotture_bp = Blueprint('rotture', __name__)
 # FUNZIONI HELPER PER ELABORAZIONE
 # ============================================================================
 
+def preserve_list_params():
+    """Preserva i parametri di filtro/ordinamento/paginazione della lista"""
+    params = {}
+    if request.args.get('anno'):
+        params['anno'] = request.args.get('anno')
+    if request.args.get('esito'):
+        params['esito'] = request.args.get('esito')
+    if request.args.get('q'):
+        params['q'] = request.args.get('q')
+    if request.args.get('sort'):
+        params['sort'] = request.args.get('sort')
+    if request.args.get('order'):
+        params['order'] = request.args.get('order')
+    if request.args.get('page'):
+        params['page'] = request.args.get('page')
+    return params
+
 def normalize_code(code):
     """
     Normalizza un codice rimuovendo spazi, punteggiatura e convertendo in minuscolo
@@ -474,11 +491,16 @@ def list():
     """Lista tutti i file rotture con paginazione e filtri"""
     # Sincronizza con il filesystem
     scan_rotture_folder()
-    
+
     page = request.args.get('page', 1, type=int)
     anno_filter = request.args.get('anno', type=int)
     esito_filter = request.args.get('esito', '')
-    
+    sort_by = request.args.get('sort', 'anno')
+    order = request.args.get('order', 'desc')
+
+    # Conteggio totale prima dei filtri
+    total_count = FileRottura.query.count()
+
     query = FileRottura.query
 
     if anno_filter:
@@ -487,19 +509,36 @@ def list():
     if esito_filter:
         query = query.filter(FileRottura.esito == esito_filter)
 
-    rotture = query.order_by(FileRottura.anno.desc(), FileRottura.data_acquisizione.desc()).paginate(
-        page=page, per_page=20, error_out=False
-    )
+    # Conteggio dopo filtri
+    filtered_count = query.count()
+
+    # Ordinamento dinamico
+    sortable_columns = ['anno', 'filename', 'data_acquisizione', 'data_elaborazione', 'esito']
+    if sort_by in sortable_columns and hasattr(FileRottura, sort_by):
+        column = getattr(FileRottura, sort_by)
+        if order == 'desc':
+            query = query.order_by(column.desc())
+        else:
+            query = query.order_by(column.asc())
+    else:
+        # Default: ordina per anno e data acquisizione decrescente
+        query = query.order_by(FileRottura.anno.desc(), FileRottura.data_acquisizione.desc())
+
+    rotture = query.paginate(page=page, per_page=20, error_out=False)
 
     # Lista anni disponibili per filtro
     anni_disponibili = db.session.query(FileRottura.anno.distinct()).order_by(FileRottura.anno.desc()).all()
     anni_disponibili = [a[0] for a in anni_disponibili]
-    
-    return render_template('rotture/list.html', 
-                         rotture=rotture, 
+
+    return render_template('rotture/list.html',
+                         rotture=rotture,
                          anni_disponibili=anni_disponibili,
                          anno_filter=anno_filter,
-                         esito_filter=esito_filter)
+                         esito_filter=esito_filter,
+                         sort_by=sort_by,
+                         order=order,
+                         total_count=total_count,
+                         filtered_count=filtered_count)
 
 
 @rotture_bp.route('/create', methods=['GET', 'POST'])
@@ -543,9 +582,11 @@ def create():
         db.session.commit()
         
         flash(f'File rottura {filename} caricato con successo!', 'success')
-        return redirect(url_for('rotture.list'))
-    
-    return render_template('rotture/create.html', form=form)
+        return redirect(url_for('rotture.list', **preserve_list_params()))
+
+    # Passa i parametri della lista al template
+    list_params = preserve_list_params()
+    return render_template('rotture/create.html', form=form, list_params=list_params)
 
 
 @rotture_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
@@ -567,9 +608,11 @@ def edit(id):
 
         db.session.commit()
         flash(f'File rottura aggiornato!', 'success')
-        return redirect(url_for('rotture.list'))
+        return redirect(url_for('rotture.list', **preserve_list_params()))
 
-    return render_template('rotture/edit.html', form=form, rottura=rottura)
+    # Passa i parametri della lista al template
+    list_params = preserve_list_params()
+    return render_template('rotture/edit.html', form=form, rottura=rottura, list_params=list_params)
 
 
 
@@ -714,7 +757,7 @@ def delete(id):
 
         flash(f'❌ Errore durante eliminazione: {e}', 'danger')
 
-    return redirect(url_for('rotture.list'))
+    return redirect(url_for('rotture.list', **preserve_list_params()))
 
 
 @rotture_bp.route('/<int:id>/elabora', methods=['POST'])
@@ -726,7 +769,7 @@ def elabora(id):
     # Controlla stato
     if file_rottura.esito == 'Processato':
         flash('Il file Ã¨ giÃ  stato processato!', 'warning')
-        return redirect(url_for('rotture.list'))
+        return redirect(url_for('rotture.list', **preserve_list_params()))
     
     # Controlla esistenza file
     if not os.path.exists(file_rottura.filepath):
@@ -737,7 +780,7 @@ def elabora(id):
         file_rottura.updated_at = datetime.utcnow()
         file_rottura.updated_by = current_user.id
         db.session.commit()
-        return redirect(url_for('rotture.list'))
+        return redirect(url_for('rotture.list', **preserve_list_params()))
 
     # Genera TSV simulato (sostituisce temporaneamente la lettura Excel)
     genera_tsv_simulato_rotture(file_rottura)
@@ -799,7 +842,7 @@ def download(id):
 
     if not os.path.exists(file_rottura.filepath):
         flash('File non trovato!', 'error')
-        return redirect(url_for('rotture.list'))
+        return redirect(url_for('rotture.list', **preserve_list_params()))
 
     return send_file(file_rottura.filepath, as_attachment=True, download_name=file_rottura.filename)
 
@@ -823,7 +866,7 @@ def sync():
         logger.error(f"[SYNC] Errore sincronizzazione: {str(e)}")
         flash(f'Errore durante sincronizzazione: {str(e)}', 'danger')
 
-    return redirect(url_for('rotture.list'))
+    return redirect(url_for('rotture.list', **preserve_list_params()))
 
 
 @rotture_bp.route('/<int:id>/elaborazioni')

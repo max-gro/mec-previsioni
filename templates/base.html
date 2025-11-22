@@ -25,6 +25,27 @@
             background-color: var(--color-primary) !important;
             box-shadow: 0 2px 4px rgba(0,0,0,.1);
         }
+
+        /* Menu links più visibili/bianchi */
+        .navbar-dark .navbar-nav .nav-link {
+            color: rgba(255, 255, 255, 0.95) !important;
+            font-weight: 500;
+        }
+
+        .navbar-dark .navbar-nav .nav-link:hover,
+        .navbar-dark .navbar-nav .nav-link:focus {
+            color: rgba(255, 255, 255, 1) !important;
+        }
+
+        .navbar-dark .navbar-brand {
+            color: rgba(255, 255, 255, 0.98) !important;
+            font-weight: 600;
+        }
+
+        /* Dropdown menu items */
+        .dropdown-menu .dropdown-item {
+            font-weight: 500;
+        }
         
         /* Override Bootstrap primary color */
         .bg-primary {
@@ -75,7 +96,10 @@
             background-color: var(--color-primary);
         }
     </style>
-    
+
+    <!-- Flatpickr CSS for date pickers -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -111,7 +135,14 @@
                         </a>
                     </li>
 
-                    <!-- Menu Anagrafiche -->
+                    <!-- Menu File Ordini -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('ordini.list') }}">
+                            📋 File Ordini
+                        </a>
+                    </li>
+
+                    <!-- Menu File Anagrafiche -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarAnagrafiche" role="button" data-bs-toggle="dropdown">
                             📄 File Anagrafiche
@@ -138,17 +169,26 @@
                         </ul>
                     </li>
 
-                    <!-- Altri menu -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('ordini.list') }}">
-                            📋 File Ordini
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('rotture.list') }}">
+                    <!-- Menu File Rotture -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarRotture" role="button" data-bs-toggle="dropdown">
                             🔧 File Rotture
                         </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('rotture.list') }}">
+                                    📄 Gestione File Excel
+                                </a>
+                            </li>
+                            {% if current_user.is_admin() %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('rotture.create') }}">
+                                    ➕ Upload File Excel
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
                     </li>
                     
                     <li class="nav-item">
@@ -156,7 +196,31 @@
                             📈 Previsioni
                         </a>
                     </li>
-                    
+
+                    <!-- Menu Explorer -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarExplorer" role="button" data-bs-toggle="dropdown">
+                            🔍 Explorer
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('ordini_explorer.index') }}">
+                                    📋 Ordini Explorer
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('anagrafiche_catalogo.index') }}">
+                                    📦 Catalogo Modelli & Componenti
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('rotture_explorer.index') }}">
+                                    🔧 Rotture Explorer
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
                     {% if current_user.is_admin() %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('users.list') }}">
@@ -229,13 +293,185 @@
     <!-- Footer -->
     <footer class="mt-5 py-4 bg-light border-top">
         <div class="container text-center text-muted">
-            <small>© 2025 M&C Previsioni - Sistema di Gestione - Versione 0.0.8 </small>
+            <small>© 2025 M&C Previsioni - Sistema di Gestione - Versione 0.0.9 </small>
         </div>
     </footer>
 
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+
+    <!-- Flatpickr JS for date pickers -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/it.js"></script>
+
+    <!-- Initialize Flatpickr and File Upload Feedback -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Flatpickr on all date inputs
+            flatpickr('input[type="date"]', {
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd/m/Y',
+                locale: 'it',
+                allowInput: true
+            });
+
+            flatpickr('input[type="datetime-local"]', {
+                dateFormat: 'Y-m-d\\TH:i',
+                altInput: true,
+                altFormat: 'd/m/Y H:i',
+                enableTime: true,
+                time_24hr: true,
+                locale: 'it',
+                allowInput: true
+            });
+
+            // File Upload Feedback
+            const fileInputs = document.querySelectorAll('input[type="file"]');
+            fileInputs.forEach(input => {
+                input.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const fileName = file.name;
+                    const fileSize = (file.size / (1024 * 1024)).toFixed(2);
+
+                    let preview = input.closest('.mb-4, .mb-3, .mb-2')?.querySelector('.file-preview');
+                    if (!preview) {
+                        preview = document.createElement('div');
+                        preview.className = 'file-preview alert alert-success mt-2 mb-0';
+                        const container = input.closest('.mb-4, .mb-3, .mb-2');
+                        if (container) container.appendChild(preview);
+                    }
+
+                    preview.innerHTML = `<strong>📎 File selezionato:</strong> ${fileName} <span class="text-muted">(${fileSize} MB)</span>`;
+                    preview.style.display = 'block';
+                });
+            });
+
+            // Upload Progress
+            const uploadForms = document.querySelectorAll('form[enctype="multipart/form-data"]');
+            uploadForms.forEach(form => {
+                const originalAction = form.action;
+
+                form.addEventListener('submit', function(e) {
+                    const fileInput = form.querySelector('input[type="file"]');
+                    const submitBtn = form.querySelector('button[type="submit"]');
+
+                    if (!fileInput || !fileInput.files.length) return;
+
+                    e.preventDefault();
+
+                    // Save original button text
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Caricamento...';
+
+                    // Create progress bar
+                    let progressContainer = form.querySelector('.upload-progress');
+                    if (!progressContainer) {
+                        progressContainer = document.createElement('div');
+                        progressContainer.className = 'upload-progress mt-3';
+                        progressContainer.innerHTML = `
+                            <div class="d-flex justify-content-between mb-1">
+                                <small class="text-muted">Upload in corso...</small>
+                                <small class="text-muted"><span class="upload-percent">0</span>%</small>
+                            </div>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success upload-bar"
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+                        `;
+                        submitBtn.closest('.d-flex, div').insertAdjacentElement('beforebegin', progressContainer);
+                    }
+                    progressContainer.style.display = 'block';
+
+                    const formData = new FormData(form);
+                    const xhr = new XMLHttpRequest();
+
+                    xhr.upload.addEventListener('progress', function(e) {
+                        if (e.lengthComputable) {
+                            const percent = Math.round((e.loaded / e.total) * 100);
+                            const bar = progressContainer.querySelector('.upload-bar');
+                            const text = progressContainer.querySelector('.upload-percent');
+                            if (bar) bar.style.width = percent + '%';
+                            if (text) text.textContent = percent;
+                        }
+                    });
+
+                    xhr.addEventListener('load', function() {
+                        if (xhr.status >= 200 && xhr.status < 400) {
+                            if (xhr.responseURL && xhr.responseURL !== originalAction) {
+                                window.location.href = xhr.responseURL;
+                            } else {
+                                window.location.reload();
+                            }
+                        } else {
+                            alert('Errore durante l\'upload. Riprova.');
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalText;
+                            progressContainer.style.display = 'none';
+                        }
+                    });
+
+                    xhr.addEventListener('error', function() {
+                        alert('Errore di rete. Verifica la connessione.');
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                        progressContainer.style.display = 'none';
+                    });
+
+                    xhr.open('POST', form.action);
+                    xhr.send(formData);
+                });
+            });
+
+            // Prevent Double Submit on ALL forms
+            const allForms = document.querySelectorAll('form');
+            allForms.forEach(form => {
+                let isSubmitting = false;
+
+                form.addEventListener('submit', function(e) {
+                    // Skip if already handled by upload handler
+                    if (form.hasAttribute('enctype') && form.querySelector('input[type="file"]')?.files.length) {
+                        return; // Let upload handler manage this
+                    }
+
+                    if (isSubmitting) {
+                        e.preventDefault();
+                        return false;
+                    }
+
+                    isSubmitting = true;
+                    const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+
+                    if (submitBtn) {
+                        const originalText = submitBtn.innerHTML || submitBtn.value;
+                        submitBtn.disabled = true;
+
+                        // Add spinner if it's a button (not input)
+                        if (submitBtn.tagName === 'BUTTON') {
+                            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvataggio...';
+                        } else {
+                            submitBtn.value = 'Salvataggio...';
+                        }
+
+                        // Re-enable after 5 seconds as fallback (in case redirect fails)
+                        setTimeout(() => {
+                            isSubmitting = false;
+                            submitBtn.disabled = false;
+                            if (submitBtn.tagName === 'BUTTON') {
+                                submitBtn.innerHTML = originalText;
+                            } else {
+                                submitBtn.value = originalText;
+                            }
+                        }, 5000);
+                    }
+                });
+            });
+        });
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

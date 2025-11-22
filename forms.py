@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired, FileAllowed
-from wtforms import StringField, PasswordField, FloatField, TextAreaField, SelectField, DateField, DateTimeField, IntegerField, BooleanField
+from wtforms import StringField, PasswordField, FloatField, TextAreaField, SelectField, DateField, DateTimeField, IntegerField, BooleanField, EmailField
 from wtforms.validators import Email, Length, EqualTo
 from wtforms.validators import DataRequired, NumberRange, Optional, ValidationError
 from models import User #, Componente
@@ -12,15 +12,15 @@ def _anno_bounds():
     
     
 class LoginForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)])
-    password = PasswordField('Password', validators=[DataRequired()])
+    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)], render_kw={'minlength': 3, 'maxlength': 80})
+    password = PasswordField('Password', validators=[DataRequired()], render_kw={'minlength': 6})
 
 
 class UserForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)])
-    email = StringField('Email', validators=[DataRequired(), Email()])
-    password = PasswordField('Password', validators=[Length(min=6)])
-    confirm_password = PasswordField('Conferma Password', validators=[EqualTo('password')])
+    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)], render_kw={'minlength': 3, 'maxlength': 80})
+    email = EmailField('Email', validators=[DataRequired(), Email()], render_kw={'pattern': '[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$'})
+    password = PasswordField('Password', validators=[Optional(), Length(min=6, message='La password deve essere di almeno 6 caratteri')])
+    confirm_password = PasswordField('Conferma Password', validators=[Optional(), EqualTo('password', message='Le password devono coincidere')])
     role = SelectField('Ruolo', choices=[('user', 'Utente'), ('admin', 'Amministratore')])
     active = BooleanField('Attivo')
     
@@ -43,7 +43,7 @@ class RotturaForm(FlaskForm):
     anno = IntegerField('Anno', validators=[DataRequired()])
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         default=date.today,
         validators=[DataRequired()],
         render_kw={'type': 'date'}
@@ -56,13 +56,13 @@ class RotturaEditForm(FlaskForm):
     """Form per modifica File Rottura (senza upload)"""
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         validators=[DataRequired()],
         render_kw={'type': 'date'}
     )
     data_elaborazione = DateTimeField(
         'Data Elaborazione',
-        format='%d/%m/%Y %H:%M',
+        format='%Y-%m-%dT%H:%M',
         validators=[Optional()],
         render_kw={'type': 'datetime-local'}
     )
@@ -83,7 +83,7 @@ class FileOrdineForm(FlaskForm):
     ])
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         default=date.today,
         validators=[DataRequired()],
         render_kw={'type': 'date'}
@@ -100,13 +100,13 @@ class FileOrdineEditForm(FlaskForm):
     """Form per modifica File Ordine (senza upload file)"""
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         validators=[DataRequired()],
         render_kw={'type': 'date'}
     )
     data_elaborazione = DateTimeField(
         'Data Elaborazione',
-        format='%d/%m/%Y %H:%M',
+        format='%Y-%m-%dT%H:%M',
         validators=[Optional()],
         render_kw={'type': 'datetime-local'}
     )
@@ -127,7 +127,7 @@ class OrdineAcquistoForm(FlaskForm):
     ])
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         default=date.today,
         validators=[DataRequired()],
         render_kw={'type': 'date'}
@@ -144,7 +144,7 @@ class OrdineAcquistoEditForm(FlaskForm):
     """Form per modifica Ordine di Acquisto (DEPRECATO - usa FileOrdineEditForm)"""
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         validators=[DataRequired()],
         render_kw={'type': 'date'}
     )
@@ -172,7 +172,7 @@ class AnagraficaFileForm(FlaskForm):
     )    
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         default=date.today,
         validators=[DataRequired()],
         render_kw={'type': 'date'}
@@ -196,13 +196,13 @@ class AnagraficaFileEditForm(FlaskForm):
     )
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         validators=[DataRequired()],
         render_kw={'type': 'date'}
     )
     data_elaborazione = DateTimeField(
         'Data Elaborazione',
-        format='%d/%m/%Y %H:%M',
+        format='%Y-%m-%dT%H:%M',
         validators=[Optional()],
         render_kw={'type': 'datetime-local'}
     )

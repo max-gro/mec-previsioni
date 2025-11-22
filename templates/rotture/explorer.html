@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}Rotture Explorer - Analisi Affidabilità{% endblock %}
+
+{% block extra_css %}
+<style>
+.kpi-card {
+    border-left: 4px solid #0d6efd;
+    transition: transform 0.2s;
+}
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.kpi-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #0d6efd;
+}
+.vista-toggle .btn {
+    min-width: 150px;
+}
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+.sortable-header:hover {
+    background-color: #dee2e6 !important;
+}
+.severity-high {
+    color: #dc3545;
+    font-weight: bold;
+}
+.severity-medium {
+    color: #fd7e14;
+}
+.severity-low {
+    color: #198754;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>🔧 Rotture & Affidabilità Storica</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('rotture.list') }}">File Rotture</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Explorer Database</li>
+                </ol>
+            </nav>
+            <p class="text-muted">
+                Analisi rotture strutturate per modello/componente, trend affidabilità, identificazione criticità
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('rotture_explorer.export_excel', **request.args) }}" class="btn btn-success">
+                📥 Export Excel
+            </a>
+            <a href="{{ url_for('previsioni.index') }}" class="btn btn-primary">
+                📈 Vai a Previsioni
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card kpi-card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Totale Rotture</h6>
+                    <div class="kpi-value">{{ total_rotture|number_format }}</div>
+                    <small class="text-muted">Nel periodo selezionato</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card kpi-card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Modelli Coinvolti</h6>
+                    <div class="kpi-value">{{ modelli_unici }}</div>
+                    <small class="text-muted">Modelli con rotture</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card kpi-card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Vita Media Prodotto</h6>
+                    <div class="kpi-value">{{ vita_media }}</div>
+                    <small class="text-muted">Giorni medi</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card kpi-card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Periodo Analisi</h6>
+                    <div class="kpi-value" style="font-size: 1.2rem;">
+                        {{ (data_a - data_da).days }}
+                    </div>
+                    <small class="text-muted">Giorni analizzati</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtri -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">🔍 Filtri Analisi</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('rotture_explorer.index') }}" class="row g-3">
+                <!-- Mantieni vista corrente -->
+                <input type="hidden" name="vista" value="{{ vista }}">
+
+                <!-- Periodo -->
+                <div class="col-md-2">
+                    <label class="form-label">Data Da</label>
+                    <input type="date" name="data_da" class="form-control"
+                           value="{{ data_da.strftime('%Y-%m-%d') if data_da else '' }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Data A</label>
+                    <input type="date" name="data_a" class="form-control"
+                           value="{{ data_a.strftime('%Y-%m-%d') if data_a else '' }}">
+                </div>
+
+                <!-- Marca -->
+                <div class="col-md-2">
+                    <label class="form-label">Marca</label>
+                    <select name="marca" class="form-select">
+                        <option value="">Tutte</option>
+                        {% for marca in marche_disponibili %}
+                        <option value="{{ marca }}" {% if marca_filter == marca %}selected{% endif %}>{{ marca }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Modello -->
+                <div class="col-md-2">
+                    <label class="form-label">Modello</label>
+                    <input type="text" name="modello" class="form-control"
+                           placeholder="Cerca modello..." value="{{ modello_filter }}">
+                </div>
+
+                <!-- Componente (solo se vista componente) -->
+                {% if vista == 'componente' %}
+                <div class="col-md-2">
+                    <label class="form-label">Componente</label>
+                    <input type="text" name="componente" class="form-control"
+                           placeholder="Cerca componente..." value="{{ componente_filter }}">
+                </div>
+                {% endif %}
+
+                <!-- Rivenditore -->
+                <div class="col-md-2">
+                    <label class="form-label">Rivenditore</label>
+                    <input type="text" name="rivenditore" class="form-control"
+                           placeholder="Codice..." value="{{ rivenditore_filter }}">
+                </div>
+
+                <!-- Categoria -->
+                <div class="col-md-2">
+                    <label class="form-label">Categoria</label>
+                    <select name="cat" class="form-select">
+                        <option value="">Tutte</option>
+                        {% for cat in categorie_disponibili %}
+                        <option value="{{ cat }}" {% if categoria_filter == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Bottoni -->
+                <div class="col-md-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        🔍 Applica Filtri
+                    </button>
+                    <a href="{{ url_for('rotture_explorer.index') }}" class="btn btn-outline-secondary">
+                        ✕ Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toggle Vista + Risultati -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                {% if vista == 'modello' %}
+                    📊 Aggregato per Modello
+                {% else %}
+                    🔧 Aggregato per Componente
+                {% endif %}
+                <span class="badge bg-secondary">{{ aggregati|length }} risultati</span>
+            </h5>
+
+            <!-- Toggle Vista -->
+            <div class="btn-group vista-toggle" role="group">
+                <a href="{{ url_for('rotture_explorer.index', vista='modello', data_da=data_da, data_a=data_a, marca=marca_filter, modello=modello_filter, rivenditore=rivenditore_filter, cat=categoria_filter) }}"
+                   class="btn {% if vista == 'modello' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    📊 Per Modello
+                </a>
+                <a href="{{ url_for('rotture_explorer.index', vista='componente', data_da=data_da, data_a=data_a, marca=marca_filter, modello=modello_filter, rivenditore=rivenditore_filter, cat=categoria_filter) }}"
+                   class="btn {% if vista == 'componente' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    🔧 Per Componente
+                </a>
+            </div>
+        </div>
+
+        <div class="card-body">
+            {% if aggregati %}
+
+            <!-- Macro ordinamento -->
+            {% macro sort_link(column, label) %}
+                <a href="{{ url_for('rotture_explorer.index',
+                           vista=vista,
+                           data_da=data_da,
+                           data_a=data_a,
+                           marca=marca_filter,
+                           modello=modello_filter,
+                           componente=componente_filter,
+                           rivenditore=rivenditore_filter,
+                           cat=categoria_filter,
+                           sort=column,
+                           order='desc' if sort_by == column and order == 'asc' else 'asc') }}"
+                   class="text-decoration-none text-dark">
+                    {{ label }}
+                    {% if sort_by == column %}
+                        {% if order == 'asc' %}
+                            <strong>▲</strong>
+                        {% else %}
+                            <strong>▼</strong>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">⇅</span>
+                    {% endif %}
+                </a>
+            {% endmacro %}
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            {% if vista == 'modello' %}
+                                <th>Codice Modello</th>
+                                <th>Marca</th>
+                                <th class="sortable-header">{{ sort_link('n_rotture', 'N. Rotture') }}</th>
+                                <th class="sortable-header">{{ sort_link('vita_media', 'Vita Media (gg)') }}</th>
+                                <th class="sortable-header">{{ sort_link('componenti_coinvolti', 'Componenti') }}</th>
+                                <th class="text-center">Azioni</th>
+                            {% else %}
+                                <th>Codice Componente</th>
+                                <th>Descrizione</th>
+                                <th class="sortable-header">{{ sort_link('n_rotture', 'N. Rotture') }}</th>
+                                <th class="sortable-header">{{ sort_link('modelli_coinvolti', 'Modelli') }}</th>
+                                <th class="text-center">Azioni</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in aggregati %}
+                        <tr>
+                            {% if vista == 'modello' %}
+                                <td><code>{{ item.cod_modello }}</code></td>
+                                <td><span class="badge bg-secondary">{{ item.marca }}</span></td>
+                                <td>
+                                    <strong class="{% if item.n_rotture > 50 %}severity-high{% elif item.n_rotture > 20 %}severity-medium{% else %}severity-low{% endif %}">
+                                        {{ item.n_rotture }}
+                                    </strong>
+                                </td>
+                                <td>{{ item.vita_media }}</td>
+                                <td>{{ item.componenti_coinvolti }}</td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('rotture_explorer.dettaglio_modello', cod_modello=item.cod_modello, data_da=data_da, data_a=data_a) }}"
+                                           class="btn btn-outline-info" title="Dettaglio rotture">
+                                            👁️ Dettaglio
+                                        </a>
+                                        <a href="{{ url_for('previsioni.index') }}?modello={{ item.cod_modello }}"
+                                           class="btn btn-outline-primary" title="Apri previsioni">
+                                            📈 Previsioni
+                                        </a>
+                                    </div>
+                                </td>
+                            {% else %}
+                                <td><code>{{ item.cod_componente }}</code></td>
+                                <td>{{ item.componente_it }}</td>
+                                <td>
+                                    <strong class="{% if item.n_rotture > 100 %}severity-high{% elif item.n_rotture > 50 %}severity-medium{% else %}severity-low{% endif %}">
+                                        {{ item.n_rotture }}
+                                    </strong>
+                                </td>
+                                <td>{{ item.modelli_coinvolti }}</td>
+                                <td class="text-center">
+                                    <a href="{{ url_for('previsioni.index') }}?componente={{ item.cod_componente }}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        📈 Previsioni
+                                    </a>
+                                </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% else %}
+            <div class="text-center py-5">
+                <p class="text-muted">Nessuna rottura trovata con i filtri selezionati.</p>
+                <a href="{{ url_for('rotture_explorer.index') }}" class="btn btn-outline-primary">Reset Filtri</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Info Box -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h6 class="alert-heading">💡 Come usare l'Explorer</h6>
+                <ul class="mb-0 small">
+                    <li><strong>Vista per Modello:</strong> Identifica modelli più problematici (alto numero rotture, bassa vita media)</li>
+                    <li><strong>Vista per Componente:</strong> Identifica componenti critici da ordinare/sostituire</li>
+                    <li><strong>Filtri Periodo:</strong> Analizza trend temporali (es. ultimo trimestre vs anno scorso)</li>
+                    <li><strong>Dettaglio:</strong> Click su "Dettaglio" per vedere lista rotture singole e componenti coinvolti</li>
+                    <li><strong>Previsioni:</strong> Link diretto alle previsioni con modello/componente pre-selezionato</li>
+                    <li><strong>Export Excel:</strong> Scarica dati aggregati per analisi offline</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Inizializza date picker se presenti
+document.addEventListener('DOMContentLoaded', function() {
+    // Flatpickr già caricato in base.html
+});
+</script>
+{% endblock %}

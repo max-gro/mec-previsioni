@@ -10,7 +10,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('ordini.list') }}">Ordini Acquisto</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('ordini.list', **list_params) }}">Ordini Acquisto</a></li>
                     <li class="breadcrumb-item active">Carica</li>
                 </ol>
             </nav>
@@ -43,18 +43,13 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.data_acquisizione.label }} <span class="text-danger">*</span></label>
-                                <input type="text" 
-                                       name="data_acquisizione" 
-                                       id="data_acquisizione"
-                                       class="form-control{% if form.data_acquisizione.errors %} is-invalid{% endif %}" 
-                                       placeholder="gg/mm/aaaa"
-                                       value="{% if form.data_acquisizione.data %}{{ form.data_acquisizione.data.strftime('%d/%m/%Y') }}{% endif %}">
+                                {{ form.data_acquisizione(class="form-control" + (" is-invalid" if form.data_acquisizione.errors else "")) }}
                                 {% if form.data_acquisizione.errors %}
                                     <div class="invalid-feedback">
                                         {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
-                                <small class="form-text text-muted">Formato: gg/mm/aaaa</small>
+                                <small class="form-text text-muted">Seleziona la data</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.esito.label }}</label>
@@ -82,7 +77,7 @@
                             <button type="submit" class="btn btn-primary">
                                 📤 Carica Ordine
                             </button>
-                            <a href="{{ url_for('ordini.list') }}" class="btn btn-secondary">Annulla</a>
+                            <a href="{{ url_for('ordini.list', **list_params) }}" class="btn btn-secondary">Annulla</a>
                         </div>
                     </form>
                 </div>

@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+
+{% block title %}Dettaglio Modello {{ modello.cod_modello }} - M&C Previsioni{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Info card compatta */
+    .info-card {
+        background: white;
+        border-radius: 6px;
+        padding: 12px 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 12px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px 16px;
+        font-size: 0.875rem;
+    }
+
+    .info-item {
+        display: flex;
+        align-items: center;
+    }
+
+    .info-label {
+        font-weight: 600;
+        color: #6c757d;
+        margin-right: 6px;
+        font-size: 0.8rem;
+    }
+
+    .info-value {
+        color: #212529;
+    }
+
+    /* Summary boxes */
+    .summary-box {
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+        color: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .summary-box h6 {
+        font-size: 0.875rem;
+        opacity: 0.9;
+        margin-bottom: 5px;
+    }
+
+    .summary-box .value {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    /* Tabs compatti */
+    .nav-tabs {
+        margin-bottom: 10px !important;
+    }
+
+    .nav-tabs .nav-link {
+        color: #6c757d;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: var(--color-primary);
+        border-bottom-color: var(--color-primary);
+        background: transparent;
+        font-weight: 600;
+    }
+
+    .nav-tabs .nav-link:hover {
+        border-bottom-color: var(--color-primary-light);
+    }
+
+    /* Breadcrumb */
+    .breadcrumb {
+        background: transparent;
+        padding: 0;
+        margin-bottom: 20px;
+    }
+
+    /* Badge stat */
+    .badge-stat {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+
+    /* Progress bar per componenti critici */
+    .progress {
+        height: 25px;
+    }
+
+    /* Prezzi table */
+    .prezzi-table td {
+        vertical-align: middle;
+        padding: 8px;
+    }
+
+    .prezzi-label {
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    .prezzi-value {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: var(--color-primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header compatto con info inline -->
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+            <h4 class="mb-1">📦 {{ modello.cod_modello }} <small class="text-muted">- {{ modello.nome_modello or modello.nome_modello_it or 'Nome non disponibile' }}</small></h4>
+        </div>
+        <a href="{{ url_for('anagrafiche_catalogo.index') }}" class="btn btn-outline-secondary btn-sm">
+            ← Catalogo
+        </a>
+    </div>
+
+    <!-- Informazioni Modello compatte a griglia -->
+    <div class="info-card">
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Marca:</span>
+                <span class="info-value">{{ modello.marca or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Divisione:</span>
+                <span class="info-value">{{ modello.divisione or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Famiglia:</span>
+                <span class="info-value">{{ modello.famiglia or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Tipo:</span>
+                <span class="info-value">{{ modello.tipo or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Produttore:</span>
+                <span class="info-value">{{ modello.produttore or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Origine:</span>
+                <span class="badge bg-{{ 'primary' if modello.updated_from == 'ORD' else 'success' if modello.updated_from == 'ANA' else 'danger' if modello.updated_from == 'ROT' else 'secondary' }}">
+                    {{ modello.updated_from or 'N/D' }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="dettaglioTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="bom-tab" data-bs-toggle="tab" data-bs-target="#bom" type="button">
+                🔧 Componenti (BOM)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="file-tab" data-bs-toggle="tab" data-bs-target="#file" type="button">
+                📄 File di Origine
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="rotture-tab" data-bs-toggle="tab" data-bs-target="#rotture" type="button">
+                📊 Statistiche Rotture
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="dettaglioTabsContent">
+        <!-- TAB 1: COMPONENTI (BOM) -->
+        <div class="tab-pane fade show active" id="bom" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">🔧 Distinta Base (Bill of Materials)</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Riepilogo Costi -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="summary-box">
+                                <h6>Componenti Totali</h6>
+                                <div class="value">{{ bom_summary.totale_componenti }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="summary-box">
+                                <h6>Quantità Totale</h6>
+                                <div class="value">{{ bom_summary.totale_qta }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-sm mb-0 prezzi-table">
+                                <tr>
+                                    <td class="prezzi-label">Costo USD:</td>
+                                    <td class="prezzi-value text-end">$ {{ "%.2f"|format(bom_summary.costo_usd) }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="prezzi-label">Costo Buyer EUR:</td>
+                                    <td class="prezzi-value text-end">€ {{ "%.2f"|format(bom_summary.costo_buyer_eur) }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="prezzi-label">Costo Seller EUR:</td>
+                                    <td class="prezzi-value text-end">€ {{ "%.2f"|format(bom_summary.costo_seller_eur) }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tabella BOM -->
+                    {% if bom %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Cod. Componente</th>
+                                    <th>Descrizione</th>
+                                    <th class="text-center">Qtà</th>
+                                    <th class="text-center">Stat</th>
+                                    <th class="text-end">Prezzo USD</th>
+                                    <th class="text-end">Prezzo Buyer EUR</th>
+                                    <th class="text-end">Prezzo Seller EUR</th>
+                                    <th class="text-end">Subtotale USD</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in bom %}
+                                <tr>
+                                    <td><strong>{{ item.cod_componente }}</strong></td>
+                                    <td>
+                                        <small>{{ item.componente_it or item.part_name_it or '-' }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary">{{ item.qta or 0 }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        {% if item.stat %}
+                                        <span class="badge badge-stat bg-info">{{ item.stat }}</span>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if item.unit_price_usd %}
+                                        $ {{ "%.2f"|format(item.unit_price_usd) }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if item.unit_price_notra_noiva_netto_eur %}
+                                        € {{ "%.2f"|format(item.unit_price_notra_noiva_netto_eur) }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if item.unit_price_tra_noiva_netto_eur %}
+                                        € {{ "%.2f"|format(item.unit_price_tra_noiva_netto_eur) }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if item.unit_price_usd and item.qta %}
+                                        <strong>$ {{ "%.2f"|format(item.unit_price_usd * item.qta) }}</strong>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <th colspan="2">TOTALE</th>
+                                    <th class="text-center">{{ bom_summary.totale_qta }}</th>
+                                    <th colspan="4"></th>
+                                    <th class="text-end">$ {{ "%.2f"|format(bom_summary.costo_usd) }}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        Nessun componente trovato per questo modello.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: FILE DI ORIGINE -->
+        <div class="tab-pane fade" id="file" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">📄 File Anagrafiche di Origine</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        File Excel da cui provengono i dati di questo modello.
+                    </p>
+
+                    {% if file_origine %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID File</th>
+                                    <th>Anno</th>
+                                    <th>Marca</th>
+                                    <th>Nome File</th>
+                                    <th>Esito</th>
+                                    <th>Data Acquisizione</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for file in file_origine %}
+                                <tr>
+                                    <td><strong>{{ file.id }}</strong></td>
+                                    <td>{{ file.anno }}</td>
+                                    <td>{{ file.marca }}</td>
+                                    <td>
+                                        <small>{{ file.filename }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if file.esito == 'Processato' else 'warning' if file.esito == 'Da processare' else 'danger' }}">
+                                            {{ file.esito }}
+                                        </span>
+                                    </td>
+                                    <td>{{ file.data_acquisizione.strftime('%d/%m/%Y %H:%M') if file.data_acquisizione else '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        Nessun file di origine trovato per questo modello.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: STATISTICHE ROTTURE -->
+        <div class="tab-pane fade" id="rotture" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">📊 Statistiche Affidabilità & Rotture</h5>
+                </div>
+                <div class="card-body">
+                    <!-- KPI Rotture -->
+                    {% if rotture_stats and rotture_stats.n_rotture > 0 %}
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="summary-box">
+                                <h6>Totale Rotture</h6>
+                                <div class="value">{{ rotture_stats.n_rotture }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="summary-box">
+                                <h6>Vita Media Prodotto</h6>
+                                <div class="value">
+                                    {% if rotture_stats.vita_media %}
+                                    {{ "%.0f"|format(rotture_stats.vita_media) }} gg
+                                    {% else %}
+                                    N/D
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="summary-box">
+                                <h6>Prima Rottura</h6>
+                                <div class="value" style="font-size: 1.1rem;">
+                                    {{ rotture_stats.data_prima_rottura.strftime('%d/%m/%Y') if rotture_stats.data_prima_rottura else 'N/D' }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="summary-box">
+                                <h6>Ultima Rottura</h6>
+                                <div class="value" style="font-size: 1.1rem;">
+                                    {{ rotture_stats.data_ultima_rottura.strftime('%d/%m/%Y') if rotture_stats.data_ultima_rottura else 'N/D' }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TOP 5 Componenti Critici -->
+                    <h6 class="mb-3">🔴 TOP 5 Componenti Critici (più rotture)</h6>
+                    {% if componenti_critici %}
+                    <table class="table table-striped">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Cod. Componente</th>
+                                <th>Descrizione</th>
+                                <th class="text-center">N. Rotture</th>
+                                <th style="width: 40%;">Percentuale</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for comp in componenti_critici %}
+                            <tr>
+                                <td><strong>{{ comp.cod_componente }}</strong></td>
+                                <td><small>{{ comp.componente_it or '-' }}</small></td>
+                                <td class="text-center">
+                                    <span class="badge bg-danger">{{ comp.n_rotture }}</span>
+                                </td>
+                                <td>
+                                    {% set perc = (comp.n_rotture * 100 / rotture_stats.n_rotture)|round(1) %}
+                                    <div class="progress">
+                                        <div class="progress-bar {% if perc > 30 %}bg-danger{% elif perc > 15 %}bg-warning{% else %}bg-info{% endif %}"
+                                             role="progressbar"
+                                             style="width: {{ perc }}%"
+                                             aria-valuenow="{{ perc }}"
+                                             aria-valuemin="0"
+                                             aria-valuemax="100">
+                                            {{ perc }}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="alert alert-info">
+                        Dettaglio componenti non disponibile.
+                    </div>
+                    {% endif %}
+
+                    <!-- Link alle Previsioni -->
+                    <div class="mt-4">
+                        <a href="{{ url_for('previsioni.index') }}?modello={{ modello.cod_modello }}"
+                           class="btn btn-primary">
+                            📈 Apri Previsioni per questo Modello
+                        </a>
+                        <a href="{{ url_for('rotture_explorer.index') }}?modello={{ modello.cod_modello }}"
+                           class="btn btn-outline-primary">
+                            🔍 Vedi Dettaglio Rotture
+                        </a>
+                    </div>
+
+                    {% else %}
+                    <div class="alert alert-success">
+                        <strong>Ottimo!</strong> Non ci sono rotture registrate per questo modello.
+                    </div>
+                    <div class="mt-3">
+                        <a href="{{ url_for('previsioni.index') }}?modello={{ modello.cod_modello }}"
+                           class="btn btn-primary">
+                            📈 Apri Previsioni per questo Modello
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

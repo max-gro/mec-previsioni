@@ -24,14 +24,29 @@
     <div class="row mb-4">
         <div class="col-md-6">
             <h2>🔧 File Rotture</h2>
-            <p class="text-muted">Upload ed elaborazione file Excel rotture componenti</p>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">File Rotture</li>
+                </ol>
+            </nav>
+            <p class="text-muted">
+                Upload ed elaborazione file Excel rotture componenti
+                {% if total_count is defined and filtered_count is defined %}
+                    {% if filtered_count < total_count %}
+                        <span class="badge bg-info ms-2">{{ filtered_count }} di {{ total_count }} risultati</span>
+                    {% else %}
+                        <span class="badge bg-secondary ms-2">{{ total_count }} risultati</span>
+                    {% endif %}
+                {% endif %}
+            </p>
         </div>
         <div class="col-md-6 text-end">
             {% if current_user.is_admin() %}
             <a href="{{ url_for('rotture.sync') }}" class="btn btn-secondary me-2" title="Sincronizza con filesystem">
                 🔄 Sincronizza
             </a>
-            <a href="{{ url_for('rotture.create') }}" class="btn btn-primary">
+            <a href="{{ url_for('rotture.create', anno=anno_filter, esito=esito_filter, page=page) }}" class="btn btn-primary">
                 ➕ Carica Nuove Rotture
             </a>
             {% endif %}
@@ -188,7 +203,7 @@
                                     </a>
                                     
                                     <!-- Bottone Modifica -->
-                                    <a href="{{ url_for('rotture.edit', id=rottura.id) }}" class="btn btn-outline-primary" title="Modifica">
+                                    <a href="{{ url_for('rotture.edit', id=rottura.id, anno=anno_filter, esito=esito_filter, page=rotture.page) }}" class="btn btn-outline-primary" title="Modifica">
                                         ✏️
                                     </a>
                                     
@@ -234,7 +249,7 @@
             <div class="text-center py-5">
                 <p class="text-muted">Nessun file rottura trovato.</p>
                 {% if current_user.is_admin() %}
-                <a href="{{ url_for('rotture.create') }}" class="btn btn-primary">Carica il primo file</a>
+                <a href="{{ url_for('rotture.create', anno=anno_filter, esito=esito_filter, page=page) }}" class="btn btn-primary">Carica il primo file</a>
                 {% endif %}
             </div>
             {% endif %}
@@ -246,7 +261,7 @@
         <div class="col-12">
             <div class="card shadow-sm bg-light">
                 <div class="card-body">
-                    <h56class="card-title">📖 Legenda Stati</h6>
+                    <h6 class="card-title">📖 Legenda Stati</h6>
                     <div class="row">
                         <div class="col-md-4">
                             <span class="badge bg-warning text-dark">⏳ Da processare</span>

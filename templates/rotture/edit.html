@@ -10,7 +10,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('rotture.list') }}">Rotture</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('rotture.list', **list_params) }}">Rotture</a></li>
                     <li class="breadcrumb-item active">Modifica {{ rottura.filename }}</li>
                 </ol>
             </nav>
@@ -37,24 +37,20 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.data_acquisizione.label }}</label>
-                                <input type="text"
-                                       name="data_acquisizione"
-                                       id="data_acquisizione"
-                                       class="form-control"
-                                       placeholder="gg/mm/aaaa"
-                                       value="{% if rottura.data_acquisizione %}{{ rottura.data_acquisizione.strftime('%d/%m/%Y') }}{% endif %}">
+                                {{ form.data_acquisizione(class="form-control" + (" is-invalid" if form.data_acquisizione.errors else "")) }}
+                                {% if form.data_acquisizione.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.data_acquisizione.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">Seleziona la data</small>
                             </div>
                         </div>
 
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.data_elaborazione.label }}</label>
-                                <input type="text"
-                                       name="data_elaborazione"
-                                       id="data_elaborazione"
-                                       class="form-control"
-                                       placeholder="gg/mm/aaaa"
-                                       value="{% if rottura.data_elaborazione %}{{ rottura.data_elaborazione.strftime('%d/%m/%Y') }}{% endif %}">
+                                {{ form.data_elaborazione(class="form-control") }}
                                 <small class="form-text text-muted">Opzionale - lascia vuoto se non elaborato</small>
                             </div>
                             <div class="col-md-6">
@@ -73,7 +69,7 @@
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>
-                            <a href="{{ url_for('rotture.list') }}" class="btn btn-secondary">Annulla</a>
+                            <a href="{{ url_for('rotture.list', **list_params) }}" class="btn btn-secondary">Annulla</a>
                         </div>
                     </form>
                 </div>

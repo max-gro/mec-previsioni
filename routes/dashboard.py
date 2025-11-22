@@ -68,7 +68,7 @@ def index():
     stock_successo = TraceElab.query.filter_by(
         tipo_file='STOCK',
         step='END',
-        esito='OK'
+        stato='OK'
     ).filter(TraceElab.created_at >= data_inizio).count()
 
     # Calcola % successo

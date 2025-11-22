@@ -190,8 +190,8 @@ def elabora(id):
         id_file=id,
         tipo_file='STOCK',
         step='START',
-        esito='OK',
-        note='Inizio elaborazione file stock TSV'
+        stato='OK',
+        messaggio='Inizio elaborazione file stock TSV'
     )
     log_session.add(trace_start)
     log_session.commit()  # ← AUTONOMOUS: Commit immediato, sempre persistito
@@ -207,8 +207,8 @@ def elabora(id):
                 id_trace=id_trace_start,
                 record_pos=0,
                 record_data={'key': 'FILE_NOT_FOUND'},
-                esito='KO',
-                note=f"File non trovato sul filesystem: {file_stock.filepath}"
+                stato='KO',
+                messaggio=f"File non trovato sul filesystem: {file_stock.filepath}"
             )
             log_session.add(dettaglio)
             log_session.commit()
@@ -219,11 +219,11 @@ def elabora(id):
                 id_file=id,
                 tipo_file='STOCK',
                 step='END',
-                esito='KO',
-                note='File non trovato',
-                n_righe_elaborate=0,
-                n_righe_ok=0,
-                n_righe_ko=1
+                stato='KO',
+                messaggio='File non trovato',
+                righe_totali=0,
+                righe_ok=0,
+                righe_errore=1
             )
             log_session.add(trace_end)
             log_session.commit()
@@ -373,11 +373,11 @@ def elabora(id):
                 id_file=id,
                 tipo_file='STOCK',
                 step='END',
-                esito='OK',
-                note=f'Elaborato con successo: {righe_ok} righe',
-                n_righe_elaborate=righe_totali,
-                n_righe_ok=righe_ok,
-                n_righe_ko=righe_errore
+                stato='OK',
+                messaggio=f'Elaborato con successo: {righe_ok} righe',
+                righe_totali=righe_totali,
+                righe_ok=righe_ok,
+                righe_errore=righe_errore
             )
             log_session.add(trace_end)
             log_session.commit()
@@ -393,11 +393,11 @@ def elabora(id):
                 id_file=id,
                 tipo_file='STOCK',
                 step='END',
-                esito='KO',
-                note=f'Elaborato con errori: {righe_ok} OK, {righe_errore} KO',
-                n_righe_elaborate=righe_totali,
-                n_righe_ok=righe_ok,
-                n_righe_ko=righe_errore
+                stato='KO',
+                messaggio=f'Elaborato con errori: {righe_ok} OK, {righe_errore} KO',
+                righe_totali=righe_totali,
+                righe_ok=righe_ok,
+                righe_errore=righe_errore
             )
             log_session.add(trace_end)
             log_session.commit()
@@ -420,11 +420,11 @@ def elabora(id):
             id_file=id,
             tipo_file='STOCK',
             step='END',
-            esito='KO',
-            note=f'Errore elaborazione: {str(e)}',
-            n_righe_elaborate=0,
-            n_righe_ok=0,
-            n_righe_ko=1
+            stato='KO',
+            messaggio=f'Errore elaborazione: {str(e)}',
+            righe_totali=0,
+            righe_ok=0,
+            righe_errore=1
         )
         log_session.add(trace_end)
         log_session.commit()

@@ -243,27 +243,126 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/it.js"></script>
 
-    <!-- Initialize Flatpickr on all date inputs -->
+    <!-- Initialize Flatpickr and File Upload Feedback -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize Flatpickr on all date inputs
             flatpickr('input[type="date"]', {
-                dateFormat: 'Y-m-d',        // Format sent to server (ISO)
-                altInput: true,              // Show alternative format to user
-                altFormat: 'd/m/Y',          // Display format dd/mm/yyyy
-                locale: 'it',                // Italian locale
-                allowInput: true             // Allow manual input
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd/m/Y',
+                locale: 'it',
+                allowInput: true
             });
 
-            // Initialize Flatpickr on all datetime-local inputs
             flatpickr('input[type="datetime-local"]', {
-                dateFormat: 'Y-m-d\\TH:i',   // Format sent to server (ISO)
-                altInput: true,              // Show alternative format to user
-                altFormat: 'd/m/Y H:i',      // Display format dd/mm/yyyy HH:MM
-                enableTime: true,            // Enable time picker
-                time_24hr: true,             // 24-hour format
-                locale: 'it',                // Italian locale
-                allowInput: true             // Allow manual input
+                dateFormat: 'Y-m-d\\TH:i',
+                altInput: true,
+                altFormat: 'd/m/Y H:i',
+                enableTime: true,
+                time_24hr: true,
+                locale: 'it',
+                allowInput: true
+            });
+
+            // File Upload Feedback
+            const fileInputs = document.querySelectorAll('input[type="file"]');
+            fileInputs.forEach(input => {
+                input.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const fileName = file.name;
+                    const fileSize = (file.size / (1024 * 1024)).toFixed(2);
+
+                    let preview = input.closest('.mb-4, .mb-3, .mb-2')?.querySelector('.file-preview');
+                    if (!preview) {
+                        preview = document.createElement('div');
+                        preview.className = 'file-preview alert alert-success mt-2 mb-0';
+                        const container = input.closest('.mb-4, .mb-3, .mb-2');
+                        if (container) container.appendChild(preview);
+                    }
+
+                    preview.innerHTML = `<strong>📎 File selezionato:</strong> ${fileName} <span class="text-muted">(${fileSize} MB)</span>`;
+                    preview.style.display = 'block';
+                });
+            });
+
+            // Upload Progress
+            const uploadForms = document.querySelectorAll('form[enctype="multipart/form-data"]');
+            uploadForms.forEach(form => {
+                const originalAction = form.action;
+
+                form.addEventListener('submit', function(e) {
+                    const fileInput = form.querySelector('input[type="file"]');
+                    const submitBtn = form.querySelector('button[type="submit"]');
+
+                    if (!fileInput || !fileInput.files.length) return;
+
+                    e.preventDefault();
+
+                    // Save original button text
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Caricamento...';
+
+                    // Create progress bar
+                    let progressContainer = form.querySelector('.upload-progress');
+                    if (!progressContainer) {
+                        progressContainer = document.createElement('div');
+                        progressContainer.className = 'upload-progress mt-3';
+                        progressContainer.innerHTML = `
+                            <div class="d-flex justify-content-between mb-1">
+                                <small class="text-muted">Upload in corso...</small>
+                                <small class="text-muted"><span class="upload-percent">0</span>%</small>
+                            </div>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success upload-bar"
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+                        `;
+                        submitBtn.closest('.d-flex, div').insertAdjacentElement('beforebegin', progressContainer);
+                    }
+                    progressContainer.style.display = 'block';
+
+                    const formData = new FormData(form);
+                    const xhr = new XMLHttpRequest();
+
+                    xhr.upload.addEventListener('progress', function(e) {
+                        if (e.lengthComputable) {
+                            const percent = Math.round((e.loaded / e.total) * 100);
+                            const bar = progressContainer.querySelector('.upload-bar');
+                            const text = progressContainer.querySelector('.upload-percent');
+                            if (bar) bar.style.width = percent + '%';
+                            if (text) text.textContent = percent;
+                        }
+                    });
+
+                    xhr.addEventListener('load', function() {
+                        if (xhr.status >= 200 && xhr.status < 400) {
+                            if (xhr.responseURL && xhr.responseURL !== originalAction) {
+                                window.location.href = xhr.responseURL;
+                            } else {
+                                window.location.reload();
+                            }
+                        } else {
+                            alert('Errore durante l\'upload. Riprova.');
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalText;
+                            progressContainer.style.display = 'none';
+                        }
+                    });
+
+                    xhr.addEventListener('error', function() {
+                        alert('Errore di rete. Verifica la connessione.');
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                        progressContainer.style.display = 'none';
+                    });
+
+                    xhr.open('POST', form.action);
+                    xhr.send(formData);
+                });
             });
         });
     </script>

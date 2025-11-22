@@ -67,6 +67,7 @@
                             <th>Righe Totali</th>
                             <th>Righe OK</th>
                             <th>Errori</th>
+                            <th>Azioni</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -100,10 +101,20 @@
                             <td>{{ elab.n_righe_elaborate or 0 }}</td>
                             <td><span class="badge bg-success">{{ elab.n_righe_ok or 0 }}</span></td>
                             <td><span class="badge bg-danger">{{ elab.n_righe_ko or 0 }}</span></td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        onclick="showDettaglio({{ elab.id_elab }})">
+                                    Dettagli
+                                </button>
+                                <a href="{{ url_for('stock.elaborazione_export', id=file_stock.id, id_elab=elab.id_elab) }}"
+                                   class="btn btn-sm btn-outline-success">
+                                    CSV
+                                </a>
+                            </td>
                         </tr>
                         {% if elab.note %}
                         <tr>
-                            <td colspan="8" class="bg-light">
+                            <td colspan="9" class="bg-light">
                                 <small><strong>Note:</strong> {{ elab.note }}</small>
                             </td>
                         </tr>
@@ -132,4 +143,67 @@
         <a href="{{ url_for('stock.dettaglio', id=file_stock.id) }}" class="btn btn-outline-info">👁️ Visualizza Dettaglio Righe</a>
     </div>
 </div>
+
+<!-- Modal Dettaglio Elaborazione -->
+<div class="modal fade" id="dettaglioModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Dettaglio Elaborazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="dettaglioContent">
+                <div class="text-center"><div class="spinner-border" role="status"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentElabId = null;
+
+function showDettaglio(elabId, stato = '', page = 1) {
+    currentElabId = elabId;
+    const modal = new bootstrap.Modal(document.getElementById('dettaglioModal'));
+    const content = document.getElementById('dettaglioContent');
+
+    // Mostra loading
+    content.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div><p>Caricamento...</p></div>';
+    modal.show();
+
+    // Costruisci URL con parametri
+    let url = `{{ url_for('stock.elaborazione_dettaglio', id=file_stock.id, id_elab=0) }}`.replace('/0/', '/' + elabId + '/');
+    const params = new URLSearchParams();
+    if (stato) params.append('stato', stato);
+    if (page > 1) params.append('page', page);
+    if (params.toString()) url += '?' + params.toString();
+
+    // Carica contenuto
+    fetch(url)
+        .then(response => response.text())
+        .then(html => {
+            content.innerHTML = html;
+            // Aggiungi event listeners ai filtri e paginazione
+            attachModalEventListeners();
+        })
+        .catch(error => {
+            content.innerHTML = '<div class="alert alert-danger">Errore nel caricamento dei dettagli</div>';
+        });
+}
+
+function attachModalEventListeners() {
+    const content = document.getElementById('dettaglioContent');
+
+    // Intercetta click sui link di filtro e paginazione
+    content.querySelectorAll('a[href^="?"]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = new URL(this.href, window.location.origin);
+            const stato = url.searchParams.get('stato') || '';
+            const page = url.searchParams.get('page') || 1;
+            showDettaglio(currentElabId, stato, page);
+        });
+    });
+}
+</script>
 {% endblock %}

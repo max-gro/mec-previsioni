@@ -622,3 +622,118 @@ def elaborazioni_list(id):
         file_stock=file_stock,
         elaborazioni=elaborazioni
     )
+
+@stock_bp.route('/<int:id>/elaborazioni/<int:id_elab>/dettaglio')
+@login_required
+def elaborazione_dettaglio(id, id_elab):
+    """
+    Dettaglio completo di un'elaborazione specifica (mostra tutti i trace_elab_dett)
+    Ritorna HTML fragment per modal
+    """
+    file_stock = FileStock.query.get_or_404(id)
+
+    # Trova tutti i record trace_elab per questo id_elab
+    traces = TraceElab.query.filter_by(
+        id_elab=id_elab,
+        tipo_file='STOCK',
+        id_file=id
+    ).order_by(TraceElab.created_at).all()
+
+    if not traces:
+        flash('Elaborazione non trovata', 'danger')
+        return redirect(url_for('stock.elaborazioni_list', id=id))
+
+    # Estrai START e END
+    trace_start = next((t for t in traces if t.step == 'START'), None)
+    trace_end = next((t for t in traces if t.step == 'END'), None)
+
+    # Recupera tutti i dettagli (anomalie) da tutti i trace
+    page = request.args.get('page', 1, type=int)
+    stato_filter = request.args.get('stato', '')
+
+    # Trova tutti gli id_trace per questo id_elab
+    id_traces = [t.id_trace for t in traces]
+    query = TraceElabDett.query.filter(TraceElabDett.id_trace.in_(id_traces))
+
+    if stato_filter:
+        query = query.filter_by(stato=stato_filter)
+
+    query = query.order_by(TraceElabDett.record_pos)
+    dettagli = query.paginate(page=page, per_page=50, error_out=False)
+
+    # Ritorna template HTML (per modal)
+    return render_template('stock/elaborazione_dettaglio_modal.html',
+                         file_stock=file_stock,
+                         trace_start=trace_start,
+                         trace_end=trace_end,
+                         dettagli=dettagli,
+                         stato_filter=stato_filter)
+
+
+@stock_bp.route('/<int:id>/elaborazioni/<int:id_elab>/export')
+@login_required
+def elaborazione_export(id, id_elab):
+    """
+    Export CSV dei dettagli di un'elaborazione
+    """
+    from flask import Response
+    from io import StringIO
+
+    file_stock = FileStock.query.get_or_404(id)
+
+    # Trova tutti i record trace_elab per questo id_elab
+    traces = TraceElab.query.filter_by(
+        id_elab=id_elab,
+        tipo_file='STOCK',
+        id_file=id
+    ).all()
+
+    if not traces:
+        flash('Elaborazione non trovata per questo file stock', 'danger')
+        return redirect(url_for('stock.elaborazioni_list', id=id))
+
+    # Recupera tutti i dettagli da tutti i trace
+    id_traces = [t.id_trace for t in traces]
+    dettagli = TraceElabDett.query.filter(
+        TraceElabDett.id_trace.in_(id_traces)
+    ).order_by(TraceElabDett.record_pos).all()
+
+    # Crea CSV in memoria
+    si = StringIO()
+    writer = csv.writer(si)
+
+    # Header
+    writer.writerow([
+        'Riga',
+        'Tipo',
+        'Codice',
+        'Messaggio',
+        'Campo'
+    ])
+
+    # Dati
+    for d in dettagli:
+        campo = d.record_data.get('campo') if d.record_data else ''
+        codice = d.record_data.get('key') if d.record_data else ''
+        writer.writerow([
+            d.record_pos or '',
+            d.stato or '',
+            codice or '',
+            d.messaggio or '',
+            campo or ''
+        ])
+
+    # Ritorna come download
+    output = si.getvalue()
+    si.close()
+
+    # Usa timestamp dal trace_start se disponibile
+    trace_start = next((t for t in traces if t.step == 'START'), None)
+    timestamp = trace_start.created_at.strftime('%Y%m%d_%H%M%S') if trace_start else datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"elaborazione_{file_stock.filename}_elab{id_elab}_{timestamp}.csv"
+
+    return Response(
+        output,
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )

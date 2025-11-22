@@ -1,0 +1,153 @@
+<!-- Contenuto del modal - caricato via AJAX -->
+<div class="row mb-3">
+    <div class="col-md-6">
+        <h6>Informazioni Elaborazione</h6>
+        <table class="table table-sm">
+            <tr>
+                <th>Inizio:</th>
+                <td>{{ trace_start.created_at.strftime('%d/%m/%Y %H:%M:%S') if trace_start else '-' }}</td>
+            </tr>
+            <tr>
+                <th>Fine:</th>
+                <td>{{ trace_end.created_at.strftime('%d/%m/%Y %H:%M:%S') if trace_end else '-' }}</td>
+            </tr>
+            <tr>
+                <th>Durata:</th>
+                <td>
+                    {% if trace_start and trace_end %}
+                    {{ ((trace_end.created_at - trace_start.created_at).total_seconds()) | int }} secondi
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>Esito:</th>
+                <td>
+                    {% if trace_end %}
+                        {% if trace_end.stato == 'OK' %}
+                        <span class="badge bg-success">Successo</span>
+                        {% elif trace_end.stato == 'KO' %}
+                        <span class="badge bg-danger">Errore</span>
+                        {% elif trace_end.stato == 'WARN' %}
+                        <span class="badge bg-warning text-dark">Warning</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ trace_end.stato }}</span>
+                        {% endif %}
+                    {% else %}
+                    <span class="badge bg-secondary">In corso</span>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div class="col-md-6">
+        <h6>Statistiche</h6>
+        <table class="table table-sm">
+            <tr>
+                <th>Righe Totali:</th>
+                <td>{{ trace_end.righe_totali if trace_end else 0 }}</td>
+            </tr>
+            <tr>
+                <th>Righe OK:</th>
+                <td>
+                    <span class="badge bg-success">{{ trace_end.righe_ok if trace_end else 0 }}</span>
+                    {% if trace_end and trace_end.righe_totali > 0 %}
+                    ({{ ((trace_end.righe_ok / trace_end.righe_totali) * 100) | round(1) }}%)
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>Righe con Errori:</th>
+                <td><span class="badge bg-danger">{{ trace_end.righe_errore if trace_end else 0 }}</span></td>
+            </tr>
+            <tr>
+                <th>Righe con Warning:</th>
+                <td><span class="badge bg-warning text-dark">{{ trace_end.righe_warning if trace_end else 0 }}</span></td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <strong>Messaggio:</strong> {{ trace_end.messaggio if trace_end else (trace_start.messaggio if trace_start else 'Nessun messaggio') }}
+</div>
+
+<hr>
+
+<h6>Dettaglio Anomalie</h6>
+
+<!-- Filtri -->
+<div class="mb-3">
+    <div class="btn-group" role="group">
+        <a href="?stato=" class="btn btn-sm btn-outline-secondary {% if not stato_filter %}active{% endif %}">Tutti</a>
+        <a href="?stato=KO" class="btn btn-sm btn-outline-danger {% if stato_filter == 'KO' %}active{% endif %}">Solo Errori</a>
+        <a href="?stato=WARN" class="btn btn-sm btn-outline-warning {% if stato_filter == 'WARN' %}active{% endif %}">Solo Warning</a>
+        <a href="?stato=OK" class="btn btn-sm btn-outline-success {% if stato_filter == 'OK' %}active{% endif %}">Solo OK</a>
+    </div>
+</div>
+
+{% if dettagli.items %}
+<div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+    <table class="table table-sm table-striped">
+        <thead class="sticky-top bg-white">
+            <tr>
+                <th>Riga</th>
+                <th>Tipo</th>
+                <th>Codice</th>
+                <th>Campo</th>
+                <th>Messaggio</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in dettagli.items %}
+            <tr>
+                <td>{{ d.record_pos or '-' }}</td>
+                <td>
+                    {% if d.stato == 'KO' %}
+                    <span class="badge bg-danger">ERRORE</span>
+                    {% elif d.stato == 'WARN' %}
+                    <span class="badge bg-warning text-dark">WARNING</span>
+                    {% else %}
+                    <span class="badge bg-info">{{ d.stato }}</span>
+                    {% endif %}
+                </td>
+                <td><code>{{ d.record_data.get('key') if d.record_data else '-' }}</code></td>
+                <td><small>{{ d.record_data.get('campo') if d.record_data else '-' }}</small></td>
+                <td>{{ d.messaggio }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Paginazione -->
+{% if dettagli.pages > 1 %}
+<nav>
+    <ul class="pagination pagination-sm justify-content-center">
+        {% if dettagli.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ dettagli.prev_num }}{% if stato_filter %}&stato={{ stato_filter }}{% endif %}">Precedente</a>
+        </li>
+        {% endif %}
+
+        <li class="page-item disabled">
+            <span class="page-link">Pagina {{ dettagli.page }} di {{ dettagli.pages }}</span>
+        </li>
+
+        {% if dettagli.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ dettagli.next_num }}{% if stato_filter %}&stato={{ stato_filter }}{% endif %}">Successiva</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<p class="text-muted text-center"><small>Mostrando {{ dettagli.items|length }} di {{ dettagli.total }} anomalie</small></p>
+
+{% else %}
+<div class="alert alert-success">
+    <strong>Nessuna anomalia trovata!</strong> Elaborazione completata senza errori o warning.
+</div>
+{% endif %}

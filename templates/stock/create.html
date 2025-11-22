@@ -46,16 +46,23 @@
                             <p class="mb-1">Il file deve contenere le seguenti colonne (separate da TAB):</p>
                             <ul class="mb-2">
                                 <li><code>cod_componente</code> - Codice componente (obbligatorio)</li>
-                                <li><code>qtà</code> - Quantità in giacenza (obbligatorio)</li>
-                                <li><code>data_rilevazione</code> - Data rilevazione formato YYYY-MM-DD (obbligatorio)</li>
-                                <li><code>ubicazione</code> - Ubicazione magazzino (opzionale)</li>
+                                <li><code>warehouse</code> - Magazzino (A, B, C...) (opzionale)</li>
+                                <li><code>ubicazione</code> - Scaffale/posizione (opzionale)</li>
                                 <li><code>lotto</code> - Numero lotto (opzionale)</li>
-                                <li><code>note</code> - Note (opzionale)</li>
+                                <li><code>giacenza_disponibile</code> - Qtà disponibile (obbligatorio)</li>
+                                <li><code>giacenza_impegnata</code> - Qtà impegnata (obbligatorio)</li>
+                                <li><code>giacenza_fisica</code> - Qtà fisica totale (obbligatorio)</li>
+                                <li><code>scorta_minima</code> - Soglia minima (opzionale)</li>
+                                <li><code>scorta_massima</code> - Soglia massima (opzionale)</li>
+                                <li><code>punto_riordino</code> - Soglia riordino (opzionale)</li>
+                                <li><code>lead_time_days</code> - Tempo riordino in giorni (opzionale)</li>
+                                <li><code>data_snapshot</code> - Data snapshot YYYY-MM-DD HH:MM:SS (obbligatorio)</li>
+                                <li><code>data_stock</code> - Data stock YYYY-MM-DD (opzionale)</li>
+                                <li><code>flag_corrente</code> - TRUE/FALSE se è stock corrente (obbligatorio)</li>
                             </ul>
                             <p class="mb-0"><strong>Esempio:</strong></p>
-                            <pre class="bg-light p-2 mb-0" style="font-size: 0.85em;">cod_componente	qtà	data_rilevazione	ubicazione	lotto	note
-PCB-MAIN-0001	450	2024-11-01	MAG-A-SC01	202411-123
-MOT-AUX-0002	12	2024-11-01	MAG-B-SC15	202410-456	SCORTA BASSA</pre>
+                            <pre class="bg-light p-2 mb-0" style="font-size: 0.75em;">cod_componente	warehouse	ubicazione	lotto	giacenza_disponibile	giacenza_impegnata	giacenza_fisica	scorta_minima	scorta_massima	punto_riordino	lead_time_days	data_snapshot	data_stock	flag_corrente
+PCB-MAIN-0001	A	SC01	202411-123	420	80	500	50	800	100	60	2024-11-01 00:00:00	2024-11-01	TRUE</pre>
                         </div>
 
                         <div class="d-flex gap-2">

@@ -148,10 +148,31 @@
                         </a>
                     </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('rotture.list') }}">
-                            🔧 File Rotture
+                    <!-- Menu Rotture -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarRotture" role="button" data-bs-toggle="dropdown">
+                            🔧 Rotture
                         </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('rotture.list') }}">
+                                    📄 Gestione File Excel
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('rotture_explorer.index') }}">
+                                    🔍 Rotture Explorer
+                                </a>
+                            </li>
+                            {% if current_user.is_admin() %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('rotture.create') }}">
+                                    ➕ Upload File Excel
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
                     </li>
                     
                     <li class="nav-item">

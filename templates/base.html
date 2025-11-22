@@ -364,6 +364,50 @@
                     xhr.send(formData);
                 });
             });
+
+            // Prevent Double Submit on ALL forms
+            const allForms = document.querySelectorAll('form');
+            allForms.forEach(form => {
+                let isSubmitting = false;
+
+                form.addEventListener('submit', function(e) {
+                    // Skip if already handled by upload handler
+                    if (form.hasAttribute('enctype') && form.querySelector('input[type="file"]')?.files.length) {
+                        return; // Let upload handler manage this
+                    }
+
+                    if (isSubmitting) {
+                        e.preventDefault();
+                        return false;
+                    }
+
+                    isSubmitting = true;
+                    const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+
+                    if (submitBtn) {
+                        const originalText = submitBtn.innerHTML || submitBtn.value;
+                        submitBtn.disabled = true;
+
+                        // Add spinner if it's a button (not input)
+                        if (submitBtn.tagName === 'BUTTON') {
+                            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvataggio...';
+                        } else {
+                            submitBtn.value = 'Salvataggio...';
+                        }
+
+                        // Re-enable after 5 seconds as fallback (in case redirect fails)
+                        setTimeout(() => {
+                            isSubmitting = false;
+                            submitBtn.disabled = false;
+                            if (submitBtn.tagName === 'BUTTON') {
+                                submitBtn.innerHTML = originalText;
+                            } else {
+                                submitBtn.value = originalText;
+                            }
+                        }, 5000);
+                    }
+                });
+            });
         });
     </script>
 

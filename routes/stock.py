@@ -195,7 +195,7 @@ def elabora(id):
     )
     log_session.add(trace_start)
     log_session.commit()  # ← AUTONOMOUS: Commit immediato, sempre persistito
-    id_trace_start = trace_start.id
+    id_trace_start = trace_start.id_trace
 
     try:
         # Verifica esistenza file

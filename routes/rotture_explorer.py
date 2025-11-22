@@ -89,11 +89,11 @@ def index():
     total_rotture = query.count()
 
     modelli_unici = db.session.query(func.count(func.distinct(Rottura.cod_modello)))\
-                              .filter(Rottura.id.in_([r.id for r in query.all()]))\
+                              .filter(Rottura.cod_rottura.in_([r.cod_rottura for r in query.all()]))\
                               .scalar() or 0
 
     vita_media = db.session.query(func.avg(Rottura.gg_vita_prodotto))\
-                          .filter(Rottura.id.in_([r.id for r in query.all()]))\
+                          .filter(Rottura.cod_rottura.in_([r.cod_rottura for r in query.all()]))\
                           .scalar() or 0
 
     # === Aggregazioni ===
@@ -147,7 +147,7 @@ def aggrega_per_modello(query_base, sort_by='n_rotture', order='desc'):
     """
 
     # Subquery IDs rotture filtrate
-    rotture_ids = [r.id for r in query_base.all()]
+    rotture_ids = [r.cod_rottura for r in query_base.all()]
 
     if not rotture_ids:
         return []
@@ -156,15 +156,15 @@ def aggrega_per_modello(query_base, sort_by='n_rotture', order='desc'):
     results = db.session.query(
         Rottura.cod_modello,
         Modello.marca,
-        func.count(Rottura.id).label('n_rotture'),
+        func.count(Rottura.cod_rottura).label('n_rotture'),
         func.avg(Rottura.gg_vita_prodotto).label('vita_media'),
         func.count(func.distinct(RotturaComponente.cod_componente)).label('componenti_coinvolti')
     ).outerjoin(
         Modello, Rottura.cod_modello == Modello.cod_modello
     ).outerjoin(
-        RotturaComponente, Rottura.id == RotturaComponente.id_rottura
+        RotturaComponente, Rottura.cod_rottura == RotturaComponente.cod_rottura
     ).filter(
-        Rottura.id.in_(rotture_ids)
+        Rottura.cod_rottura.in_(rotture_ids)
     ).group_by(
         Rottura.cod_modello,
         Modello.marca
@@ -172,13 +172,13 @@ def aggrega_per_modello(query_base, sort_by='n_rotture', order='desc'):
 
     # Ordinamento
     if sort_by == 'n_rotture':
-        column = func.count(Rottura.id)
+        column = func.count(Rottura.cod_rottura)
     elif sort_by == 'vita_media':
         column = func.avg(Rottura.gg_vita_prodotto)
     elif sort_by == 'componenti_coinvolti':
         column = func.count(func.distinct(RotturaComponente.cod_componente))
     else:
-        column = func.count(Rottura.id)
+        column = func.count(Rottura.cod_rottura)
 
     if order == 'desc':
         results = results.order_by(column.desc())
@@ -214,7 +214,7 @@ def aggrega_per_componente(query_base, sort_by='n_rotture', order='desc', compon
     """
 
     # Subquery IDs rotture filtrate
-    rotture_ids = [r.id for r in query_base.all()]
+    rotture_ids = [r.cod_rottura for r in query_base.all()]
 
     if not rotture_ids:
         return []
@@ -223,14 +223,14 @@ def aggrega_per_componente(query_base, sort_by='n_rotture', order='desc', compon
     query = db.session.query(
         RotturaComponente.cod_componente,
         Componente.componente_it,
-        func.count(RotturaComponente.id).label('n_rotture'),
+        func.count(RotturaComponente.cod_rottura).label('n_rotture'),
         func.count(func.distinct(Rottura.cod_modello)).label('modelli_coinvolti')
     ).join(
-        Rottura, RotturaComponente.id_rottura == Rottura.id
+        Rottura, RotturaComponente.cod_rottura == Rottura.cod_rottura
     ).outerjoin(
         Componente, RotturaComponente.cod_componente == Componente.cod_componente
     ).filter(
-        Rottura.id.in_(rotture_ids)
+        Rottura.cod_rottura.in_(rotture_ids)
     )
 
     # Filtro componente specifico
@@ -247,11 +247,11 @@ def aggrega_per_componente(query_base, sort_by='n_rotture', order='desc', compon
 
     # Ordinamento
     if sort_by == 'n_rotture':
-        column = func.count(RotturaComponente.id)
+        column = func.count(RotturaComponente.cod_rottura)
     elif sort_by == 'modelli_coinvolti':
         column = func.count(func.distinct(Rottura.cod_modello))
     else:
-        column = func.count(RotturaComponente.id)
+        column = func.count(RotturaComponente.cod_rottura)
 
     if order == 'desc':
         query = query.order_by(column.desc())
@@ -310,9 +310,9 @@ def dettaglio_modello(cod_modello):
     componenti_critici = db.session.query(
         RotturaComponente.cod_componente,
         Componente.componente_it,
-        func.count(RotturaComponente.id).label('n_rotture')
+        func.count(RotturaComponente.cod_rottura).label('n_rotture')
     ).join(
-        Rottura, RotturaComponente.id_rottura == Rottura.id
+        Rottura, RotturaComponente.cod_rottura == Rottura.cod_rottura
     ).outerjoin(
         Componente, RotturaComponente.cod_componente == Componente.cod_componente
     ).filter(

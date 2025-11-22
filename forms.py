@@ -19,8 +19,8 @@ class LoginForm(FlaskForm):
 class UserForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)], render_kw={'minlength': 3, 'maxlength': 80})
     email = EmailField('Email', validators=[DataRequired(), Email()], render_kw={'pattern': '[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$'})
-    password = PasswordField('Password', validators=[Length(min=6)], render_kw={'minlength': 6})
-    confirm_password = PasswordField('Conferma Password', validators=[EqualTo('password')], render_kw={'minlength': 6})
+    password = PasswordField('Password', validators=[Optional(), Length(min=6, message='La password deve essere di almeno 6 caratteri')])
+    confirm_password = PasswordField('Conferma Password', validators=[Optional(), EqualTo('password', message='Le password devono coincidere')])
     role = SelectField('Ruolo', choices=[('user', 'Utente'), ('admin', 'Amministratore')])
     active = BooleanField('Attivo')
     

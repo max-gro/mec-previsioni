@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}File Stock - Giacenze Componenti{% endblock %}
+
+{% block extra_css %}
+<style>
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+.sortable-header:hover {
+    background-color: #dee2e6 !important;
+}
+.sort-icon {
+    font-size: 0.8em;
+    margin-left: 5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>📦 File Stock - Giacenze Componenti</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Stock</li>
+                </ol>
+            </nav>
+            <p class="text-muted">
+                Gestione file TSV giacenze componenti
+                <span class="badge bg-secondary ms-2">{{ file_stock_list|length }} file</span>
+            </p>
+        </div>
+        <div class="col-md-6 text-end">
+            {% if current_user.is_admin() %}
+            <a href="{{ url_for('stock.create') }}" class="btn btn-primary">
+                ➕ Carica Nuovo File Stock
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Filtri -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <form method="GET" action="{{ url_for('stock.index') }}" class="row g-3">
+                <input type="hidden" name="sort" value="{{ sort }}">
+                <input type="hidden" name="order" value="{{ order }}">
+                <div class="col-md-2">
+                    <label class="form-label">Anno</label>
+                    <select name="anno" class="form-select">
+                        <option value="">Tutti</option>
+                        {% for a in anni_disponibili %}
+                        <option value="{{ a }}" {% if anno == a %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Stato</label>
+                    <select name="esito" class="form-select">
+                        <option value="">Tutti</option>
+                        {% for e in esiti_disponibili %}
+                        <option value="{{ e }}" {% if esito == e %}selected{% endif %}>{{ e }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">🔍 Filtra</button>
+                    <a class="btn btn-outline-secondary w-100" href="{{ url_for('stock.index') }}">Reset</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabella file stock -->
+    <div class="row">
+        <div class="col-md-12">
+            {% if file_stock_list %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="sortable-header" onclick="location.href='{{ url_for('stock.index', anno=anno, esito=esito, sort='id', order='asc' if sort=='id' and order=='desc' else 'desc') }}'">
+                                ID
+                                {% if sort == 'id' %}
+                                    <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
+                                {% endif %}
+                            </th>
+                            <th class="sortable-header" onclick="location.href='{{ url_for('stock.index', anno=anno, esito=esito, sort='anno', order='asc' if sort=='anno' and order=='desc' else 'desc') }}'">
+                                Anno
+                                {% if sort == 'anno' %}
+                                    <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
+                                {% endif %}
+                            </th>
+                            <th class="sortable-header" onclick="location.href='{{ url_for('stock.index', anno=anno, esito=esito, sort='filename', order='asc' if sort=='filename' and order=='desc' else 'desc') }}'">
+                                Filename
+                                {% if sort == 'filename' %}
+                                    <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
+                                {% endif %}
+                            </th>
+                            <th>Righe</th>
+                            <th class="sortable-header" onclick="location.href='{{ url_for('stock.index', anno=anno, esito=esito, sort='data_acquisizione', order='asc' if sort=='data_acquisizione' and order=='desc' else 'desc') }}'">
+                                Data Acquisizione
+                                {% if sort == 'data_acquisizione' %}
+                                    <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
+                                {% endif %}
+                            </th>
+                            <th class="sortable-header" onclick="location.href='{{ url_for('stock.index', anno=anno, esito=esito, sort='esito', order='asc' if sort=='esito' and order=='desc' else 'desc') }}'">
+                                Stato
+                                {% if sort == 'esito' %}
+                                    <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
+                                {% endif %}
+                            </th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for file in file_stock_list %}
+                        <tr>
+                            <td>{{ file.id }}</td>
+                            <td>{{ file.anno }}</td>
+                            <td>
+                                <a href="{{ url_for('stock.dettaglio', id=file.id) }}">
+                                    {{ file.filename }}
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ file.n_righe }}</span>
+                            </td>
+                            <td>{{ file.data_acquisizione.strftime('%d/%m/%Y %H:%M') if file.data_acquisizione else '-' }}</td>
+                            <td>
+                                {% if file.esito == 'Processato' %}
+                                    <span class="badge bg-success">✓ Processato</span>
+                                {% elif file.esito == 'Da processare' %}
+                                    <span class="badge bg-warning text-dark">⏳ Da processare</span>
+                                {% elif file.esito == 'Errore' %}
+                                    <span class="badge bg-danger">✗ Errore</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ file.esito }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if current_user.is_admin() %}
+                                    {% if file.esito == 'Da processare' or file.esito == 'Errore' %}
+                                    <a href="{{ url_for('stock.elabora', id=file.id) }}"
+                                       class="btn btn-sm btn-primary"
+                                       onclick="return confirm('Elaborare il file {{ file.filename }}?')">
+                                        ⚙️ Elabora
+                                    </a>
+                                    {% endif %}
+                                    <a href="{{ url_for('stock.delete', id=file.id) }}"
+                                       class="btn btn-sm btn-danger"
+                                       onclick="return confirm('Eliminare il file {{ file.filename }} e tutte le righe associate?')">
+                                        🗑️ Elimina
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                Nessun file stock caricato.
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('stock.create') }}" class="alert-link">Carica il primo file</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Carica File Stock{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2>📦 Carica File Stock</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('stock.index') }}">Stock</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Carica File</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📤 Upload File TSV Giacenze</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="file" class="form-label">
+                                File TSV *
+                            </label>
+                            <input type="file"
+                                   class="form-control"
+                                   id="file"
+                                   name="file"
+                                   accept=".tsv,.txt"
+                                   required>
+                            <div class="form-text">
+                                Formati supportati: .tsv, .txt<br>
+                                L'anno viene estratto automaticamente dal nome del file (es. stock_2024-11-01.tsv)
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <h6><strong>📋 Formato File TSV Richiesto</strong></h6>
+                            <p class="mb-1">Il file deve contenere le seguenti colonne (separate da TAB):</p>
+                            <ul class="mb-2">
+                                <li><code>cod_componente</code> - Codice componente (obbligatorio)</li>
+                                <li><code>qtà</code> - Quantità in giacenza (obbligatorio)</li>
+                                <li><code>data_rilevazione</code> - Data rilevazione formato YYYY-MM-DD (obbligatorio)</li>
+                                <li><code>ubicazione</code> - Ubicazione magazzino (opzionale)</li>
+                                <li><code>lotto</code> - Numero lotto (opzionale)</li>
+                                <li><code>note</code> - Note (opzionale)</li>
+                            </ul>
+                            <p class="mb-0"><strong>Esempio:</strong></p>
+                            <pre class="bg-light p-2 mb-0" style="font-size: 0.85em;">cod_componente	qtà	data_rilevazione	ubicazione	lotto	note
+PCB-MAIN-0001	450	2024-11-01	MAG-A-SC01	202411-123
+MOT-AUX-0002	12	2024-11-01	MAG-B-SC15	202410-456	SCORTA BASSA</pre>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                ✓ Carica File
+                            </button>
+                            <a href="{{ url_for('stock.index') }}" class="btn btn-outline-secondary">
+                                ✕ Annulla
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">💡 File di Esempio</h6>
+                </div>
+                <div class="card-body">
+                    <p>Puoi generare file di esempio con il comando:</p>
+                    <pre class="bg-light p-2"><code>python scripts/generate_stock_data.py</code></pre>
+                    <p class="mb-0">
+                        I file generati saranno salvati in <code>data/stock_tsv/</code>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

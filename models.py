@@ -425,6 +425,62 @@ class TraceElabDett(db.Model):
 
 
 # ============================================================================
+# PIPELINE STOCK (GIACENZE COMPONENTI)
+# ============================================================================
+
+class FileStock(db.Model):
+    """Modello File Stock (giacenze componenti TSV)"""
+    __tablename__ = 'file_stock'
+
+    id = db.Column('id_file_stock', db.Integer, primary_key=True)
+    anno = db.Column(db.Integer, nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    filepath = db.Column(db.String(500), nullable=False)
+    data_acquisizione = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    data_elaborazione = db.Column(db.DateTime)
+    esito = db.Column(db.String(50), default='Da processare')
+    note = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
+    updated_at = db.Column(db.DateTime)
+    updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
+
+    # Relationships
+    creator = db.relationship('User', foreign_keys=[created_by], backref='file_stock_created')
+    updater = db.relationship('User', foreign_keys=[updated_by], backref='file_stock_updated')
+
+    def __repr__(self):
+        return f'<FileStock {self.anno} - {self.filename}>'
+
+
+class Stock(db.Model):
+    """Modello Righe Stock (giacenze componenti)"""
+    __tablename__ = 'stock'
+
+    id = db.Column('id_stock', db.Integer, primary_key=True)
+    id_file_stock = db.Column(db.Integer, db.ForeignKey('file_stock.id_file_stock'), nullable=False, index=True)
+    cod_componente = db.Column(db.String(100), db.ForeignKey('componenti.cod_componente'), nullable=False, index=True)
+    qta = db.Column('qtà', db.Integer, nullable=False, default=0)
+    data_rilevazione = db.Column(db.Date, nullable=False)
+    ubicazione = db.Column(db.String(100))
+    lotto = db.Column(db.String(100))
+    note = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0, nullable=False)
+    updated_at = db.Column(db.DateTime)
+    updated_by = db.Column(db.Integer, db.ForeignKey('users.id_user'), default=0)
+
+    # Relationships
+    file_stock = db.relationship('FileStock', backref='righe_stock')
+    componente = db.relationship('Componente', backref='giacenze')
+    creator = db.relationship('User', foreign_keys=[created_by], backref='stock_created')
+    updater = db.relationship('User', foreign_keys=[updated_by], backref='stock_updated')
+
+    def __repr__(self):
+        return f'<Stock {self.cod_componente} - {self.qta} @ {self.data_rilevazione}>'
+
+
+# ============================================================================
 # COMPATIBILITY ALIASES (per non rompere il codice esistente)
 # ============================================================================
 

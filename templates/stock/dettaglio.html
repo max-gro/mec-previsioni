@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Dettaglio File Stock - {{ file_stock.filename }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.info-card {
+    border-left: 4px solid #0d6efd;
+}
+.stat-card {
+    text-align: center;
+    padding: 1rem;
+}
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #0d6efd;
+}
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>📦 Dettaglio File Stock</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('stock.index') }}">Stock</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ file_stock.filename }}</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{{ url_for('stock.index') }}" class="btn btn-outline-secondary">
+                ← Torna alla Lista
+            </a>
+        </div>
+    </div>
+
+    <!-- Info File -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card info-card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <h6 class="text-muted mb-1">Filename</h6>
+                            <p class="mb-0"><strong>{{ file_stock.filename }}</strong></p>
+                        </div>
+                        <div class="col-md-2">
+                            <h6 class="text-muted mb-1">Anno</h6>
+                            <p class="mb-0">{{ file_stock.anno }}</p>
+                        </div>
+                        <div class="col-md-2">
+                            <h6 class="text-muted mb-1">Stato</h6>
+                            <p class="mb-0">
+                                {% if file_stock.esito == 'Processato' %}
+                                    <span class="badge bg-success">✓ Processato</span>
+                                {% elif file_stock.esito == 'Da processare' %}
+                                    <span class="badge bg-warning text-dark">⏳ Da processare</span>
+                                {% elif file_stock.esito == 'Errore' %}
+                                    <span class="badge bg-danger">✗ Errore</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ file_stock.esito }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-3">
+                            <h6 class="text-muted mb-1">Data Acquisizione</h6>
+                            <p class="mb-0">{{ file_stock.data_acquisizione.strftime('%d/%m/%Y %H:%M') if file_stock.data_acquisizione else '-' }}</p>
+                        </div>
+                        <div class="col-md-2">
+                            <h6 class="text-muted mb-1">Data Elaborazione</h6>
+                            <p class="mb-0">{{ file_stock.data_elaborazione.strftime('%d/%m/%Y %H:%M') if file_stock.data_elaborazione else '-' }}</p>
+                        </div>
+                    </div>
+                    {% if file_stock.note %}
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <h6 class="text-muted mb-1">Note</h6>
+                            <p class="mb-0">{{ file_stock.note }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-value">{{ totale_righe }}</div>
+                    <div class="stat-label">Componenti Totali</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-value">{{ "{:,}".format(totale_qta) }}</div>
+                    <div class="stat-label">Totale Unità</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card border-warning">
+                <div class="card-body">
+                    <div class="stat-value text-warning">{{ componenti_low }}</div>
+                    <div class="stat-label">Scorta Bassa (&lt;50)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card border-danger">
+                <div class="card-body">
+                    <div class="stat-value text-danger">{{ componenti_zero }}</div>
+                    <div class="stat-label">Esauriti (0)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabella Righe Stock -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">📋 Righe Giacenze</h5>
+                </div>
+                <div class="card-body">
+                    {% if righe %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Cod. Componente</th>
+                                    <th>Descrizione</th>
+                                    <th class="text-end">Qtà</th>
+                                    <th>Data Rilevazione</th>
+                                    <th>Ubicazione</th>
+                                    <th>Lotto</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for riga in righe %}
+                                <tr {% if riga.Stock.qta == 0 %}class="table-danger"{% elif riga.Stock.qta < 50 %}class="table-warning"{% endif %}>
+                                    <td>
+                                        <code>{{ riga.Stock.cod_componente }}</code>
+                                    </td>
+                                    <td>
+                                        {{ riga.Componente.componente_it if riga.Componente else '-' }}
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>{{ riga.Stock.qta }}</strong>
+                                        {% if riga.Stock.qta == 0 %}
+                                            <span class="badge bg-danger ms-1">0</span>
+                                        {% elif riga.Stock.qta < 50 %}
+                                            <span class="badge bg-warning text-dark ms-1">LOW</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ riga.Stock.data_rilevazione.strftime('%d/%m/%Y') if riga.Stock.data_rilevazione else '-' }}</td>
+                                    <td>
+                                        {% if riga.Stock.ubicazione %}
+                                            <span class="badge bg-secondary">{{ riga.Stock.ubicazione }}</span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ riga.Stock.lotto if riga.Stock.lotto else '-' }}</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ riga.Stock.note if riga.Stock.note else '' }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info mb-0">
+                        Nessuna riga stock presente per questo file.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

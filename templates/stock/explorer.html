@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Explorer - Giacenze Correnti{% endblock %}
+
+{% block extra_css %}
+<style>
+.stat-card {
+    text-align: center;
+    padding: 1.5rem;
+}
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+.sortable-header:hover {
+    background-color: #dee2e6 !important;
+}
+.sort-icon {
+    font-size: 0.8em;
+    margin-left: 5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>📦 Stock Explorer - Giacenze Correnti</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('stock.index') }}">Stock</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Explorer</li>
+                </ol>
+            </nav>
+            <p class="text-muted">
+                Vista giacenze correnti - Ultima rilevazione per ogni componente
+            </p>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{{ url_for('stock_explorer.alert') }}" class="btn btn-warning">
+                ⚠️ Alert Scorte Critiche
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-value text-primary">{{ total_componenti }}</div>
+                    <div class="stat-label">Componenti Totali</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-value text-info">{{ "{:,}".format(total_unita) }}</div>
+                    <div class="stat-label">Unità Totali</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card border-warning">
+                <div class="card-body">
+                    <div class="stat-value text-warning">{{ componenti_low }}</div>
+                    <div class="stat-label">Scorta Bassa (&lt;50)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card border-danger">
+                <div class="card-body">
+                    <div class="stat-value text-danger">{{ componenti_zero }}</div>
+                    <div class="stat-label">Esauriti (0)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtri -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">🔍 Filtri</h6>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('stock_explorer.index') }}" class="row g-3">
+                        <input type="hidden" name="sort" value="{{ sort_by }}">
+                        <input type="hidden" name="order" value="{{ order }}">
+
+                        <div class="col-md-3">
+                            <label class="form-label">Componente</label>
+                            <input type="text" name="componente" class="form-control"
+                                   placeholder="Ricerca codice o descrizione"
+                                   value="{{ componente_filter or '' }}">
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Ubicazione</label>
+                            <select name="ubicazione" class="form-select">
+                                <option value="">Tutte</option>
+                                {% for u in ubicazioni %}
+                                <option value="{{ u }}" {% if ubicazione_filter == u %}selected{% endif %}>{{ u }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Quantità Min</label>
+                            <input type="number" name="qta_min" class="form-control"
+                                   value="{{ qta_min if qta_min is not none else '' }}">
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Quantità Max</label>
+                            <input type="number" name="qta_max" class="form-control"
+                                   value="{{ qta_max if qta_max is not none else '' }}">
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Stato</label>
+                            <select name="stato" class="form-select">
+                                <option value="">Tutti</option>
+                                <option value="ok" {% if stato_filter == 'ok' %}selected{% endif %}>OK (≥50)</option>
+                                <option value="low" {% if stato_filter == 'low' %}selected{% endif %}>Scorta Bassa (&lt;50)</option>
+                                <option value="zero" {% if stato_filter == 'zero' %}selected{% endif %}>Esauriti (0)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">🔍</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabella Giacenze -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">📋 Giacenze Correnti ({{ risultati|length }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if risultati %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="sortable-header"
+                                        onclick="location.href='{{ url_for('stock_explorer.index', componente=componente_filter, ubicazione=ubicazione_filter, qta_min=qta_min, qta_max=qta_max, stato=stato_filter, sort='cod_componente', order='asc' if sort_by=='cod_componente' and order=='asc' else 'desc') }}'">
+                                        Codice Componente
+                                        {% if sort_by == 'cod_componente' %}
+                                            <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
+                                        {% endif %}
+                                    </th>
+                                    <th>Descrizione</th>
+                                    <th class="sortable-header text-end"
+                                        onclick="location.href='{{ url_for('stock_explorer.index', componente=componente_filter, ubicazione=ubicazione_filter, qta_min=qta_min, qta_max=qta_max, stato=stato_filter, sort='qta', order='asc' if sort_by=='qta' and order=='asc' else 'desc') }}'">
+                                        Quantità
+                                        {% if sort_by == 'qta' %}
+                                            <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
+                                        {% endif %}
+                                    </th>
+                                    <th class="sortable-header"
+                                        onclick="location.href='{{ url_for('stock_explorer.index', componente=componente_filter, ubicazione=ubicazione_filter, qta_min=qta_min, qta_max=qta_max, stato=stato_filter, sort='ubicazione', order='asc' if sort_by=='ubicazione' and order=='asc' else 'desc') }}'">
+                                        Ubicazione
+                                        {% if sort_by == 'ubicazione' %}
+                                            <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
+                                        {% endif %}
+                                    </th>
+                                    <th class="sortable-header"
+                                        onclick="location.href='{{ url_for('stock_explorer.index', componente=componente_filter, ubicazione=ubicazione_filter, qta_min=qta_min, qta_max=qta_max, stato=stato_filter, sort='data_rilevazione', order='asc' if sort_by=='data_rilevazione' and order=='asc' else 'desc') }}'">
+                                        Data Rilevazione
+                                        {% if sort_by == 'data_rilevazione' %}
+                                            <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
+                                        {% endif %}
+                                    </th>
+                                    <th>Lotto</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in risultati %}
+                                <tr {% if r.Stock.qta == 0 %}class="table-danger"{% elif r.Stock.qta < 50 %}class="table-warning"{% endif %}>
+                                    <td>
+                                        <code>{{ r.Stock.cod_componente }}</code>
+                                    </td>
+                                    <td>
+                                        {{ r.Componente.componente_it if r.Componente else '-' }}
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>{{ r.Stock.qta }}</strong>
+                                        {% if r.Stock.qta == 0 %}
+                                            <span class="badge bg-danger ms-1">ESAURITO</span>
+                                        {% elif r.Stock.qta < 50 %}
+                                            <span class="badge bg-warning text-dark ms-1">LOW</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if r.Stock.ubicazione %}
+                                            <span class="badge bg-secondary">{{ r.Stock.ubicazione }}</span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ r.Stock.data_rilevazione.strftime('%d/%m/%Y') if r.Stock.data_rilevazione else '-' }}
+                                    </td>
+                                    <td>
+                                        <small>{{ r.Stock.lotto if r.Stock.lotto else '-' }}</small>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('stock_explorer.dettaglio_componente', cod_componente=r.Stock.cod_componente) }}"
+                                           class="btn btn-sm btn-primary">
+                                            📊 Storico
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info mb-0">
+                        Nessun componente trovato con i filtri selezionati.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

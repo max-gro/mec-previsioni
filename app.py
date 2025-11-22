@@ -179,6 +179,8 @@ def create_app(config_class=DevelopmentConfig):
     from routes.anagrafiche import anagrafiche_bp  # Gestione file anagrafiche Excel
     from routes.anagrafiche_catalogo import anagrafiche_catalogo_bp  # Catalogo modelli & componenti
     from routes.dashboard import dashboard_bp  # Dashboard elaborazioni
+    from routes.stock import stock_bp  # Gestione stock giacenze componenti
+    from routes.stock_explorer import stock_explorer_bp  # Stock explorer
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp, url_prefix='/dashboard')  # Dashboard elaborazioni
@@ -191,6 +193,8 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(ordini_explorer_bp)  # Già ha url_prefix='/ordini/explorer'
     app.register_blueprint(anagrafiche_bp, url_prefix='/anagrafiche')  # Gestione file anagrafiche
     app.register_blueprint(anagrafiche_catalogo_bp)  # Già ha url_prefix='/anagrafiche/catalogo'
+    app.register_blueprint(stock_bp)  # Già ha url_prefix='/stock'
+    app.register_blueprint(stock_explorer_bp)  # Già ha url_prefix='/stock/explorer'
 
     # Teardown handler per pulire la log session
     @app.teardown_appcontext

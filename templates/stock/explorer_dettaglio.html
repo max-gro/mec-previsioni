@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Dettaglio Componente - {{ cod_componente }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.info-card {
+    border-left: 4px solid #0d6efd;
+}
+.stat-box {
+    text-align: center;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+}
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #0d6efd;
+}
+.stat-label {
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var ctx = document.getElementById('stockChart').getContext('2d');
+
+    var chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ chart_labels|tojson }},
+            datasets: [{
+                label: 'Giacenza',
+                data: {{ chart_data|tojson }},
+                backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                borderColor: 'rgba(13, 110, 253, 1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Andamento Giacenza nel Tempo'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>📦 Dettaglio Componente</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('stock.index') }}">Stock</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('stock_explorer.index') }}">Explorer</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ cod_componente }}</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{{ url_for('stock_explorer.index') }}" class="btn btn-outline-secondary">
+                ← Torna all'Explorer
+            </a>
+        </div>
+    </div>
+
+    <!-- Info Componente -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card info-card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6 class="text-muted mb-1">Codice Componente</h6>
+                            <h4 class="mb-0"><code>{{ cod_componente }}</code></h4>
+                        </div>
+                        <div class="col-md-8">
+                            <h6 class="text-muted mb-1">Descrizione</h6>
+                            <p class="mb-0">{{ componente.componente_it if componente else 'N/D' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if giacenza_corrente %}
+    <!-- Giacenza Corrente + Statistiche -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-box">
+                <div class="stat-value text-primary">{{ giacenza_corrente.qta }}</div>
+                <div class="stat-label">Giacenza Corrente</div>
+                <small class="text-muted">{{ giacenza_corrente.data_rilevazione.strftime('%d/%m/%Y') }}</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-box">
+                <div class="stat-value text-info">{{ qta_media|int }}</div>
+                <div class="stat-label">Giacenza Media</div>
+                <small class="text-muted">Su {{ storico|length }} rilevazioni</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-box">
+                <div class="stat-value text-success">{{ qta_max }}</div>
+                <div class="stat-label">Giacenza Massima</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-box">
+                <div class="stat-value text-warning">{{ qta_min }}</div>
+                <div class="stat-label">Giacenza Minima</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grafico Andamento -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">📈 Andamento Giacenza</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="stockChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabella Storico -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">📋 Storico Rilevazioni ({{ storico|length }})</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data Rilevazione</th>
+                                    <th class="text-end">Quantità</th>
+                                    <th>Ubicazione</th>
+                                    <th>Lotto</th>
+                                    <th>File Sorgente</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in storico %}
+                                <tr {% if s.Stock.qta == 0 %}class="table-danger"{% elif s.Stock.qta < 50 %}class="table-warning"{% endif %}>
+                                    <td>{{ s.Stock.data_rilevazione.strftime('%d/%m/%Y') }}</td>
+                                    <td class="text-end">
+                                        <strong>{{ s.Stock.qta }}</strong>
+                                        {% if s.Stock.qta == 0 %}
+                                            <span class="badge bg-danger ms-1">0</span>
+                                        {% elif s.Stock.qta < 50 %}
+                                            <span class="badge bg-warning text-dark ms-1">LOW</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if s.Stock.ubicazione %}
+                                            <span class="badge bg-secondary">{{ s.Stock.ubicazione }}</span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td><small>{{ s.Stock.lotto if s.Stock.lotto else '-' }}</small></td>
+                                    <td>
+                                        {% if s.FileStock %}
+                                            <a href="{{ url_for('stock.dettaglio', id=s.FileStock.id) }}">
+                                                <small>{{ s.FileStock.filename }}</small>
+                                            </a>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td><small class="text-muted">{{ s.Stock.note if s.Stock.note else '' }}</small></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning">
+        Nessuno storico giacenze disponibile per questo componente.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

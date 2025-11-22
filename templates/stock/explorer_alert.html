@@ -89,7 +89,7 @@
                                             -
                                         {% endif %}
                                     </td>
-                                    <td>{{ e.Stock.data_rilevazione.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ e.Stock.data_snapshot.strftime('%d/%m/%Y') }}</td>
                                     <td>
                                         <a href="{{ url_for('stock_explorer.dettaglio_componente', cod_componente=e.Stock.cod_componente) }}"
                                            class="btn btn-sm btn-primary">
@@ -134,7 +134,7 @@
                                     <td><code>{{ s.Stock.cod_componente }}</code></td>
                                     <td>{{ s.Componente.componente_it if s.Componente else '-' }}</td>
                                     <td class="text-end">
-                                        <strong>{{ s.Stock.qta }}</strong>
+                                        <strong>{{ s.Stock.giacenza_fisica }}</strong>
                                         <span class="badge bg-warning text-dark ms-1">LOW</span>
                                     </td>
                                     <td>
@@ -144,7 +144,7 @@
                                             -
                                         {% endif %}
                                     </td>
-                                    <td>{{ s.Stock.data_rilevazione.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ s.Stock.data_snapshot.strftime('%d/%m/%Y') }}</td>
                                     <td>
                                         <a href="{{ url_for('stock_explorer.dettaglio_componente', cod_componente=s.Stock.cod_componente) }}"
                                            class="btn btn-sm btn-primary">

@@ -107,8 +107,14 @@
                             </th>
                             <th>Righe</th>
                             <th class="sortable-header" onclick="location.href='{{ url_for('stock.index', anno=anno, esito=esito, sort='data_acquisizione', order='asc' if sort=='data_acquisizione' and order=='desc' else 'desc') }}'">
-                                Data Acquisizione
+                                Acquisizione
                                 {% if sort == 'data_acquisizione' %}
+                                    <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
+                                {% endif %}
+                            </th>
+                            <th class="sortable-header" onclick="location.href='{{ url_for('stock.index', anno=anno, esito=esito, sort='data_elaborazione', order='asc' if sort=='data_elaborazione' and order=='desc' else 'desc') }}'">
+                                Elaborazione
+                                {% if sort == 'data_elaborazione' %}
                                     <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
                                 {% endif %}
                             </th>
@@ -118,6 +124,7 @@
                                     <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
                                 {% endif %}
                             </th>
+                            <th>Tentativi</th>
                             <th>Azioni</th>
                         </tr>
                     </thead>
@@ -136,6 +143,13 @@
                             </td>
                             <td>{{ file.data_acquisizione.strftime('%d/%m/%Y %H:%M') if file.data_acquisizione else '-' }}</td>
                             <td>
+                                {% if file.data_elaborazione %}
+                                    {{ file.data_elaborazione.strftime('%d/%m/%Y %H:%M') }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if file.esito == 'Processato' %}
                                     <span class="badge bg-success">✓ Processato</span>
                                 {% elif file.esito == 'Da processare' %}
@@ -146,19 +160,24 @@
                                     <span class="badge bg-secondary">{{ file.esito }}</span>
                                 {% endif %}
                             </td>
+                            <td class="text-center">
+                                <a href="{{ url_for('stock.elaborazioni_list', id=file.id) }}" class="btn btn-sm btn-outline-info" title="Vedi elaborazioni">
+                                    📊 Dettagli
+                                </a>
+                            </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <a href="{{ url_for('stock.dettaglio', id=file.id) }}" class="btn btn-outline-info" title="Visualizza dettaglio">
                                         👁️
                                     </a>
-                                    {% if file.filepath and file.esito == 'Processato' %}
-                                    <a href="{{ url_for('stock.dettaglio', id=file.id) }}" class="btn btn-outline-success" title="Download file">
+                                    {% if file.filepath %}
+                                    <a href="{{ url_for('stock.download', id=file.id) }}" class="btn btn-outline-success" title="Download file">
                                         ⬇
                                     </a>
                                     {% endif %}
 
                                     {% if current_user.is_admin() %}
-                                    <a href="{{ url_for('stock.dettaglio', id=file.id) }}" class="btn btn-outline-primary" title="Modifica">
+                                    <a href="{{ url_for('stock.edit', id=file.id) }}" class="btn btn-outline-primary" title="Modifica">
                                         ✏️
                                     </a>
 

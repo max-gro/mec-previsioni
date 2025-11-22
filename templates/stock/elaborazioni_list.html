@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Elaborazioni - {{ file_stock.filename }} - M&C Previsioni{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('stock.index') }}">Stock</a></li>
+            <li class="breadcrumb-item active">Elaborazioni - {{ file_stock.filename }}</li>
+        </ol>
+    </nav>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4>File: {{ file_stock.filename }}</h4>
+            <div class="row">
+                <div class="col-md-3">
+                    <p class="mb-1"><small class="text-muted">Anno</small></p>
+                    <p><strong>{{ file_stock.anno }}</strong></p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-1"><small class="text-muted">Data Acquisizione</small></p>
+                    <p><strong>{{ file_stock.data_acquisizione.strftime('%d/%m/%Y %H:%M') if file_stock.data_acquisizione else '-' }}</strong></p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-1"><small class="text-muted">Totale Elaborazioni</small></p>
+                    <p><strong>{{ elaborazioni|length }}</strong></p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-1"><small class="text-muted">Stato Attuale</small></p>
+                    <p>
+                        {% if file_stock.esito == 'Processato' %}
+                        <span class="badge bg-success">{{ file_stock.esito }}</span>
+                        {% elif file_stock.esito == 'Errore' %}
+                        <span class="badge bg-danger">{{ file_stock.esito }}</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ file_stock.esito }}</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">📊 Storico Elaborazioni</h5>
+            {% if current_user.is_admin() and (file_stock.esito == 'Da processare' or file_stock.esito == 'Errore') %}
+            <a href="{{ url_for('stock.elabora', id=file_stock.id) }}" class="btn btn-primary btn-sm"
+               onclick="return confirm('Elaborare il file {{ file_stock.filename }}?')">
+                ⚙️ Nuova Elaborazione
+            </a>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            {% if elaborazioni %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Data/Ora Inizio</th>
+                            <th>Data/Ora Fine</th>
+                            <th>Durata</th>
+                            <th>Esito</th>
+                            <th>Righe Totali</th>
+                            <th>Righe OK</th>
+                            <th>Errori</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for elab in elaborazioni %}
+                        <tr {% if loop.first %}class="table-info"{% endif %}>
+                            <td>
+                                {{ elab.id_elab }}
+                                {% if loop.first %}<span class="badge bg-info">ULTIMA</span>{% endif %}
+                            </td>
+                            <td><small>{{ elab.start_time.strftime('%d/%m/%Y %H:%M:%S') if elab.start_time else '-' }}</small></td>
+                            <td><small>{{ elab.end_time.strftime('%d/%m/%Y %H:%M:%S') if elab.end_time else '-' }}</small></td>
+                            <td>
+                                {% if elab.start_time and elab.end_time %}
+                                    {% set duration = (elab.end_time - elab.start_time).total_seconds() %}
+                                    <small>{{ "%.1f"|format(duration) }}s</small>
+                                {% else %}
+                                    <small>-</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if elab.esito == 'OK' %}
+                                <span class="badge bg-success">Successo</span>
+                                {% elif elab.esito == 'KO' %}
+                                <span class="badge bg-danger">Errore</span>
+                                {% elif elab.esito == 'WARN' %}
+                                <span class="badge bg-warning text-dark">Warning</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ elab.esito }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ elab.n_righe_elaborate or 0 }}</td>
+                            <td><span class="badge bg-success">{{ elab.n_righe_ok or 0 }}</span></td>
+                            <td><span class="badge bg-danger">{{ elab.n_righe_ko or 0 }}</span></td>
+                        </tr>
+                        {% if elab.note %}
+                        <tr>
+                            <td colspan="8" class="bg-light">
+                                <small><strong>Note:</strong> {{ elab.note }}</small>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info m-3">
+                📊 Nessuna elaborazione trovata per questo file stock.
+                {% if current_user.is_admin() and file_stock.esito == 'Da processare' %}
+                <br><br>
+                <a href="{{ url_for('stock.elabora', id=file_stock.id) }}" class="btn btn-sm btn-primary"
+                   onclick="return confirm('Elaborare il file {{ file_stock.filename }}?')">
+                    ⚙️ Avvia Prima Elaborazione
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <a href="{{ url_for('stock.index') }}" class="btn btn-outline-secondary">← Torna alla lista</a>
+        <a href="{{ url_for('stock.dettaglio', id=file_stock.id) }}" class="btn btn-outline-info">👁️ Visualizza Dettaglio Righe</a>
+    </div>
+</div>
+{% endblock %}

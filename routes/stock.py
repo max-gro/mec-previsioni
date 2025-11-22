@@ -8,11 +8,12 @@ Pipeline Stock:
 - Gestione file (INPUT/OUTPUT)
 """
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, send_from_directory
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, FileStock, Stock, Componente
+from models import db, FileStock, Stock, Componente, TraceElab, TraceElabDett
 from utils.decorators import admin_required
+from utils.db_log import log_session  # Sessione separata per log (AUTONOMOUS TRANSACTION)
 import os
 import csv
 import re
@@ -171,7 +172,7 @@ def create():
 @login_required
 @admin_required
 def elabora(id):
-    """Elabora file stock TSV"""
+    """Elabora file stock TSV con trace logging completo"""
 
     file_stock = FileStock.query.get_or_404(id)
 
@@ -179,13 +180,63 @@ def elabora(id):
         flash('File già elaborato', 'warning')
         return redirect(url_for('stock.index'))
 
+    # ✅ STEP 0: Genera nuovo id_elab per questa elaborazione
+    result = db.session.execute(db.text("SELECT nextval('seq_id_elab')"))
+    id_elab = result.scalar()
+
+    # ✅ STEP 1: Crea record elaborazione - START (LOG SESSION - COMMIT IMMEDIATO)
+    trace_start = TraceElab(
+        id_elab=id_elab,
+        id_file=id,
+        tipo_file='STOCK',
+        step='START',
+        esito='OK',
+        note='Inizio elaborazione file stock TSV'
+    )
+    log_session.add(trace_start)
+    log_session.commit()  # ← AUTONOMOUS: Commit immediato, sempre persistito
+    id_trace_start = trace_start.id
+
     try:
         # Verifica esistenza file
         if not os.path.exists(file_stock.filepath):
-            flash(f'File non trovato: {file_stock.filepath}', 'error')
+            logger.error(f"File stock non trovato: {file_stock.filepath}")
+
+            # Logga errore critico (LOG SESSION)
+            dettaglio = TraceElabDett(
+                id_trace=id_trace_start,
+                record_pos=0,
+                record_data={'key': 'FILE_NOT_FOUND'},
+                esito='KO',
+                note=f"File non trovato sul filesystem: {file_stock.filepath}"
+            )
+            log_session.add(dettaglio)
+            log_session.commit()
+
+            # Finalizza elaborazione con errore (LOG SESSION)
+            trace_end = TraceElab(
+                id_elab=id_elab,
+                id_file=id,
+                tipo_file='STOCK',
+                step='END',
+                esito='KO',
+                note='File non trovato',
+                n_righe_elaborate=0,
+                n_righe_ok=0,
+                n_righe_ko=1
+            )
+            log_session.add(trace_end)
+            log_session.commit()
+
+            # Aggiorna tabella operativa (DB SESSION)
             file_stock.esito = 'Errore'
             file_stock.note = 'File non trovato sul filesystem'
+            file_stock.data_elaborazione = datetime.now()
+            file_stock.updated_by = current_user.id
+            file_stock.updated_at = datetime.now()
             db.session.commit()
+
+            flash(f'File non trovato: {file_stock.filepath}', 'error')
             return redirect(url_for('stock.index'))
 
         # Parse TSV
@@ -301,7 +352,9 @@ def elabora(id):
                     righe_errore += 1
                     continue
 
-        # Aggiorna file_stock
+        # Aggiorna file_stock e finalizza trace
+        righe_totali = righe_ok + righe_errore
+
         if righe_errore == 0:
             file_stock.esito = 'Processato'
             file_stock.note = f'Elaborato con successo: {righe_ok} righe'
@@ -313,9 +366,43 @@ def elabora(id):
             if os.path.exists(file_stock.filepath):
                 os.rename(file_stock.filepath, new_filepath)
                 file_stock.filepath = new_filepath
+
+            # Trace END - Success (LOG SESSION)
+            trace_end = TraceElab(
+                id_elab=id_elab,
+                id_file=id,
+                tipo_file='STOCK',
+                step='END',
+                esito='OK',
+                note=f'Elaborato con successo: {righe_ok} righe',
+                n_righe_elaborate=righe_totali,
+                n_righe_ok=righe_ok,
+                n_righe_ko=righe_errore
+            )
+            log_session.add(trace_end)
+            log_session.commit()
+
+            flash(f'File elaborato con successo: {righe_ok} righe importate', 'success')
         else:
             file_stock.esito = 'Errore'
             file_stock.note = f'Elaborato con errori: {righe_ok} OK, {righe_errore} KO. Errori: ' + '; '.join(errori[:5])
+
+            # Trace END - Error (LOG SESSION)
+            trace_end = TraceElab(
+                id_elab=id_elab,
+                id_file=id,
+                tipo_file='STOCK',
+                step='END',
+                esito='KO',
+                note=f'Elaborato con errori: {righe_ok} OK, {righe_errore} KO',
+                n_righe_elaborate=righe_totali,
+                n_righe_ok=righe_ok,
+                n_righe_ko=righe_errore
+            )
+            log_session.add(trace_end)
+            log_session.commit()
+
+            flash(f'File elaborato con errori: {righe_ok} OK, {righe_errore} KO', 'warning')
 
         file_stock.data_elaborazione = datetime.now()
         file_stock.updated_by = current_user.id
@@ -323,18 +410,33 @@ def elabora(id):
 
         db.session.commit()
 
-        if righe_errore == 0:
-            flash(f'File elaborato con successo: {righe_ok} righe importate', 'success')
-        else:
-            flash(f'File elaborato con errori: {righe_ok} OK, {righe_errore} KO', 'warning')
-
     except Exception as e:
         db.session.rollback()
         logger.error(f"Errore elaborazione file stock {id}: {e}")
+
+        # Trace END - Exception (LOG SESSION)
+        trace_end = TraceElab(
+            id_elab=id_elab,
+            id_file=id,
+            tipo_file='STOCK',
+            step='END',
+            esito='KO',
+            note=f'Errore elaborazione: {str(e)}',
+            n_righe_elaborate=0,
+            n_righe_ok=0,
+            n_righe_ko=1
+        )
+        log_session.add(trace_end)
+        log_session.commit()
+
+        # Aggiorna tabella operativa (DB SESSION)
         file_stock.esito = 'Errore'
         file_stock.note = f'Errore elaborazione: {str(e)}'
         file_stock.data_elaborazione = datetime.now()
+        file_stock.updated_by = current_user.id
+        file_stock.updated_at = datetime.now()
         db.session.commit()
+
         flash(f'Errore durante elaborazione: {str(e)}', 'error')
 
     return redirect(url_for('stock.index'))
@@ -344,29 +446,57 @@ def elabora(id):
 @login_required
 @admin_required
 def delete(id):
-    """Elimina file stock e righe associate"""
+    """
+    Elimina un file stock.
 
+    Comportamento:
+    - Cancella righe stock associate (tabella stock)
+    - Cancella record FileStock
+    - Cancella file TSV dal filesystem
+    - NON tocca componenti (dati master)
+    - NON tocca trace_elab/trace_elab_dett (storico)
+    - Logga operazione in console/file
+    """
     file_stock = FileStock.query.get_or_404(id)
+    filename = file_stock.filename
+    filepath = file_stock.filepath
 
-    try:
-        # Elimina righe stock associate
-        Stock.query.filter_by(id_file_stock=id).delete()
+    # ✅ STEP 1: Conta righe stock da cancellare
+    righe_stock = Stock.query.filter_by(id_file_stock=id).all()
+    num_righe = len(righe_stock)
 
-        # Elimina file fisico se esiste
-        if os.path.exists(file_stock.filepath):
-            os.remove(file_stock.filepath)
+    logger.info(f"[DELETE] Inizio cancellazione FileStock ID={id}, file={filename}")
+    logger.info(f"[DELETE] Righe stock associate: {num_righe}")
 
-        # Elimina record DB
-        db.session.delete(file_stock)
-        db.session.commit()
+    # ✅ STEP 2: Cancella righe stock (NON tocca componenti)
+    if num_righe > 0:
+        for riga in righe_stock:
+            db.session.delete(riga)
+        logger.info(f"[DELETE] Cancellate {num_righe} righe dalla tabella stock")
 
-        flash(f'File {file_stock.filename} eliminato con successo', 'success')
+    # ✅ STEP 3: Cancella file TSV dal filesystem
+    if os.path.exists(filepath):
+        try:
+            os.remove(filepath)
+            logger.info(f"[DELETE] File TSV rimosso: {filepath}")
+        except Exception as e:
+            logger.error(f"[DELETE] Errore rimozione file TSV: {str(e)}")
+            flash(f'Errore nell\'eliminazione del file: {str(e)}', 'danger')
+            db.session.rollback()
+            return redirect(url_for('stock.index'))
+    else:
+        logger.warning(f"[DELETE] File TSV non trovato: {filepath}")
 
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Errore eliminazione file stock {id}: {e}")
-        flash(f'Errore durante eliminazione: {str(e)}', 'error')
+    # ✅ STEP 4: Cancella record FileStock dal database
+    db.session.delete(file_stock)
+    db.session.commit()
 
+    logger.info(f"[DELETE] FileStock ID={id} cancellato con successo")
+    logger.info(f"[DELETE] Riepilogo: {num_righe} righe stock, 1 file_stock, 1 TSV rimossi")
+    logger.info(f"[DELETE] Componenti: NON toccati (dati master)")
+    logger.info(f"[DELETE] Trace: NON toccate (storico elaborazioni)")
+
+    flash(f'File stock {filename} eliminato ({num_righe} righe stock rimosse).', 'info')
     return redirect(url_for('stock.index'))
 
 
@@ -407,4 +537,88 @@ def dettaglio(id):
         totale_qta_impegnata=totale_qta_impegnata,
         componenti_zero=componenti_zero,
         componenti_low=componenti_low
+    )
+
+
+@stock_bp.route('/download/<int:id>')
+@login_required
+def download(id):
+    """Download del file TSV"""
+    file_stock = FileStock.query.get_or_404(id)
+
+    if not os.path.exists(file_stock.filepath):
+        flash('File non trovato sul server!', 'danger')
+        return redirect(url_for('stock.index'))
+
+    directory = os.path.dirname(file_stock.filepath)
+    filename = os.path.basename(file_stock.filepath)
+
+    return send_from_directory(directory, filename, as_attachment=True)
+
+
+@stock_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit(id):
+    """Modifica un file stock esistente"""
+    file_stock = FileStock.query.get_or_404(id)
+
+    if request.method == 'POST':
+        # Aggiorna campi
+        data_acquisizione_str = request.form.get('data_acquisizione')
+        if data_acquisizione_str:
+            file_stock.data_acquisizione = datetime.fromisoformat(data_acquisizione_str)
+
+        file_stock.esito = request.form.get('esito', file_stock.esito)
+        file_stock.note = request.form.get('note', '')
+        file_stock.updated_at = datetime.utcnow()
+        file_stock.updated_by = current_user.id
+
+        db.session.commit()
+        flash(f'File stock {file_stock.filename} aggiornato!', 'success')
+        return redirect(url_for('stock.index'))
+
+    return render_template('stock/edit.html', file_stock=file_stock)
+
+
+@stock_bp.route('/<int:id>/elaborazioni')
+@login_required
+def elaborazioni_list(id):
+    """
+    Lista di tutte le elaborazioni per un file stock specifico
+    Raggruppa per id_elab e mostra metriche aggregate
+    """
+    file_stock = FileStock.query.get_or_404(id)
+
+    # Recupera tutti i record END (contengono le metriche aggregate)
+    elaborazioni_end = TraceElab.query.filter_by(
+        tipo_file='STOCK',
+        id_file=id,
+        step='END'
+    ).order_by(TraceElab.created_at.desc()).all()
+
+    # Per ogni elaborazione END, trova il corrispondente START
+    elaborazioni = []
+    for elab_end in elaborazioni_end:
+        elab_start = TraceElab.query.filter_by(
+            id_elab=elab_end.id_elab,
+            tipo_file='STOCK',
+            id_file=id,
+            step='START'
+        ).first()
+
+        elaborazioni.append({
+            'id_elab': elab_end.id_elab,
+            'start_time': elab_start.created_at if elab_start else None,
+            'end_time': elab_end.created_at,
+            'esito': elab_end.esito,
+            'n_righe_elaborate': elab_end.n_righe_elaborate,
+            'n_righe_ok': elab_end.n_righe_ok,
+            'n_righe_ko': elab_end.n_righe_ko,
+            'note': elab_end.note
+        })
+
+    return render_template(
+        'stock/elaborazioni_list.html',
+        file_stock=file_stock,
+        elaborazioni=elaborazioni
     )

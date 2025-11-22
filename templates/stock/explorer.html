@@ -187,9 +187,9 @@
                                         {% endif %}
                                     </th>
                                     <th class="sortable-header"
-                                        onclick="location.href='{{ url_for('stock_explorer.index', componente=componente_filter, ubicazione=ubicazione_filter, qta_min=qta_min, qta_max=qta_max, stato=stato_filter, sort='data_rilevazione', order='asc' if sort_by=='data_rilevazione' and order=='asc' else 'desc') }}'">
-                                        Data Rilevazione
-                                        {% if sort_by == 'data_rilevazione' %}
+                                        onclick="location.href='{{ url_for('stock_explorer.index', componente=componente_filter, ubicazione=ubicazione_filter, qta_min=qta_min, qta_max=qta_max, stato=stato_filter, sort='data_snapshot', order='asc' if sort_by=='data_snapshot' and order=='asc' else 'desc') }}'">
+                                        Data Snapshot
+                                        {% if sort_by == 'data_snapshot' %}
                                             <span class="sort-icon">{{ '▼' if order == 'desc' else '▲' }}</span>
                                         {% endif %}
                                     </th>
@@ -199,7 +199,7 @@
                             </thead>
                             <tbody>
                                 {% for r in risultati %}
-                                <tr {% if r.Stock.qta == 0 %}class="table-danger"{% elif r.Stock.qta < 50 %}class="table-warning"{% endif %}>
+                                <tr {% if r.Stock.giacenza_fisica == 0 %}class="table-danger"{% elif r.Stock.giacenza_fisica < 50 %}class="table-warning"{% endif %}>
                                     <td>
                                         <code>{{ r.Stock.cod_componente }}</code>
                                     </td>
@@ -207,10 +207,10 @@
                                         {{ r.Componente.componente_it if r.Componente else '-' }}
                                     </td>
                                     <td class="text-end">
-                                        <strong>{{ r.Stock.qta }}</strong>
-                                        {% if r.Stock.qta == 0 %}
+                                        <strong>{{ r.Stock.giacenza_fisica }}</strong>
+                                        {% if r.Stock.giacenza_fisica == 0 %}
                                             <span class="badge bg-danger ms-1">ESAURITO</span>
-                                        {% elif r.Stock.qta < 50 %}
+                                        {% elif r.Stock.giacenza_fisica < 50 %}
                                             <span class="badge bg-warning text-dark ms-1">LOW</span>
                                         {% endif %}
                                     </td>
@@ -222,7 +222,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {{ r.Stock.data_rilevazione.strftime('%d/%m/%Y') if r.Stock.data_rilevazione else '-' }}
+                                        {{ r.Stock.data_snapshot.strftime('%d/%m/%Y') if r.Stock.data_snapshot else '-' }}
                                     </td>
                                     <td>
                                         <small>{{ r.Stock.lotto if r.Stock.lotto else '-' }}</small>

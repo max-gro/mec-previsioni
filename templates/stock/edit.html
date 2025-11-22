@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Modifica File Stock{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>✏️ Modifica File Stock</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('stock.index') }}">Stock</a></li>
+                    <li class="breadcrumb-item active">Modifica {{ file_stock.filename }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('stock.edit', id=file_stock.id) }}">
+                        <div class="alert alert-secondary">
+                            <strong>📄 File:</strong> {{ file_stock.filename }}<br>
+                            <strong>📁 Anno:</strong> {{ file_stock.anno }}<br>
+                            <strong>📍 Percorso:</strong> <code>{{ file_stock.filepath }}</code>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Data Acquisizione <span class="text-danger">*</span></label>
+                                <input type="datetime-local" name="data_acquisizione" class="form-control"
+                                       value="{{ file_stock.data_acquisizione.strftime('%Y-%m-%dT%H:%M') if file_stock.data_acquisizione else '' }}"
+                                       {% if file_stock.esito == 'Processato' %}disabled{% endif %}>
+                                <small class="form-text text-muted">Seleziona la data{% if file_stock.esito == 'Processato' %} (disabilitata - file processato){% endif %}</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Stato</label>
+                                <select name="esito" class="form-select">
+                                    <option value="Da processare" {% if file_stock.esito == 'Da processare' %}selected{% endif %}>Da processare</option>
+                                    <option value="Processato" {% if file_stock.esito == 'Processato' %}selected{% endif %}>Processato</option>
+                                    <option value="Errore" {% if file_stock.esito == 'Errore' %}selected{% endif %}>Errore</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Note</label>
+                            <textarea name="note" class="form-control" rows="3">{{ file_stock.note if file_stock.note else '' }}</textarea>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>
+                            <a href="{{ url_for('stock.index') }}" class="btn btn-secondary">Annulla</a>
+                            <a href="{{ url_for('stock.dettaglio', id=file_stock.id) }}" class="btn btn-info">
+                                👁️ Visualizza Dettaglio
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm bg-light mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">📊 Informazioni</h5>
+                    <dl class="row mb-0 small">
+                        <dt class="col-sm-5">ID File:</dt>
+                        <dd class="col-sm-7">#{{ file_stock.id }}</dd>
+
+                        <dt class="col-sm-5">Creato il:</dt>
+                        <dd class="col-sm-7">{{ file_stock.created_at.strftime('%d/%m/%Y %H:%M') if file_stock.created_at else 'N/D' }}</dd>
+
+                        <dt class="col-sm-5">Modificato il:</dt>
+                        <dd class="col-sm-7">{{ file_stock.updated_at.strftime('%d/%m/%Y %H:%M') if file_stock.updated_at else 'N/D' }}</dd>
+
+                        <dt class="col-sm-5">File esiste:</dt>
+                        <dd class="col-sm-7">
+                            {% if file_stock.filepath %}
+                                <span class="badge bg-success">✓ Sì</span>
+                            {% else %}
+                                <span class="badge bg-danger">✗ No</span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-info mb-3">
+                <div class="card-body">
+                    <h5 class="card-title text-info">📥 Azioni File</h5>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('stock.dettaglio', id=file_stock.id) }}" class="btn btn-outline-info btn-sm">
+                            👁️ Visualizza Dettaglio
+                        </a>
+                        {% if file_stock.filepath %}
+                        <a href="{{ url_for('stock.download', id=file_stock.id) }}" class="btn btn-outline-success btn-sm">
+                            💾 Download TSV
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-danger">
+                <div class="card-body">
+                    <h5 class="card-title text-danger">⚠️ Zona Pericolosa</h5>
+                    <p class="card-text small">L'eliminazione rimuoverà anche il file TSV dal server.</p>
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        🗑️ Elimina File Stock
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Eliminazione -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Conferma Eliminazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Sei sicuro di voler eliminare il file stock <strong>{{ file_stock.filename }}</strong>?
+                <br><br>
+                <div class="alert alert-danger">
+                    <strong>⚠️ Attenzione:</strong> Questa azione eliminerà:
+                    <ul class="mb-0 mt-2">
+                        <li>Il record dal database</li>
+                        <li>Il file TSV dal server</li>
+                        <li>Tutte le righe stock associate</li>
+                    </ul>
+                </div>
+                Questa azione è <strong>irreversibile</strong>.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <form method="GET" action="{{ url_for('stock.delete', id=file_stock.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Elimina Definitivamente</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

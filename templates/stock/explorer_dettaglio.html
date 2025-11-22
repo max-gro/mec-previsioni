@@ -118,9 +118,9 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="stat-box">
-                <div class="stat-value text-primary">{{ giacenza_corrente.qta }}</div>
+                <div class="stat-value text-primary">{{ giacenza_corrente.giacenza_fisica }}</div>
                 <div class="stat-label">Giacenza Corrente</div>
-                <small class="text-muted">{{ giacenza_corrente.data_rilevazione.strftime('%d/%m/%Y') }}</small>
+                <small class="text-muted">{{ giacenza_corrente.data_snapshot.strftime('%d/%m/%Y') }}</small>
             </div>
         </div>
         <div class="col-md-3">
@@ -170,8 +170,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <table class="table table-hover table-sm">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Data Rilevazione</th>
-                                    <th class="text-end">Quantità</th>
+                                    <th>Data Snapshot</th>
+                                    <th class="text-end">Quantità Fisica</th>
                                     <th>Ubicazione</th>
                                     <th>Lotto</th>
                                     <th>File Sorgente</th>
@@ -180,13 +180,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             </thead>
                             <tbody>
                                 {% for s in storico %}
-                                <tr {% if s.Stock.qta == 0 %}class="table-danger"{% elif s.Stock.qta < 50 %}class="table-warning"{% endif %}>
-                                    <td>{{ s.Stock.data_rilevazione.strftime('%d/%m/%Y') }}</td>
+                                <tr {% if s.Stock.giacenza_fisica == 0 %}class="table-danger"{% elif s.Stock.giacenza_fisica < 50 %}class="table-warning"{% endif %}>
+                                    <td>{{ s.Stock.data_snapshot.strftime('%d/%m/%Y') }}</td>
                                     <td class="text-end">
-                                        <strong>{{ s.Stock.qta }}</strong>
-                                        {% if s.Stock.qta == 0 %}
+                                        <strong>{{ s.Stock.giacenza_fisica }}</strong>
+                                        {% if s.Stock.giacenza_fisica == 0 %}
                                             <span class="badge bg-danger ms-1">0</span>
-                                        {% elif s.Stock.qta < 50 %}
+                                        {% elif s.Stock.giacenza_fisica < 50 %}
                                             <span class="badge bg-warning text-dark ms-1">LOW</span>
                                         {% endif %}
                                     </td>

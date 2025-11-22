@@ -43,7 +43,7 @@ class RotturaForm(FlaskForm):
     anno = IntegerField('Anno', validators=[DataRequired()])
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         default=date.today,
         validators=[DataRequired()],
         render_kw={'type': 'date'}
@@ -56,13 +56,13 @@ class RotturaEditForm(FlaskForm):
     """Form per modifica File Rottura (senza upload)"""
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         validators=[DataRequired()],
         render_kw={'type': 'date'}
     )
     data_elaborazione = DateTimeField(
         'Data Elaborazione',
-        format='%d/%m/%Y %H:%M',
+        format='%Y-%m-%dT%H:%M',
         validators=[Optional()],
         render_kw={'type': 'datetime-local'}
     )
@@ -83,7 +83,7 @@ class FileOrdineForm(FlaskForm):
     ])
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         default=date.today,
         validators=[DataRequired()],
         render_kw={'type': 'date'}
@@ -100,13 +100,13 @@ class FileOrdineEditForm(FlaskForm):
     """Form per modifica File Ordine (senza upload file)"""
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         validators=[DataRequired()],
         render_kw={'type': 'date'}
     )
     data_elaborazione = DateTimeField(
         'Data Elaborazione',
-        format='%d/%m/%Y %H:%M',
+        format='%Y-%m-%dT%H:%M',
         validators=[Optional()],
         render_kw={'type': 'datetime-local'}
     )
@@ -127,7 +127,7 @@ class OrdineAcquistoForm(FlaskForm):
     ])
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         default=date.today,
         validators=[DataRequired()],
         render_kw={'type': 'date'}
@@ -144,7 +144,7 @@ class OrdineAcquistoEditForm(FlaskForm):
     """Form per modifica Ordine di Acquisto (DEPRECATO - usa FileOrdineEditForm)"""
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         validators=[DataRequired()],
         render_kw={'type': 'date'}
     )
@@ -172,7 +172,7 @@ class AnagraficaFileForm(FlaskForm):
     )    
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         default=date.today,
         validators=[DataRequired()],
         render_kw={'type': 'date'}
@@ -196,13 +196,13 @@ class AnagraficaFileEditForm(FlaskForm):
     )
     data_acquisizione = DateField(
         'Data Acquisizione',
-        format='%d/%m/%Y',
+        format='%Y-%m-%d',
         validators=[DataRequired()],
         render_kw={'type': 'date'}
     )
     data_elaborazione = DateTimeField(
         'Data Elaborazione',
-        format='%d/%m/%Y %H:%M',
+        format='%Y-%m-%dT%H:%M',
         validators=[Optional()],
         render_kw={'type': 'datetime-local'}
     )

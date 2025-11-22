@@ -292,7 +292,7 @@
                                     👁️ Dettaglio
                                 </a>
                                 {% if ordine.filepath %}
-                                <a href="{{ url_for('ordini.view_pdf', id_file_ordine=ordine.id) }}"
+                                <a href="{{ url_for('ordini.view', id=ordine.id) }}"
                                    class="btn btn-sm btn-outline-secondary btn-action"
                                    target="_blank">
                                     📄 PDF

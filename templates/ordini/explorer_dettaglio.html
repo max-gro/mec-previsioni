@@ -114,7 +114,7 @@
         </div>
         <div>
             {% if file_ordine.filepath %}
-            <a href="{{ url_for('ordini.view_pdf', id_file_ordine=file_ordine.id) }}"
+            <a href="{{ url_for('ordini.view', id=file_ordine.id) }}"
                class="btn btn-outline-secondary btn-sm me-2"
                target="_blank">
                 📄 Apri PDF

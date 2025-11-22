@@ -114,10 +114,17 @@
                         </a>
                     </li>
 
-                    <!-- Menu Anagrafiche -->
+                    <!-- Menu File Ordini -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('ordini.list') }}">
+                            📋 File Ordini
+                        </a>
+                    </li>
+
+                    <!-- Menu File Anagrafiche -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarAnagrafiche" role="button" data-bs-toggle="dropdown">
-                            📄 Anagrafiche
+                            📄 File Anagrafiche
                         </a>
                         <ul class="dropdown-menu">
                             <li>
@@ -141,17 +148,10 @@
                         </ul>
                     </li>
 
-                    <!-- Altri menu -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('ordini.list') }}">
-                            📋 File Ordini
-                        </a>
-                    </li>
-
-                    <!-- Menu Rotture -->
+                    <!-- Menu File Rotture -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarRotture" role="button" data-bs-toggle="dropdown">
-                            🔧 Rotture
+                            🔧 File Rotture
                         </a>
                         <ul class="dropdown-menu">
                             <li>
@@ -183,6 +183,11 @@
                         </a>
                         <ul class="dropdown-menu">
                             <li>
+                                <a class="dropdown-item" href="{{ url_for('ordini_explorer.index') }}">
+                                    📋 Ordini Explorer
+                                </a>
+                            </li>
+                            <li>
                                 <a class="dropdown-item" href="{{ url_for('anagrafiche_catalogo.index') }}">
                                     📦 Catalogo Modelli & Componenti
                                 </a>
@@ -190,11 +195,6 @@
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('rotture_explorer.index') }}">
                                     🔧 Rotture Explorer
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ url_for('ordini_explorer.index') }}">
-                                    📋 Ordini Explorer
                                 </a>
                             </li>
                         </ul>

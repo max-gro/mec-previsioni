@@ -25,12 +25,18 @@ functions.py              # Funzioni analisi statistica e Weibull
 preprocessing.py          # Elaborazione dati Excel
 
 routes/
-  ├── auth.py            # Autenticazione (login/logout)
-  ├── anagrafiche.py     # Gestione file anagrafiche componenti
-  ├── rotture.py         # Gestione file rotture storiche
-  ├── ordini.py          # Gestione ordini di acquisto
-  ├── previsioni.py      # Calcolo e visualizzazione previsioni
-  └── users.py           # Gestione utenti (admin)
+  ├── auth.py                # Autenticazione (login/logout)
+  ├── ordini.py              # Pipeline Ordini (PDF)
+  ├── ordini_explorer.py     # Ordini Explorer
+  ├── anagrafiche.py         # Pipeline Anagrafiche (Excel BOM)
+  ├── anagrafiche_catalogo.py # Catalogo Modelli & Componenti
+  ├── rotture.py             # Pipeline Rotture (Excel)
+  ├── rotture_explorer.py    # Rotture Explorer
+  ├── stock.py               # Pipeline Stock (TSV giacenze)
+  ├── stock_explorer.py      # Stock Explorer
+  ├── previsioni.py          # Calcolo e visualizzazione previsioni
+  ├── dashboard.py           # Dashboard elaborazioni
+  └── users.py               # Gestione utenti (admin)
 
 templates/               # Template HTML Jinja2
 static/                  # CSS, JavaScript, immagini, grafici
@@ -39,23 +45,36 @@ utils/                   # Decoratori e utility
 
 ## Funzionalità Principali
 
-### 1. Gestione Anagrafiche Componenti
-- Upload di file Excel contenenti informazioni sui componenti (codice, descrizione, marca, fornitore)
-- Archiviazione file in `INPUT/ANAGRAFICHE/{anno}/{marca}/`
-- Tracciamento stato elaborazione (Da processare, Processato, Errore)
+### 1. Pipeline Ordini di Acquisto (PDF)
+- Upload file PDF ordini di acquisto
+- Parsing automatico con OCR e estrazione tabelle
+- Archiviazione in `INPUT/ORDINI/{anno}/`
+- Tracciamento stato elaborazione con trace logging
+- Ordini Explorer per ricerca e filtri avanzati
 
-### 2. Gestione Rotture Storiche
-- Upload di file Excel con dati storici delle rotture
-- Informazioni temporali: data di rottura, data di censura, stato del componente
+### 2. Pipeline Anagrafiche Componenti (Excel)
+- Upload file Excel con distinte base (BOM) per marca/modello
+- Estrazione componenti e mapping modelli
+- Storage in `INPUT/ANAGRAFICHE/{anno}/{marca}/`
+- Catalogo Modelli & Componenti per consultazione
+- Tracciamento elaborazioni con dettagli anomalie
+
+### 3. Pipeline Rotture Storiche (Excel)
+- Upload file Excel con eventi di guasto
+- Dati temporali: data rottura, componente, modello
 - Storage in `INPUT/ROTTURE/{anno}/`
+- Rotture Explorer con statistiche affidabilità
 - Elaborazione per analisi di sopravvivenza
 
-### 3. Gestione Ordini di Acquisto
-- Caricamento ordini in formato Excel
-- Tracking ordini per anno e stato di elaborazione
-- Storage in `INPUT/ORDINI/{anno}/`
+### 4. Pipeline Stock Giacenze (TSV)
+- Upload file TSV con snapshot giacenze magazzino
+- Campi: cod_componente, giacenze (fisica/disponibile/impegnata), scorte
+- Storage in `INPUT/STOCK/{anno}/`
+- Stock Explorer con vista giacenze correnti e storiche
+- Alert scorte critiche (< 50 unità)
+- Gestione flag_corrente per snapshot più recenti
 
-### 4. Analisi Predittiva (Core Business)
+### 5. Analisi Predittiva (Core Business)
 
 #### Metodi Implementati:
 - **Kaplan-Meier**: Stima non parametrica della funzione di sopravvivenza
@@ -93,8 +112,20 @@ utils/                   # Decoratori e utility
 **rotture**
 - Tracking file rotture storiche (anno, filename, data acquisizione/elaborazione)
 
-**ordini_acquisto**
-- Tracking file ordini (anno, filepath, esito elaborazione)
+**file_ordini**
+- Tracking file ordini PDF (anno, filepath, esito elaborazione)
+
+**file_stock**
+- Tracking file giacenze TSV (anno, filename, data acquisizione/elaborazione)
+
+**stock**
+- Giacenze componenti (cod_componente, giacenza_fisica, disponibile, impegnata)
+- Scorte (min, max, punto riordino, lead time)
+- Snapshot temporali con data_snapshot e flag_corrente
+
+**trace_elab** / **trace_elab_dett**
+- Tracciamento elaborazioni con metriche (righe OK/KO/warning)
+- Log dettagli anomalie per debugging
 
 ## Workflow Operativo
 

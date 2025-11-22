@@ -60,8 +60,10 @@ MEC Previsioni analizza dati storici di rottura e utilizza modelli statistici av
   - Weibull Bayesiano (modello parametrico)
   - Confidence bands con bootstrap
 
-- 📊 **Gestione Dati**
-  - Upload file Excel (anagrafiche, rotture, ordini)
+- 📊 **Gestione Dati (4 Pipeline)**
+  - Upload file PDF (ordini di acquisto)
+  - Upload file Excel (anagrafiche BOM, rotture)
+  - Upload file TSV (stock giacenze)
   - Parsing automatico con validazione
   - Tracciamento stato elaborazioni
   - Storicizzazione modifiche
@@ -280,11 +282,15 @@ URL: http://localhost:5010
 ### Workflow Tipico
 
 1. **Login** con credenziali admin
-2. **Upload Anagrafiche**: Carica file Excel con dati componenti
-3. **Upload Rotture**: Carica storico rotture
-4. **Elabora Dati**: Processa file caricati
-5. **Visualizza Previsioni**: Accedi a dashboard previsioni
-6. **Export Risultati**: Scarica grafici e JSON
+2. **Upload File** per le 4 pipeline:
+   - **Ordini**: File PDF ordini di acquisto
+   - **Anagrafiche**: File Excel con distinte base (BOM) componenti
+   - **Rotture**: File Excel con storico rotture
+   - **Stock**: File TSV con giacenze magazzino
+3. **Elabora Dati**: Processa file caricati (parsing automatico)
+4. **Esplora Dati**: Usa Explorer per cercare e filtrare dati elaborati
+5. **Visualizza Previsioni**: Accedi a dashboard previsioni e statistiche
+6. **Export Risultati**: Scarica CSV, grafici e JSON
 
 ---
 
@@ -303,18 +309,28 @@ mec-previsioni/
 │
 ├── routes/                     # Blueprint Flask
 │   ├── auth.py                # Autenticazione
-│   ├── anagrafiche.py         # Gestione anagrafiche
-│   ├── rotture.py             # Gestione rotture
-│   ├── ordini.py              # Gestione ordini
+│   ├── ordini.py              # Pipeline Ordini (PDF)
+│   ├── ordini_explorer.py     # Ordini Explorer
+│   ├── anagrafiche.py         # Pipeline Anagrafiche (Excel)
+│   ├── anagrafiche_catalogo.py # Catalogo Modelli & Componenti
+│   ├── rotture.py             # Pipeline Rotture (Excel)
+│   ├── rotture_explorer.py    # Rotture Explorer
+│   ├── stock.py               # Pipeline Stock (TSV)
+│   ├── stock_explorer.py      # Stock Explorer
 │   ├── previsioni.py          # Calcolo previsioni
 │   ├── users.py               # Gestione utenti
 │   └── dashboard.py           # Dashboard KPI
 │
 ├── templates/                  # Template Jinja2
 │   ├── base.html              # Layout base
+│   ├── home.html              # Homepage
+│   ├── help.html              # Guida utente
 │   ├── errors/                # Pagine errore
+│   ├── dashboard/             # Dashboard elaborazioni
+│   ├── ordini/                # Template ordini
 │   ├── anagrafiche/           # Template anagrafiche
 │   ├── rotture/               # Template rotture
+│   ├── stock/                 # Template stock
 │   └── previsioni/            # Template previsioni
 │
 ├── utils/                      # Utility
@@ -332,14 +348,16 @@ mec-previsioni/
 ├── instance/                   # Database SQLite
 │
 ├── INPUT/                      # File input (git-ignored)
-│   ├── anagrafiche/
-│   ├── rotture/
-│   └── ordini/
+│   ├── ordini/                # PDF ordini da elaborare
+│   ├── anagrafiche/           # Excel BOM da elaborare
+│   ├── rotture/               # Excel rotture da elaborare
+│   └── stock/                 # TSV giacenze da elaborare
 │
 └── OUTPUT/                     # File output (git-ignored)
-    ├── anagrafiche/
-    ├── rotture/
-    └── ordini/
+    ├── ordini/                # PDF elaborati
+    ├── anagrafiche/           # Excel elaborati
+    ├── rotture/               # Excel elaborati
+    └── stock/                 # TSV elaborati
 ```
 
 ### Stack Tecnologico

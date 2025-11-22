@@ -6,7 +6,7 @@
 <div class="container mt-4">
     <div class="text-center mb-5">
         <h1 class="display-4">🏠 Sistema Previsioni MEC</h1>
-        <p class="lead text-muted">Gestione pipeline Ordini, Anagrafiche e Rotture</p>
+        <p class="lead text-muted">Gestione pipeline Ordini, Anagrafiche, Rotture e Stock</p>
     </div>
 
     <div class="row g-4">
@@ -82,6 +82,24 @@
             </div>
         </div>
 
+        <!-- Card Stock -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-box-seam text-info" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">📦 Stock Giacenze</h5>
+                    <p class="card-text text-muted">
+                        Gestione file TSV giacenze componenti e snapshot magazzino
+                    </p>
+                    <a href="{{ url_for('stock.index') }}" class="btn btn-info">
+                        Gestisci Stock
+                    </a>
+                </div>
+            </div>
+        </div>
+
         <!-- Card Previsioni (Placeholder per futura implementazione) -->
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm hover-card border-secondary">
@@ -126,12 +144,12 @@
         <div class="col-12">
             <div class="alert alert-info">
                 <h5 class="alert-heading">
-                    <i class="bi bi-info-circle"></i> Sistema a 3 Pipeline
+                    <i class="bi bi-info-circle"></i> Sistema a 4 Pipeline
                 </h5>
                 <p class="mb-0">
-                    Il sistema gestisce 3 pipeline di elaborazione dati:
-                    <strong>Ordini</strong> (PDF) → <strong>Anagrafiche</strong> (Excel BOM) → <strong>Rotture</strong> (Excel eventi).
-                    Ogni pipeline alimenta tabelle centralizzate (modelli, componenti, controparti) per analisi predittive.
+                    Il sistema gestisce 4 pipeline di elaborazione dati:
+                    <strong>Ordini</strong> (PDF) → <strong>Anagrafiche</strong> (Excel BOM) → <strong>Rotture</strong> (Excel eventi) → <strong>Stock</strong> (TSV giacenze).
+                    Ogni pipeline alimenta tabelle centralizzate (modelli, componenti, controparti, giacenze) per analisi predittive.
                 </p>
             </div>
         </div>

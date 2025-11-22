@@ -175,6 +175,7 @@ def create_app(config_class=DevelopmentConfig):
     from routes.rotture_explorer import rotture_explorer_bp  # Explorer rotture database
     from routes.users import users_bp
     from routes.ordini import ordini_bp
+    from routes.ordini_explorer import ordini_explorer_bp  # Ordini explorer
     from routes.anagrafiche import anagrafiche_bp  # Gestione file anagrafiche Excel
     from routes.anagrafiche_catalogo import anagrafiche_catalogo_bp  # Catalogo modelli & componenti
     from routes.dashboard import dashboard_bp  # Dashboard elaborazioni
@@ -187,6 +188,7 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(rotture_explorer_bp)  # Già ha url_prefix='/rotture/explorer'
     app.register_blueprint(users_bp, url_prefix='/users')
     app.register_blueprint(ordini_bp, url_prefix='/ordini')
+    app.register_blueprint(ordini_explorer_bp)  # Già ha url_prefix='/ordini/explorer'
     app.register_blueprint(anagrafiche_bp, url_prefix='/anagrafiche')  # Gestione file anagrafiche
     app.register_blueprint(anagrafiche_catalogo_bp)  # Già ha url_prefix='/anagrafiche/catalogo'
 

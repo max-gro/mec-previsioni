@@ -125,11 +125,6 @@
                                     📄 Gestione File Excel
                                 </a>
                             </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ url_for('anagrafiche_catalogo.index') }}">
-                                    📦 Catalogo Modelli & Componenti
-                                </a>
-                            </li>
                             {% if current_user.is_admin() %}
                             <li><hr class="dropdown-divider"></li>
                             <li>
@@ -164,11 +159,6 @@
                                     📄 Gestione File Excel
                                 </a>
                             </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ url_for('rotture_explorer.index') }}">
-                                    🔍 Rotture Explorer
-                                </a>
-                            </li>
                             {% if current_user.is_admin() %}
                             <li><hr class="dropdown-divider"></li>
                             <li>
@@ -185,7 +175,31 @@
                             📈 Previsioni
                         </a>
                     </li>
-                    
+
+                    <!-- Menu Explorer -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarExplorer" role="button" data-bs-toggle="dropdown">
+                            🔍 Explorer
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('anagrafiche_catalogo.index') }}">
+                                    📦 Catalogo Modelli & Componenti
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('rotture_explorer.index') }}">
+                                    🔧 Rotture Explorer
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('ordini_explorer.index') }}">
+                                    📋 Ordini Explorer
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
                     {% if current_user.is_admin() %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('users.list') }}">
